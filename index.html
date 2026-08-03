@@ -29,56 +29,120 @@
 <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
 
 <header class="site-header">
-  <div class="container site-header__inner">
+  <div class="container header-top">
     <a href="/" class="logo">
-      <img src="/assets/images/logo.png" alt="Papelaria Futura">
-      Papelaria Futura
+      <span class="logo__mark" data-icon="logo"></span>
+      <span class="logo__text">Papelaria<br>Futura</span>
     </a>
 
     <form class="search-bar" role="search" onsubmit="return false">
       <label for="busca-header" class="sr-only">Pesquisar produtos</label>
       <input id="busca-header" type="search" placeholder="Buscar por nome, marca ou código..." autocomplete="off">
+      <button type="submit" class="search-bar__btn" aria-label="Pesquisar"><span data-icon="search"></span></button>
     </form>
 
-    <select id="filtro-categoria" class="category-select" aria-label="Filtrar por categoria">
-      <option value="">Todas as categorias</option>
-    </select>
+    <div class="select-pill">
+      <select id="filtro-categoria" aria-label="Filtrar por categoria">
+        <option value="">Todas as categorias</option>
+      </select>
+      <span class="select-pill__chevron" data-icon="chevronRight"></span>
+    </div>
 
     <div class="header-actions">
-      <button id="btn-entrar" class="btn-secondary" data-modal-target="#modal-login">Entrar</button>
-      <button id="btn-sair" class="btn-secondary" hidden>Sair</button>
-      <button id="abrir-admin" class="btn-secondary" hidden>Painel Admin</button>
-      <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
-        🛒<span class="cart-badge" data-cart-badge>0</span>
+      <button id="btn-entrar" class="header-action" data-modal-target="#modal-login">
+        <span data-icon="user"></span><span>Entrar</span>
       </button>
-      <button class="menu-toggle" aria-label="Abrir menu">☰</button>
+      <button id="btn-sair" class="header-action" hidden>
+        <span data-icon="user"></span><span>Sair</span>
+      </button>
+      <button id="abrir-admin" class="header-action" hidden>
+        <span data-icon="home"></span><span>Painel Admin</span>
+      </button>
+      <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
+        <span data-icon="cart"></span><span class="cart-badge" data-cart-badge>0</span>
+      </button>
+      <button class="menu-toggle" aria-label="Abrir menu"><span data-icon="menu"></span></button>
     </div>
   </div>
+
+  <nav class="header-nav">
+    <div class="container header-nav__inner">
+      <button class="categories-toggle" id="toggle-categorias-grid">
+        <span data-icon="grid"></span><span>Categorias</span>
+      </button>
+      <div class="header-nav__links" id="header-nav-links"></div>
+      <a href="#destaques" class="header-nav__offer"><span data-icon="tag"></span>Ofertas</a>
+    </div>
+  </nav>
 </header>
 
 <main id="conteudo">
   <section class="hero">
     <div class="container hero__inner">
-      <span class="hero__eyebrow">Novidade toda semana</span>
-      <h1 class="hero__title">Tudo para escola, escritório e criatividade — em um só lugar.</h1>
-      <p class="hero__subtitle">Confira nosso catálogo completo, monte seu pedido e finalize em segundos direto pelo WhatsApp.</p>
-      <div class="hero__actions">
-        <a href="#produtos" class="btn-primary">Ver catálogo</a>
-        <a href="#destaques" class="btn-secondary">Produtos em destaque</a>
+      <div class="hero__content">
+        <span class="hero__eyebrow"><span data-icon="plus"></span>Ofertas da semana</span>
+        <h1 class="hero__title">Tudo para seu estudo, escritório e <span class="hero__title-accent">criatividade.</span></h1>
+        <p class="hero__subtitle">Mais de 8.000 produtos com entrega rápida e o melhor atendimento!</p>
+        <div class="hero__actions">
+          <a href="#produtos" class="btn-primary"><span data-icon="grid"></span>Ver catálogo</a>
+          <a href="#" id="hero-whatsapp" class="btn-whatsapp-lg" target="_blank" rel="noopener"><span data-icon="whatsapp"></span>Comprar pelo WhatsApp</a>
+        </div>
+        <ul class="hero__features">
+          <li><span data-icon="truck"></span><div><strong>Entrega rápida</strong><span>para todo o Brasil</span></div></li>
+          <li><span data-icon="creditCard"></span><div><strong>Até 12x sem juros</strong><span>parcele suas compras</span></div></li>
+          <li><span data-icon="shieldCheck"></span><div><strong>Compra 100% segura</strong><span>seus dados protegidos</span></div></li>
+          <li><span data-icon="headset"></span><div><strong>Atendimento via WhatsApp</strong><span>fale com a gente</span></div></li>
+        </ul>
+      </div>
+      <div class="hero__art" aria-hidden="true">
+        <div class="hero__art-blob"></div>
+        <div class="hero__art-card hero__art-card--1"><span data-icon="backpack"></span></div>
+        <div class="hero__art-card hero__art-card--2"><span data-icon="pen"></span></div>
+        <div class="hero__art-card hero__art-card--3"><span data-icon="palette"></span></div>
+        <div class="hero__art-card hero__art-card--4"><span data-icon="notebook"></span></div>
+        <div class="hero__art-card hero__art-card--5"><span data-icon="printer"></span></div>
       </div>
     </div>
   </section>
 
   <section class="section container" id="categorias">
     <div class="section__head"><h2 class="section__title">Categorias</h2></div>
-    <div class="categories-grid" id="grade-categorias">
-      <!-- populado dinamicamente ou pode ser fixo -->
-    </div>
+    <div class="categories-grid" id="grade-categorias"></div>
   </section>
 
+  <div class="container">
+    <div class="promo-banner">
+      <div>
+        <span class="promo-banner__eyebrow">Ofertas especiais</span>
+        <h3>Até <strong>40% OFF</strong> em categorias selecionadas</h3>
+        <p>Descontos imperdíveis por tempo limitado.</p>
+        <a href="#destaques" class="btn-primary promo-banner__cta">Aproveitar agora</a>
+      </div>
+    </div>
+  </div>
+
   <section class="section container" id="destaques">
-    <div class="section__head"><h2 class="section__title">Produtos em destaque</h2></div>
+    <div class="section__head">
+      <h2 class="section__title">Produtos em destaque</h2>
+      <a href="#produtos" class="section__link">Ver todos os produtos <span data-icon="chevronRight"></span></a>
+    </div>
     <div class="products-grid" id="grade-destaques"></div>
+  </section>
+
+  <section class="section container">
+    <div class="whatsapp-cta">
+      <div class="whatsapp-cta__icon"><span data-icon="whatsapp"></span></div>
+      <div class="whatsapp-cta__content">
+        <h3>Faça seu pedido pelo WhatsApp</h3>
+        <p>É rápido, prático e seguro!</p>
+        <ul>
+          <li><span data-icon="clipboardList"></span>Envie sua lista escolar ou de materiais</li>
+          <li><span data-icon="messageSquare"></span>Receba orçamento personalizado</li>
+          <li><span data-icon="shieldCheck"></span>Finalize seu pedido em minutos</li>
+        </ul>
+        <a href="#" id="whatsapp-cta-link" class="btn-whatsapp-lg" target="_blank" rel="noopener"><span data-icon="whatsapp"></span>Chamar no WhatsApp</a>
+      </div>
+    </div>
   </section>
 
   <section class="section container" id="recentes">
@@ -86,11 +150,42 @@
     <div class="products-grid" id="grade-recentes"></div>
   </section>
 
+  <section class="section container brands">
+    <div class="section__head"><h2 class="section__title">As melhores marcas você encontra aqui</h2></div>
+    <div class="brands__row" id="marcas-parceiras"></div>
+  </section>
+
+  <section class="section container testimonials">
+    <div class="section__head"><h2 class="section__title">O que nossos clientes dizem</h2></div>
+    <div class="testimonials__grid" id="depoimentos"></div>
+  </section>
+
   <section class="section container" id="produtos">
     <div class="section__head"><h2 class="section__title">Catálogo completo</h2></div>
     <div class="products-grid" id="grade-produtos"></div>
   </section>
 </main>
+
+<div class="newsletter">
+  <div class="container newsletter__inner">
+    <div class="newsletter__intro">
+      <span class="newsletter__icon" data-icon="mail"></span>
+      <div>
+        <strong>Receba ofertas e novidades</strong>
+        <p>Cadastre-se e fique por dentro das melhores promoções!</p>
+      </div>
+    </div>
+    <form class="newsletter__form" id="form-newsletter" onsubmit="return false">
+      <input type="email" placeholder="Digite seu melhor e-mail" required autocomplete="email">
+      <button type="submit" class="btn-secondary">Cadastrar</button>
+    </form>
+    <ul class="newsletter__badges">
+      <li><span data-icon="shieldCheck"></span>100% seguro<br><small>Seus dados protegidos</small></li>
+      <li><span data-icon="close"></span>Sem spam<br><small>Enviamos apenas promoções exclusivas</small></li>
+      <li><span data-icon="close"></span>Cancele quando quiser<br><small>Sem burocracia</small></li>
+    </ul>
+  </div>
+</div>
 
 <footer class="site-footer">
   <div class="container footer-grid">
@@ -106,8 +201,8 @@
     <div>
       <h4>Redes sociais</h4>
       <div class="social-row">
-        <a href="#" aria-label="Instagram" target="_blank" rel="noopener">IG</a>
-        <a href="#" aria-label="Facebook" target="_blank" rel="noopener">FB</a>
+        <a href="#" aria-label="Instagram" target="_blank" rel="noopener"><span data-icon="instagram"></span></a>
+        <a href="#" aria-label="Facebook" target="_blank" rel="noopener"><span data-icon="facebook"></span></a>
       </div>
     </div>
   </div>
