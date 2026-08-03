@@ -5,12 +5,12 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyCnG5frwT1bngZcgXjYKILdHe3hPvXHcSQ",
+  authDomain: "futura-papelaria.firebaseapp.com",
+  projectId: "futura-papelaria",
+  storageBucket: "futura-papelaria.firebasestorage.app",
+  messagingSenderId: "906321437911",
+  appId: "1:906321437911:web:b2b930737ae507ee0dfc92"
 };
 
 export const app = initializeApp(firebaseConfig);
