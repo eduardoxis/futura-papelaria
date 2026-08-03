@@ -42,6 +42,52 @@ export const ICONS = {
   inboxEmpty: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 27 20 12h24l8 15" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity="0.5"/><path d="M10 27h12l3 6h14l3-6h12v22a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3V27Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M22 8 20 5M42 8l2-3M32 6V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.5"/></svg>`,
 
   gridEmpty: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="44" height="44" rx="6" stroke="currentColor" stroke-width="2" opacity="0.5"/><path d="M22 26h8M22 34h20M22 42h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+
+  user: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20c.8-4 3.7-6 7.5-6s6.7 2 7.5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+
+  cart: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 4h2l1.6 10.2a2 2 0 0 0 2 1.7h8.1a2 2 0 0 0 2-1.6l1.3-6.8H6.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="20" r="1.4" fill="currentColor"/><circle cx="17.5" cy="20" r="1.4" fill="currentColor"/></svg>`,
+
+  menu: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+
+  grid: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>`,
+
+  whatsapp: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 17.5 5 21l3.6-1.4A8 8 0 1 0 5.9 16.3l.6 1.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 10c0 3.3 2.2 5.5 5.3 5.5.7 0 1-.5.9-1.1l-.2-1-1.7-.6c-.3-.1-.6 0-.8.2l-.4.5A5 5 0 0 1 9.9 11l.5-.4c.2-.2.3-.5.2-.8L10 8.1c-.1-.5-.5-.7-1-.6C8 7.7 9 9 9 10Z" fill="currentColor"/></svg>`,
+
+  truck: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h10v9H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="7" cy="17.5" r="1.6" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="17.5" r="1.6" stroke="currentColor" stroke-width="1.6"/></svg>`,
+
+  creditCard: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 10.5h18" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 14.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+
+  shieldCheck: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3.5 19 6v6c0 4.5-3 7.2-7 8.5-4-1.3-7-4-7-8.5V6l7-2.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+
+  headset: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13v-1a8 8 0 0 1 16 0v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="3" y="13" width="4" height="6" rx="1.4" stroke="currentColor" stroke-width="1.7"/><rect x="17" y="13" width="4" height="6" rx="1.4" stroke="currentColor" stroke-width="1.7"/><path d="M19 19.5v.5a3 3 0 0 1-3 3h-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+
+  mail: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+
+  instagram: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/></svg>`,
+
+  facebook: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 21v-7.2h2.4l.4-2.8h-2.8V9.2c0-.8.2-1.4 1.4-1.4h1.5V5.3c-.3 0-1.1-.1-2.1-.1-2.1 0-3.6 1.3-3.6 3.7v2.1H9.3v2.8h2.4V21h2.8Z" fill="currentColor"/></svg>`,
+
+  star: `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="m12 3 2.7 5.9 6.3.7-4.7 4.4 1.3 6.3L12 17.2 6.4 20.3l1.3-6.3-4.7-4.4 6.3-.7L12 3Z"/></svg>`,
+
+  backpack: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 8h11a2 2 0 0 1 2 2v8a2.5 2.5 0 0 1-2.5 2.5h-10A2.5 2.5 0 0 1 4.5 18v-8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 12.5h5M9.5 20.5v-4h5v4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+
+  laptop: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.5" y="5" width="15" height="10" rx="1.3" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 19h19l-1.6-3H4.1L2.5 19Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+
+  palette: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3.5a8.5 8 0 1 0 0 16c1.4 0 2-1 1.1-2-.6-.7-.2-1.8.8-1.8H16a4 4 0 0 0 4-4c0-4.5-3.6-8.2-8-8.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor"/><circle cx="11.5" cy="7.7" r="1.1" fill="currentColor"/><circle cx="15.3" cy="9.3" r="1.1" fill="currentColor"/><circle cx="9" cy="14.5" r="1.1" fill="currentColor"/></svg>`,
+
+  printer: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 8.5V4h11v4.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><rect x="3.5" y="8.5" width="17" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="6.5" y="13" width="11" height="7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="17" cy="11.3" r="0.9" fill="currentColor"/></svg>`,
+
+  notebook: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="3.5" width="14" height="17" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17" stroke="currentColor" stroke-width="1.7"/><path d="M12.5 8h3M12.5 11.5h3M12.5 15h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+
+  pen: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 15.5 15.5 6l2.5 2.5L8.5 18H6v-2.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13.5 8 16 10.5" stroke="currentColor" stroke-width="1.7"/><path d="M4 21h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+
+  gift: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="9.5" width="17" height="4" rx="1" stroke="currentColor" stroke-width="1.7"/><path d="M5 13.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 9.5V21" stroke="currentColor" stroke-width="1.7"/><path d="M12 9.5c-2.5 0-4.5-1-4.5-3S9 3.5 10 4.5s2 3 2 5Zm0 0c2.5 0 4.5-1 4.5-3S15 3.5 14 4.5s-2 3-2 5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+
+  phone: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="2.5" width="10" height="19" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+
+  clipboardList: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="4.5" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><rect x="9" y="3" width="6" height="3" rx="1" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+
+  messageSquare: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5.5h16v10.5H9l-4 3.5v-3.5H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
 };
 
 /** Retorna um <span> com o ícone pronto para inserir no innerHTML. */
