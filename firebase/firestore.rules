@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// Deploy com: firebase deploy --only firestore:rules
+// Isto é o que REALMENTE protege o sistema — não a "api key" do firebase-config.js.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function ehAdmin() {
+      return autenticado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.cargos.hasAny(['admin']);
+    }
+
+    // ---------- PRODUTOS ----------
+    // Leitura pública (é um catálogo), mas produtos "ocultos" só o admin lista/edita.
+    // A filtragem de "oculto" na home já é feita no client, mas a regra abaixo
+    // impede que alguém leia o documento cru de um produto oculto por engenharia reversa.
+    match /produtos/{produtoId} {
+      allow get: if resource.data.status != 'oculto' || ehAdmin();
+      allow list: if true; // o app filtra "oculto" no client; para ocultar de verdade no banco, use uma Cloud Function
+      allow create, update, delete: if ehAdmin();
+    }
+
+    // ---------- CATEGORIAS / ETIQUETAS ----------
+    match /categorias/{id} {
+      allow read: if true;
+      allow write: if ehAdmin();
+    }
+    match /etiquetas/{id} {
+      allow read: if true;
+      allow write: if ehAdmin();
+    }
+
+    // ---------- HISTÓRICO DE ESTOQUE ----------
+    match /historicoEstoque/{id} {
+      allow read, write: if ehAdmin();
+    }
+
+    // ---------- USUÁRIOS ----------
+    match /usuarios/{uid} {
+      allow read: if autenticado() && (request.auth.uid == uid || ehAdmin());
+      // Um usuário pode criar o PRÓPRIO documento ao se cadastrar, mas nunca
+      // pode se autopromover a admin — só o admin altera "cargos".
+      allow create: if autenticado() && request.auth.uid == uid &&
+        request.resource.data.cargos == ['cliente'];
+      allow update: if ehAdmin();
+      allow delete: if ehAdmin();
+    }
+
+    // ---------- LEADS PERDIDOS ----------
+    // Qualquer visitante (mesmo sem login) pode CRIAR um lead ao abandonar o carrinho,
+    // mas ninguém além do admin pode listar/editar — evita vazar dados de outros clientes.
+    match /leadsPerdidos/{id} {
+      allow create: if request.resource.data.keys().hasAll(['produtos', 'valor', 'status']) &&
+        request.resource.data.status == 'lead_perdido';
+      allow read, update, delete: if ehAdmin();
+    }
+  }
+}

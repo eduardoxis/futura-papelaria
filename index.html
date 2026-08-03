@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Papelaria Futura — Catálogo</title>
+<meta name="description" content="Catálogo online da Papelaria Futura: material escolar, de escritório e arte com preços atualizados e retirada rápida via WhatsApp.">
+
+<!-- Open Graph -->
+<meta property="og:title" content="Papelaria Futura — Catálogo">
+<meta property="og:description" content="Encontre material escolar, de escritório e arte com os melhores preços.">
+<meta property="og:image" content="/assets/images/og-cover.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="/assets/icons/favicon.ico">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/modal.css">
+<link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+
+<a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a href="/" class="logo">
+      <img src="/assets/images/logo.svg" alt="Papelaria Futura">
+      Papelaria Futura
+    </a>
+
+    <form class="search-bar" role="search" onsubmit="return false">
+      <label for="busca-header" class="sr-only">Pesquisar produtos</label>
+      <input id="busca-header" type="search" placeholder="Buscar por nome, marca ou código..." autocomplete="off">
+    </form>
+
+    <select id="filtro-categoria" class="category-select" aria-label="Filtrar por categoria">
+      <option value="">Todas as categorias</option>
+    </select>
+
+    <div class="header-actions">
+      <button id="btn-entrar" class="btn-secondary" data-modal-target="#modal-login">Entrar</button>
+      <button id="btn-sair" class="btn-secondary" hidden>Sair</button>
+      <button id="abrir-admin" class="btn-secondary" hidden>Painel Admin</button>
+      <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
+        🛒<span class="cart-badge" data-cart-badge>0</span>
+      </button>
+      <button class="menu-toggle" aria-label="Abrir menu">☰</button>
+    </div>
+  </div>
+</header>
+
+<main id="conteudo">
+  <section class="hero">
+    <div class="container hero__inner">
+      <span class="hero__eyebrow">Novidade toda semana</span>
+      <h1 class="hero__title">Tudo para escola, escritório e criatividade — em um só lugar.</h1>
+      <p class="hero__subtitle">Confira nosso catálogo completo, monte seu pedido e finalize em segundos direto pelo WhatsApp.</p>
+      <div class="hero__actions">
+        <a href="#produtos" class="btn-primary">Ver catálogo</a>
+        <a href="#destaques" class="btn-secondary">Produtos em destaque</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" id="categorias">
+    <div class="section__head"><h2 class="section__title">Categorias</h2></div>
+    <div class="categories-grid" id="grade-categorias">
+      <!-- populado dinamicamente ou pode ser fixo -->
+    </div>
+  </section>
+
+  <section class="section container" id="destaques">
+    <div class="section__head"><h2 class="section__title">Produtos em destaque</h2></div>
+    <div class="products-grid" id="grade-destaques"></div>
+  </section>
+
+  <section class="section container" id="recentes">
+    <div class="section__head"><h2 class="section__title">Adicionados recentemente</h2></div>
+    <div class="products-grid" id="grade-recentes"></div>
+  </section>
+
+  <section class="section container" id="produtos">
+    <div class="section__head"><h2 class="section__title">Catálogo completo</h2></div>
+    <div class="products-grid" id="grade-produtos"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <h4>Papelaria Futura</h4>
+      <p>Rua Exemplo, 123 - Centro</p>
+    </div>
+    <div>
+      <h4>Contato</h4>
+      <a href="https://wa.me/5561999999999" target="_blank" rel="noopener">WhatsApp</a>
+      <p>contato@papelariafutura.com.br</p>
+    </div>
+    <div>
+      <h4>Redes sociais</h4>
+      <div class="social-row">
+        <a href="#" aria-label="Instagram" target="_blank" rel="noopener">IG</a>
+        <a href="#" aria-label="Facebook" target="_blank" rel="noopener">FB</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Papelaria Futura. Todos os direitos reservados.</div>
+</footer>
+
+<!-- CARRINHO -->
+<div class="cart-overlay" id="cart-overlay"></div>
+<aside class="cart-drawer" id="cart-drawer" aria-label="Carrinho de compras">
+  <div class="cart-drawer__head">
+    <h3>Seu carrinho</h3>
+    <button id="fechar-carrinho" aria-label="Fechar carrinho">✕</button>
+  </div>
+  <div class="cart-drawer__items" id="itens-carrinho"></div>
+  <div class="cart-drawer__summary">
+    <label>Seu nome<input id="nome-cliente" type="text" autocomplete="off" placeholder="Como podemos te chamar?"></label>
+    <div class="summary-row"><span>Subtotal</span><span id="subtotal-carrinho">R$ 0,00</span></div>
+    <div class="summary-row summary-row--total"><span>Total</span><span id="total-carrinho">R$ 0,00</span></div>
+    <button class="btn-primary" id="finalizar-pedido">Finalizar pedido no WhatsApp</button>
+  </div>
+</aside>
+
+<!-- MODAL LOGIN -->
+<div class="modal" id="modal-login">
+  <div class="modal__panel" style="max-width:420px">
+    <div class="modal__head"><h2>Entrar</h2><button class="modal__close" data-modal-close>✕</button></div>
+    <div class="tabs-content">
+      <p>A tela completa de login está em <code>/pages/login.html</code>.</p>
+      <a class="btn-primary" href="/pages/login.html">Ir para o login</a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div class="modal" id="modal-admin">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <h2>Painel Administrativo</h2>
+      <button class="modal__close" data-modal-close>✕</button>
+    </div>
+    <div class="modal__body">
+      <nav class="tabs-nav">
+        <button data-tab-trigger="dashboard" class="is-active">Dashboard</button>
+        <button data-tab-trigger="produtos">Produtos</button>
+        <button data-tab-trigger="categorias">Categorias</button>
+        <button data-tab-trigger="etiquetas">Etiquetas</button>
+        <button data-tab-trigger="estoque">Estoque</button>
+        <button data-tab-trigger="usuarios">Usuários</button>
+        <button data-tab-trigger="leads">Leads</button>
+      </nav>
+      <div class="tabs-content">
+        <div data-tab-panel="dashboard" id="painel-dashboard"></div>
+        <div data-tab-panel="produtos" id="painel-produtos" hidden></div>
+        <div data-tab-panel="categorias" id="painel-categorias" hidden></div>
+        <div data-tab-panel="etiquetas" id="painel-etiquetas" hidden></div>
+        <div data-tab-panel="estoque" id="painel-estoque" hidden></div>
+        <div data-tab-panel="usuarios" id="painel-usuarios" hidden></div>
+        <div data-tab-panel="leads" id="painel-leads" hidden></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

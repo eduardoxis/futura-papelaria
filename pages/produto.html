@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title id="titulo-pagina">Produto — Papelaria Futura</title>
+<meta id="meta-desc" name="description" content="">
+<meta id="og-title" property="og:title" content="">
+<meta id="og-desc" property="og:description" content="">
+<meta id="og-image" property="og:image" content="">
+<link rel="icon" href="/assets/icons/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a href="/" class="logo"><img src="/assets/images/logo.svg" alt="Papelaria Futura">Papelaria Futura</a>
+    <a href="/" class="btn-secondary" style="margin-left:auto">← Voltar ao catálogo</a>
+  </div>
+</header>
+
+<main class="container" id="conteudo-produto">
+  <div class="product-detail" id="detalhe-produto">
+    <p>Carregando produto...</p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-bottom">© 2026 Papelaria Futura.</div>
+</footer>
+
+<script type="module">
+import { obterProduto, incrementarVisualizacao } from "../js/firestore.js";
+import { formatBRL, escHtml, getQueryParam, toast } from "../js/utils.js";
+import { adicionarAoCarrinho, atualizarBadgeCarrinho } from "../js/cart.js";
+import { compartilharProduto } from "../js/products.js";
+
+const id = getQueryParam("id");
+const container = document.querySelector("#detalhe-produto");
+
+async function iniciar() {
+  if (!id) { container.innerHTML = "<p>Produto não encontrado.</p>"; return; }
+  const produto = await obterProduto(id);
+  if (!produto) { container.innerHTML = "<p>Produto não encontrado.</p>"; return; }
+
+  document.title = `${produto.nome} — Papelaria Futura`;
+  document.querySelector("#meta-desc").content = produto.descricao || produto.nome;
+  document.querySelector("#og-title").content = produto.nome;
+  document.querySelector("#og-desc").content = produto.descricao || "";
+  document.querySelector("#og-image").content = produto.imagem || "";
+
+  const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
+
+  container.innerHTML = `
+    <div class="product-detail__image">
+      <img src="${produto.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(produto.nome)}">
+    </div>
+    <div class="product-detail__info">
+      ${produto.marca ? `<span class="product-detail__brand">${escHtml(produto.marca)}</span>` : ""}
+      <h1 class="product-detail__name">${escHtml(produto.nome)}</h1>
+      <span class="product-detail__price">${formatBRL(produto.preco)}</span>
+      <p class="product-detail__desc">${escHtml(produto.descricao || "")}</p>
+      <div class="product-detail__meta">
+        <span>Código: ${escHtml(produto.codigo || "-")}</span>
+        <span>${semEstoque ? "Sem estoque" : `${produto.quantidade} disponíveis`}</span>
+      </div>
+      <div class="qty-stepper">
+        <button id="dim">-</button>
+        <input id="qtd" type="number" value="1" min="1">
+        <button id="aum">+</button>
+      </div>
+      <div class="product-detail__actions">
+        <button class="btn-primary" id="add-carrinho" ${semEstoque ? "disabled" : ""}>Adicionar ao carrinho</button>
+        <button class="btn-secondary" id="compartilhar">Compartilhar</button>
+        <button class="btn-secondary" id="copiar-link">Copiar link</button>
+      </div>
+    </div>`;
+
+  document.querySelector("#dim").addEventListener("click", () => {
+    const input = document.querySelector("#qtd");
+    input.value = Math.max(1, parseInt(input.value, 10) - 1);
+  });
+  document.querySelector("#aum").addEventListener("click", () => {
+    const input = document.querySelector("#qtd");
+    input.value = parseInt(input.value, 10) + 1;
+  });
+
+  document.querySelector("#add-carrinho").addEventListener("click", () => {
+    const qtd = parseInt(document.querySelector("#qtd").value, 10) || 1;
+    adicionarAoCarrinho(produto, qtd);
+    toast("Produto adicionado ao carrinho.");
+  });
+
+  document.querySelector("#compartilhar").addEventListener("click", async () => {
+    const resultado = await compartilharProduto(produto);
+    if (resultado === "copiado") toast("Link copiado para a área de transferência.");
+  });
+
+  document.querySelector("#copiar-link").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    toast("Link copiado.");
+  });
+
+  incrementarVisualizacao(id);
+  atualizarBadgeCarrinho();
+}
+
+iniciar();
+</script>
+</body>
+</html>

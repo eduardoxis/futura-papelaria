@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /pages/login.html
+
+Sitemap: https://www.papelariafutura.com.br/sitemap.xml
