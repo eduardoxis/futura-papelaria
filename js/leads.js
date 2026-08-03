@@ -11,6 +11,10 @@ export async function carregarPainelLeads(container) {
   const taxaRecuperacao = leads.length ? Math.round((recuperados.length / leads.length) * 100) : 0;
 
   container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Leads</h1>
+      <p>Recupere vendas de clientes que não finalizaram o pedido.</p>
+    </div>
     <div class="leads-stats">
       <div class="stat-card"><span>${perdidos.length}</span><label>Leads perdidos</label></div>
       <div class="stat-card"><span>${formatBRL(valorPerdido)}</span><label>Valor potencial perdido</label></div>
