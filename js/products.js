@@ -1,6 +1,7 @@
 // js/products.js
 import { escHtml, formatBRL } from "./utils.js";
 import { incrementarCompartilhamento } from "./firestore.js";
+import { icon } from "./icons.js";
 
 export function cartaoProduto(produto) {
   const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
@@ -25,7 +26,7 @@ export function cartaoProduto(produto) {
       ${!semEstoque ? `
       <div class="product-card__actions">
         <button class="btn-primary product-card__add" data-add-id="${produto.id}">Adicionar</button>
-        <button class="btn-whatsapp product-card__ask" data-ask-id="${produto.id}" title="Falar sobre este produto no WhatsApp" aria-label="Falar sobre este produto no WhatsApp">💬</button>
+        <button class="btn-whatsapp product-card__ask" data-ask-id="${produto.id}" title="Falar sobre este produto no WhatsApp" aria-label="Falar sobre este produto no WhatsApp">${icon("whatsapp")}</button>
       </div>` : ""}
     </div>`;
 }
