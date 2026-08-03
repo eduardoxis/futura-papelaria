@@ -9,18 +9,25 @@ export function cartaoProduto(produto) {
     .join("");
 
   return `
-    <a class="product-card ${semEstoque ? "is-out" : ""}" href="/pages/produto.html?id=${produto.id}" data-id="${produto.id}">
-      <div class="product-card__image">
-        <img src="${produto.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(produto.nome)}" loading="lazy">
-        ${etiquetasHtml ? `<div class="product-card__tags">${etiquetasHtml}</div>` : ""}
-        ${semEstoque ? `<span class="badge-outofstock">Sem estoque</span>` : ""}
-      </div>
-      <div class="product-card__body">
-        ${produto.marca ? `<span class="product-card__brand">${escHtml(produto.marca)}</span>` : ""}
-        <h3 class="product-card__name">${escHtml(produto.nome)}</h3>
-        <span class="product-card__price">${formatBRL(produto.preco)}</span>
-      </div>
-    </a>`;
+    <div class="product-card ${semEstoque ? "is-out" : ""}" data-id="${produto.id}">
+      <a class="product-card__link" href="/pages/produto.html?id=${produto.id}">
+        <div class="product-card__image">
+          <img src="${produto.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(produto.nome)}" loading="lazy">
+          ${etiquetasHtml ? `<div class="product-card__tags">${etiquetasHtml}</div>` : ""}
+          ${semEstoque ? `<span class="badge-outofstock">Sem estoque</span>` : ""}
+        </div>
+        <div class="product-card__body">
+          ${produto.marca ? `<span class="product-card__brand">${escHtml(produto.marca)}</span>` : ""}
+          <h3 class="product-card__name">${escHtml(produto.nome)}</h3>
+          <span class="product-card__price">${formatBRL(produto.preco)}</span>
+        </div>
+      </a>
+      ${!semEstoque ? `
+      <div class="product-card__actions">
+        <button class="btn-primary product-card__add" data-add-id="${produto.id}">Adicionar</button>
+        <button class="btn-whatsapp product-card__ask" data-ask-id="${produto.id}" title="Falar sobre este produto no WhatsApp" aria-label="Falar sobre este produto no WhatsApp">💬</button>
+      </div>` : ""}
+    </div>`;
 }
 
 export function renderizarGrade(container, produtos) {
@@ -29,6 +36,21 @@ export function renderizarGrade(container, produtos) {
     return;
   }
   container.innerHTML = produtos.map(cartaoProduto).join("");
+
+  if (!container.dataset.acoesLigadas) {
+    container.dataset.acoesLigadas = "1";
+    container.addEventListener("click", (e) => {
+      const btnAdd = e.target.closest("[data-add-id]");
+      const btnAsk = e.target.closest("[data-ask-id]");
+      if (!btnAdd && !btnAsk) return;
+      e.preventDefault();
+      const id = (btnAdd || btnAsk).dataset.addId || (btnAdd || btnAsk).dataset.askId;
+      const produto = produtos.find(p => p.id === id);
+      if (!produto) return;
+      if (btnAdd) container.dispatchEvent(new CustomEvent("adicionar-carrinho", { detail: produto, bubbles: true }));
+      if (btnAsk) container.dispatchEvent(new CustomEvent("falar-produto", { detail: produto, bubbles: true }));
+    });
+  }
 }
 
 export async function compartilharProduto(produto) {
