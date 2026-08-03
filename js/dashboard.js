@@ -7,6 +7,7 @@ import {
 } from "./firestore.js";
 import { formatBRL, escHtml, generateCode, compressImageToBase64, toast } from "./utils.js";
 import { carregarPainelLeads } from "./leads.js";
+import { ICONS, icon } from "./icons.js";
 
 let cacheProdutos = [];
 let cacheCategorias = [];
@@ -33,6 +34,10 @@ async function carregarDashboard(container) {
   const maisCompartilhados = [...produtos].sort((a, b) => (b.compartilhamentos || 0) - (a.compartilhamentos || 0)).slice(0, 5);
 
   container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Dashboard</h1>
+      <p>Visão geral do desempenho da sua loja.</p>
+    </div>
     <div class="dash-grid">
       <div class="stat-card"><span>${produtos.length}</span><label>Produtos</label></div>
       <div class="stat-card"><span>${categorias.length}</span><label>Categorias</label></div>
@@ -60,20 +65,31 @@ async function carregarAbaProdutos(container) {
   cacheEtiquetas = await listarEtiquetas();
 
   container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Produtos</h1>
+      <p>Adicione, edite e gerencie os produtos da sua loja.</p>
+    </div>
     <div class="admin-toolbar">
-      <input type="text" id="busca-admin-produtos" placeholder="Pesquisar produtos..." autocomplete="off">
-      <select id="ordenar-admin-produtos">
-        <option value="">Ordenar</option>
-        <option value="nome">Nome</option>
-        <option value="preco_asc">Menor preço</option>
-        <option value="preco_desc">Maior preço</option>
-      </select>
-      <button class="btn-primary" id="btn-novo-produto">+ Novo produto</button>
+      <div class="input-icon">
+        ${icon("search")}
+        <input type="text" id="busca-admin-produtos" placeholder="Pesquisar produtos..." autocomplete="off">
+      </div>
+      <div class="select-icon">
+        ${icon("sort")}
+        <select id="ordenar-admin-produtos">
+          <option value="">Ordenar: Mais recentes</option>
+          <option value="nome">Nome</option>
+          <option value="preco_asc">Menor preço</option>
+          <option value="preco_desc">Maior preço</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
     </div>
     <div class="table-wrap"><table class="admin-table" id="tabela-produtos">
       <thead><tr><th></th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Qtd</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody></tbody>
     </table></div>
+    <p class="table-count" id="contagem-produtos"></p>
     <dialog id="dialog-produto" class="dialog-form"></dialog>`;
 
   renderizarTabelaProdutos(container, cacheProdutos);
@@ -98,6 +114,9 @@ async function carregarAbaProdutos(container) {
 
 function renderizarTabelaProdutos(container, produtos) {
   const tbody = container.querySelector("#tabela-produtos tbody");
+  const contagem = container.querySelector("#contagem-produtos");
+  if (contagem) contagem.textContent = `Mostrando ${produtos.length} de ${produtos.length} produtos`;
+
   tbody.innerHTML = produtos.map(p => `
     <tr data-id="${p.id}">
       <td><img class="thumb" src="${p.imagem || "/assets/images/placeholder.svg"}" alt=""></td>
@@ -107,11 +126,20 @@ function renderizarTabelaProdutos(container, produtos) {
       <td>${p.quantidade ?? 0}</td>
       <td><span class="status-pill status-${p.status}">${escHtml(p.status)}</span></td>
       <td class="row-actions">
-        <button data-action="editar" title="Editar">✏️</button>
-        <button data-action="duplicar" title="Duplicar">📄</button>
-        <button data-action="excluir" title="Excluir">🗑️</button>
+        <button data-action="editar" title="Editar">${icon("pencil")}</button>
+        <button data-action="duplicar" title="Duplicar">${icon("copy")}</button>
+        <button data-action="excluir" title="Excluir">${icon("trash")}</button>
       </td>
-    </tr>`).join("") || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="7">
+      <div class="empty-state">
+        ${icon("gridEmpty", "empty-state__icon")}
+        <strong>Nenhum produto cadastrado</strong>
+        <p>Comece adicionando seu primeiro produto à sua loja.</p>
+        <button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>
+      </div>
+    </td></tr>`;
+
+  tbody.querySelector("#btn-primeiro-produto")?.addEventListener("click", () => abrirFormularioProduto(container));
 
   tbody.querySelectorAll("tr").forEach(tr => {
     const id = tr.dataset.id;
@@ -209,12 +237,16 @@ async function carregarAbaCategorias(container) {
   if (!container) return;
   const categorias = await listarCategorias();
   container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Categorias</h1>
+      <p>Organize seus produtos em categorias.</p>
+    </div>
     <form id="form-categoria" class="inline-form">
       <input name="nome" placeholder="Nova categoria" required autocomplete="off">
-      <button type="submit" class="btn-primary">Adicionar</button>
+      <button type="submit" class="btn-primary">${icon("plus")}Adicionar</button>
     </form>
     <ul class="chip-list">
-      ${categorias.map(c => `<li>${escHtml(c.nome)} <button data-id="${c.id}">✕</button></li>`).join("") || "<li>Nenhuma categoria.</li>"}
+      ${categorias.map(c => `<li>${escHtml(c.nome)} <button data-id="${c.id}" title="Remover">${icon("close")}</button></li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
     </ul>`;
 
   container.querySelector("#form-categoria").addEventListener("submit", async (e) => {
@@ -232,12 +264,16 @@ async function carregarAbaEtiquetas(container) {
   if (!container) return;
   const etiquetas = await listarEtiquetas();
   container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Etiquetas</h1>
+      <p>Destaque produtos com etiquetas personalizadas.</p>
+    </div>
     <form id="form-etiqueta" class="inline-form">
       <input name="nome" placeholder="Nova etiqueta (ex: Promoção)" required autocomplete="off">
-      <button type="submit" class="btn-primary">Adicionar</button>
+      <button type="submit" class="btn-primary">${icon("plus")}Adicionar</button>
     </form>
     <ul class="chip-list">
-      ${etiquetas.map(e => `<li>${escHtml(e.nome)} <button data-id="${e.id}">✕</button></li>`).join("") || "<li>Nenhuma etiqueta.</li>"}
+      ${etiquetas.map(e => `<li>${escHtml(e.nome)} <button data-id="${e.id}" title="Remover">${icon("close")}</button></li>`).join("") || `<li class="chip-list__empty">Nenhuma etiqueta cadastrada.</li>`}
     </ul>`;
 
   container.querySelector("#form-etiqueta").addEventListener("submit", async (e) => {
@@ -255,7 +291,11 @@ async function carregarAbaEstoque(container) {
   if (!container) return;
   const produtos = await listarProdutos({ apenasAtivos: false });
   container.innerHTML = `
-    <input type="text" id="busca-estoque" placeholder="Buscar produto..." autocomplete="off">
+    <div class="admin-panel-head">
+      <h1>Estoque</h1>
+      <p>Consulte e ajuste as quantidades disponíveis.</p>
+    </div>
+    <div class="input-icon input-icon--full">${icon("search")}<input type="text" id="busca-estoque" placeholder="Buscar produto..." autocomplete="off"></div>
     <div class="table-wrap"><table class="admin-table">
       <thead><tr><th>Produto</th><th>Qtd atual</th><th>Ajuste</th><th></th></tr></thead>
       <tbody>
@@ -294,6 +334,10 @@ async function carregarAbaUsuarios(container) {
   if (!container) return;
   const usuarios = await listarUsuarios();
   container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Usuários</h1>
+      <p>Veja quem tem acesso à sua loja.</p>
+    </div>
     <div class="table-wrap"><table class="admin-table">
       <thead><tr><th>Nome</th><th>E-mail</th><th>Cargos</th></tr></thead>
       <tbody>
