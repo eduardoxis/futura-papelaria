@@ -95,6 +95,20 @@ export function finalizarPedidoWhatsApp(nomeCliente = "") {
 }
 
 /**
+ * Contato rápido sobre UM único produto, sem passar pelo carrinho —
+ * útil no card do catálogo ou na página do produto quando o cliente
+ * quer perguntar sobre um item específico na hora, sem montar um pedido.
+ * @param {{nome:string, marca?:string, id:string}} produto
+ */
+export function falarSobreProduto(produto) {
+  const marcaStr = produto.marca ? ` [${produto.marca}]` : "";
+  const link = produto.id ? `\n🔗 Link do produto: ${window.location.origin}/pages/produto.html?id=${produto.id}` : "";
+  const mensagem = `Olá!\nTenho interesse neste produto:\n*${produto.nome}*${marcaStr}${link}\n\nPoderia me passar mais informações?`;
+  const url = `https://wa.me/${STORE_CONFIG.whatsapp}?text=${encodeURIComponent(mensagem)}`;
+  window.open(url, "_blank");
+}
+
+/**
  * Chame isto quando o usuário sair da página com itens no carrinho e
  * sem finalizar (ex.: evento beforeunload/visibilitychange), passando
  * opcionalmente nome/telefone se o usuário os informou em algum campo.
