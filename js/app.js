@@ -3,11 +3,11 @@ import { listarProdutos, listarCategorias, listarEtiquetas } from "./firestore.j
 import { renderizarGrade, aplicarFiltros, ordenarProdutos } from "./products.js";
 import { buscarProdutos, ativarBuscaTempoReal } from "./search.js";
 import {
-  obterCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
-  finalizarPedidoWhatsApp, registrarLeadPerdidoSeNecessario
+  obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
+  finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
 import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
-import { ouvirEstadoAuth, ehAdmin, sair } from "./auth.js";
+import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
 
@@ -31,6 +31,15 @@ async function iniciar() {
 
   configurarCarrinhoUI();
   configurarLogin();
+  configurarModalAuth();
+
+  document.addEventListener("adicionar-carrinho", (e) => {
+    adicionarAoCarrinho(e.detail, 1);
+    toast("Produto adicionado ao carrinho.");
+  });
+  document.addEventListener("falar-produto", (e) => {
+    falarSobreProduto(e.detail);
+  });
 
   window.addEventListener("beforeunload", () => registrarLeadPerdidoSeNecessario());
   document.addEventListener("visibilitychange", () => {
@@ -171,6 +180,56 @@ function configurarLogin() {
 
   document.querySelectorAll("[data-tab-trigger]").forEach(tab => {
     tab.addEventListener("click", () => trocarAba(document.querySelector("#modal-admin"), tab.dataset.tabTrigger));
+  });
+}
+
+function configurarModalAuth() {
+  const modal = document.querySelector("#modal-login");
+  if (!modal) return;
+
+  modal.querySelectorAll("[data-auth-tab]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      modal.querySelectorAll("[data-auth-tab]").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      modal.querySelector("#form-entrar-modal").hidden = btn.dataset.authTab !== "entrar";
+      modal.querySelector("#form-cadastrar-modal").hidden = btn.dataset.authTab !== "cadastrar";
+    });
+  });
+
+  modal.querySelector("#form-entrar-modal").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const erroEl = modal.querySelector("#erro-entrar-modal");
+    erroEl.textContent = "";
+    if (!podeExecutar("login", 5, 60_000)) {
+      erroEl.textContent = "Muitas tentativas. Aguarde um minuto e tente novamente.";
+      return;
+    }
+    try {
+      await entrar(form.email.value, form.senha.value);
+      fecharModal(modal);
+      form.reset();
+    } catch {
+      erroEl.textContent = "Não foi possível entrar. Verifique seus dados.";
+    }
+  });
+
+  modal.querySelector("#form-cadastrar-modal").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const erroEl = modal.querySelector("#erro-cadastrar-modal");
+    erroEl.textContent = "";
+    if (!podeExecutar("cadastrar", 3, 60_000)) {
+      erroEl.textContent = "Muitas tentativas. Aguarde um minuto e tente novamente.";
+      return;
+    }
+    try {
+      await cadastrar(form.nome.value, form.email.value, form.senha.value);
+      fecharModal(modal);
+      form.reset();
+    } catch {
+      erroEl.textContent = "Não foi possível criar a conta.";
+    }
   });
 }
 
