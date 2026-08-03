@@ -2,26 +2,35 @@
 
 @media (max-width: 980px) {
   .modal__body { flex-direction: column; }
-  .tabs-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--cinza-100); }
+  .tabs-nav { width: 100%; flex-direction: row; align-items: center; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--cinza-100); gap: 0.75rem; }
+  .tabs-nav__list { flex-direction: row; }
+  .tabs-nav button .nav-label { display: none; }
+  .tabs-nav__summary { display: none; }
   .product-detail { grid-template-columns: 1fr; }
+  .hero__inner { grid-template-columns: 1fr; }
+  .hero__art { display: none; }
+  .header-nav__links { display: none; }
 }
 
 @media (max-width: 760px) {
-  .site-header__inner { flex-wrap: wrap; }
+  .header-top { flex-wrap: wrap; }
   .search-bar { order: 3; flex-basis: 100%; }
-  .category-select { display: none; }
-  .menu-toggle {
-    display: grid; place-items: center; width: 42px; height: 42px;
-    border-radius: 50%; background: var(--branco); border: 1px solid var(--cinza-300);
-  }
-  .hero__actions { flex-direction: column; }
+  .select-pill { display: none; }
+  .header-action span:last-child { display: none; }
+  .menu-toggle { display: grid; }
+  .hero__actions { flex-direction: column; align-items: stretch; }
+  .hero__actions a { justify-content: center; }
+  .hero__features { grid-template-columns: repeat(2, 1fr); }
   .cart-drawer { width: 100vw; }
+  .whatsapp-cta { flex-direction: column; }
+  .newsletter__form { flex-direction: column; }
 }
 
 @media (max-width: 480px) {
   .container { width: 94vw; }
   .products-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
   .categories-grid { grid-template-columns: repeat(3, 1fr); }
+  .hero__features { grid-template-columns: 1fr; }
   .stat-card span { font-size: 1.3rem; }
 }
 
