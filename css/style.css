@@ -341,6 +341,7 @@ button {
 }
 .auth-tabs button.is-active { background: var(--azul-100); color: var(--azul-700); }
 #form-entrar-modal, #form-cadastrar-modal { display: grid; gap: 0.85rem; }
+#form-entrar-modal[hidden], #form-cadastrar-modal[hidden] { display: none; }
 #form-entrar-modal label, #form-cadastrar-modal label {
   display: grid; gap: 0.3rem; font-size: 0.85rem; color: var(--cinza-700);
 }
