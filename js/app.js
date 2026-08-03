@@ -10,10 +10,24 @@ import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
-import { ICONS } from "./icons.js";
+import { ICONS, icon } from "./icons.js";
+import { STORE_CONFIG } from "../firebase/firebase-config.js";
 
 let TODOS_PRODUTOS = [];
 let filtrosAtivos = {};
+
+function iconeParaCategoria(nome = "") {
+  const n = nome.toLowerCase();
+  if (n.includes("escol")) return "backpack";
+  if (n.includes("escrit") || n.includes("inform") || n.includes("tecnolog")) return "laptop";
+  if (n.includes("arte") || n.includes("criativ")) return "palette";
+  if (n.includes("impress")) return "printer";
+  if (n.includes("cadern") || n.includes("bloco")) return "notebook";
+  if (n.includes("canet") || n.includes("escrita") || n.includes("pen")) return "pen";
+  if (n.includes("organiz")) return "archive";
+  if (n.includes("presente") || n.includes("premium") || n.includes("kit")) return "gift";
+  return "tag";
+}
 
 function aplicarIconesEstaticos() {
   document.querySelectorAll("[data-icon]").forEach(el => {
@@ -37,6 +51,11 @@ async function iniciar() {
   renderizarDestaques();
   renderizarRecentes();
   await renderizarFiltros();
+  configurarLinksEstaticos();
+
+  document.querySelector("#toggle-categorias-grid")?.addEventListener("click", () => {
+    document.querySelector("#categorias")?.scrollIntoView({ behavior: "smooth" });
+  });
 
   const inputBusca = document.querySelector("#busca-header");
   if (inputBusca) {
@@ -90,7 +109,71 @@ async function renderizarFiltros() {
     seletor.addEventListener("change", () => {
       filtrosAtivos.categoria = seletor.value || undefined;
       aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
+      document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
     });
+  }
+
+  const navLinks = document.querySelector("#header-nav-links");
+  if (navLinks) {
+    navLinks.innerHTML = categorias.slice(0, 6)
+      .map(c => `<button type="button" data-categoria-nome="${escHtml(c.nome)}">${escHtml(c.nome)}</button>`).join("");
+    navLinks.querySelectorAll("[data-categoria-nome]").forEach(btn => {
+      btn.addEventListener("click", () => selecionarCategoria(btn.dataset.categoriaNome));
+    });
+  }
+
+  const grid = document.querySelector("#grade-categorias");
+  if (grid) {
+    grid.innerHTML = categorias.length
+      ? categorias.map(c => `
+        <button type="button" class="category-card" data-categoria-nome="${escHtml(c.nome)}">
+          <span class="category-card__icon">${icon(iconeParaCategoria(c.nome))}</span>
+          <span>${escHtml(c.nome)}</span>
+        </button>`).join("")
+      : `<div class="empty-state">Nenhuma categoria cadastrada ainda.</div>`;
+    grid.querySelectorAll("[data-categoria-nome]").forEach(btn => {
+      btn.addEventListener("click", () => selecionarCategoria(btn.dataset.categoriaNome));
+    });
+  }
+}
+
+function selecionarCategoria(nome) {
+  const seletor = document.querySelector("#filtro-categoria");
+  if (seletor) seletor.value = nome;
+  filtrosAtivos.categoria = nome || undefined;
+  aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
+  document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
+}
+
+function configurarLinksEstaticos() {
+  const numero = STORE_CONFIG.whatsapp;
+  const mensagem = encodeURIComponent(`Olá! Vim do site da ${STORE_CONFIG.nome} e gostaria de fazer um pedido.`);
+  document.querySelectorAll("#hero-whatsapp, #whatsapp-cta-link").forEach(a => {
+    a.href = `https://wa.me/${numero}?text=${mensagem}`;
+  });
+
+  const marcas = document.querySelector("#marcas-parceiras");
+  if (marcas) {
+    marcas.innerHTML = ["Tilibra", "Faber-Castell", "Bic", "Compactor", "Pilot", "Cis", "Acrilex", "Tris"]
+      .map(nome => `<span class="brands__badge">${nome}</span>`).join("");
+  }
+
+  const depoimentos = document.querySelector("#depoimentos");
+  if (depoimentos) {
+    const lista = [
+      { nome: "João Silva", texto: "Entrega super rápida e produtos de excelente qualidade. Recomendo!" },
+      { nome: "Maria Fernanda", texto: "Ótimo atendimento no WhatsApp e preços muito justos." },
+      { nome: "Carlos Eduardo", texto: "Minha papelaria preferida! Sempre encontro tudo o que preciso." }
+    ];
+    depoimentos.innerHTML = lista.map(d => `
+      <div class="testimonial-card">
+        <div class="testimonial-card__stars">${icon("star")}${icon("star")}${icon("star")}${icon("star")}${icon("star")}</div>
+        <p>"${escHtml(d.texto)}"</p>
+        <div class="testimonial-card__author">
+          <span class="testimonial-card__avatar">${escHtml(d.nome.split(" ").map(p => p[0]).slice(0, 2).join(""))}</span>
+          <strong>${escHtml(d.nome)}</strong>
+        </div>
+      </div>`).join("");
   }
 }
 
