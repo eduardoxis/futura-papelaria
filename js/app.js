@@ -10,12 +10,26 @@ import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
+import { ICONS } from "./icons.js";
 
 let TODOS_PRODUTOS = [];
 let filtrosAtivos = {};
 
+function aplicarIconesEstaticos() {
+  document.querySelectorAll("[data-icon]").forEach(el => {
+    const nome = el.dataset.icon;
+    if (ICONS[nome] && !el.querySelector("svg")) el.innerHTML = ICONS[nome];
+  });
+  const logo = document.querySelector("#admin-logo-icon");
+  if (logo && !logo.querySelector("svg")) logo.innerHTML = ICONS.logo;
+  document.querySelectorAll(".modal__close").forEach(el => {
+    if (!el.querySelector("svg")) el.innerHTML = ICONS.close;
+  });
+}
+
 async function iniciar() {
   iniciarModais();
+  aplicarIconesEstaticos();
   atualizarBadgeCarrinho();
 
   TODOS_PRODUTOS = await listarProdutos({ apenasAtivos: true });
