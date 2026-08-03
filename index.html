@@ -119,7 +119,7 @@
 <aside class="cart-drawer" id="cart-drawer" aria-label="Carrinho de compras">
   <div class="cart-drawer__head">
     <h3>Seu carrinho</h3>
-    <button id="fechar-carrinho" aria-label="Fechar carrinho">✕</button>
+    <button id="fechar-carrinho" class="modal__close" aria-label="Fechar carrinho"></button>
   </div>
   <div class="cart-drawer__items" id="itens-carrinho"></div>
   <div class="cart-drawer__summary">
@@ -160,20 +160,34 @@
 
 <!-- MODAL ADMIN -->
 <div class="modal" id="modal-admin">
-  <div class="modal__panel">
+  <div class="modal__panel modal__panel--admin">
     <div class="modal__head">
-      <h2>Painel Administrativo</h2>
-      <button class="modal__close" data-modal-close>✕</button>
+      <div class="modal__head-info">
+        <span class="modal__head-logo" id="admin-logo-icon"></span>
+        <div>
+          <h2>Painel Administrativo</h2>
+          <p class="modal__head-sub">Gerencie os produtos da sua loja</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
     </div>
     <div class="modal__body">
       <nav class="tabs-nav">
-        <button data-tab-trigger="dashboard" class="is-active">Dashboard</button>
-        <button data-tab-trigger="produtos">Produtos</button>
-        <button data-tab-trigger="categorias">Categorias</button>
-        <button data-tab-trigger="etiquetas">Etiquetas</button>
-        <button data-tab-trigger="estoque">Estoque</button>
-        <button data-tab-trigger="usuarios">Usuários</button>
-        <button data-tab-trigger="leads">Leads</button>
+        <div class="tabs-nav__list">
+          <button data-tab-trigger="dashboard" class="is-active"><span class="nav-icon" data-icon="home"></span><span class="nav-label">Dashboard</span></button>
+          <button data-tab-trigger="produtos"><span class="nav-icon" data-icon="box"></span><span class="nav-label">Produtos</span></button>
+          <button data-tab-trigger="categorias"><span class="nav-icon" data-icon="tag"></span><span class="nav-label">Categorias</span></button>
+          <button data-tab-trigger="etiquetas"><span class="nav-icon" data-icon="bookmark"></span><span class="nav-label">Etiquetas</span></button>
+          <button data-tab-trigger="estoque"><span class="nav-icon" data-icon="archive"></span><span class="nav-label">Estoque</span></button>
+          <button data-tab-trigger="usuarios"><span class="nav-icon" data-icon="users"></span><span class="nav-label">Usuários</span></button>
+          <button data-tab-trigger="leads"><span class="nav-icon" data-icon="userPlus"></span><span class="nav-label">Leads</span></button>
+        </div>
+        <div class="tabs-nav__summary" id="tabs-nav-summary" data-tab-trigger="dashboard">
+          <span class="tabs-nav__summary-icon" data-icon="trendingUp"></span>
+          <strong>Resumo rápido</strong>
+          <p>Acompanhe o desempenho da sua loja em tempo real.</p>
+          <span class="tabs-nav__summary-link">Ver dashboard <span data-icon="chevronRight"></span></span>
+        </div>
       </nav>
       <div class="tabs-content">
         <div data-tab-panel="dashboard" id="painel-dashboard"></div>
