@@ -135,8 +135,25 @@
   <div class="modal__panel" style="max-width:420px">
     <div class="modal__head"><h2>Entrar</h2><button class="modal__close" data-modal-close>✕</button></div>
     <div class="tabs-content">
-      <p>A tela completa de login está em <code>/pages/login.html</code>.</p>
-      <a class="btn-primary" href="/pages/login.html">Ir para o login</a>
+      <div class="auth-tabs">
+        <button type="button" data-auth-tab="entrar" class="is-active">Entrar</button>
+        <button type="button" data-auth-tab="cadastrar">Criar conta</button>
+      </div>
+
+      <form id="form-entrar-modal">
+        <label>E-mail<input type="email" name="email" required autocomplete="username"></label>
+        <label>Senha<input type="password" name="senha" required autocomplete="current-password"></label>
+        <p class="auth-error" id="erro-entrar-modal"></p>
+        <button type="submit" class="btn-primary" style="width:100%">Entrar</button>
+      </form>
+
+      <form id="form-cadastrar-modal" hidden>
+        <label>Nome<input type="text" name="nome" required autocomplete="name"></label>
+        <label>E-mail<input type="email" name="email" required autocomplete="username"></label>
+        <label>Senha<input type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
+        <p class="auth-error" id="erro-cadastrar-modal"></p>
+        <button type="submit" class="btn-primary" style="width:100%">Criar conta</button>
+      </form>
     </div>
   </div>
 </div>
