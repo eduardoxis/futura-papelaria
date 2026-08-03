@@ -94,7 +94,7 @@ button {
   color: var(--azul-900);
   flex-shrink: 0;
 }
-.logo img { height: clamp(28px, 4vw, 36px); width: auto; }
+.logo img { height: clamp(28px, 4vw, 36px); width: auto; border-radius: 8px; }
 
 .search-bar {
   flex: 1 1 320px;
@@ -243,6 +243,12 @@ button {
 .product-card__brand { font-size: 0.72rem; color: var(--cinza-500); text-transform: uppercase; letter-spacing: 0.04em; }
 .product-card__name { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
 .product-card__price { font-family: var(--fonte-display); font-weight: 700; color: var(--azul-700); margin-top: 0.3rem; }
+.product-card__link { display: block; color: inherit; }
+.product-card__actions { display: flex; gap: 0.5rem; padding: 0 0.9rem 0.9rem; }
+.product-card__add { flex: 1; padding: 0.5rem 0.8rem; font-size: 0.82rem; }
+.product-card__ask { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: #25d366; color: #fff; font-size: 1rem; display: grid; place-items: center; transition: transform var(--transicao); }
+.product-card__ask:hover { transform: scale(1.06); }
+.btn-whatsapp { background: #25d366; color: #fff; }
 
 .empty-state { padding: 3rem 1rem; text-align: center; color: var(--cinza-500); grid-column: 1 / -1; }
 
