@@ -276,6 +276,7 @@ button {
   font-size: 30px; line-height: 1;
 }
 .category-card__icon .icon { width: 24px; height: 24px; }
+.category-card__icon svg { width: 28px; height: 28px; display: block; }
 
 /* ===== PRODUCT GRID / CARD ===== */
 .products-grid {
