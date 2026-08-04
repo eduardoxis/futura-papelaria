@@ -1,7 +1,7 @@
 // js/dashboard.js
 import {
   listarProdutos, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
-  listarCategorias, criarCategoria, excluirCategoria,
+  listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
@@ -240,23 +240,42 @@ async function carregarAbaCategorias(container) {
   container.innerHTML = `
     <div class="admin-panel-head">
       <h1>Categorias</h1>
-      <p>Organize seus produtos em categorias.</p>
+      <p>Organize seus produtos em categorias e escolha um emoji para cada uma.</p>
     </div>
     <form id="form-categoria" class="inline-form">
+      <input name="emoji" class="emoji-input" placeholder="🏷️" maxlength="4" autocomplete="off">
       <input name="nome" placeholder="Nova categoria" required autocomplete="off">
       <button type="submit" class="btn-primary">${icon("plus")}Adicionar</button>
     </form>
-    <ul class="chip-list">
-      ${categorias.map(c => `<li>${escHtml(c.nome)} <button data-id="${c.id}" title="Remover">${icon("close")}</button></li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
+    <ul class="chip-list chip-list--categorias">
+      ${categorias.map(c => `
+        <li data-id="${c.id}">
+          <input class="emoji-input" data-emoji-edit value="${escHtml(c.emoji || "")}" maxlength="4" placeholder="🏷️">
+          <span class="chip-list__nome">${escHtml(c.nome)}</span>
+          <button data-id="${c.id}" title="Remover">${icon("close")}</button>
+        </li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
     </ul>`;
 
   container.querySelector("#form-categoria").addEventListener("submit", async (e) => {
     e.preventDefault();
-    await criarCategoria(e.target.nome.value.trim());
+    const form = e.target;
+    await criarCategoria(form.nome.value.trim(), form.emoji.value.trim());
     cacheCategorias = await listarCategorias();
     carregarAbaCategorias(container);
   });
-  container.querySelectorAll(".chip-list button").forEach(btn =>
+
+  container.querySelectorAll("[data-emoji-edit]").forEach(input => {
+    const salvar = async () => {
+      const id = input.closest("li").dataset.id;
+      await atualizarCategoria(id, { emoji: input.value.trim() });
+      cacheCategorias = await listarCategorias();
+      toast("Emoji atualizado.");
+    };
+    input.addEventListener("change", salvar);
+    input.addEventListener("blur", salvar);
+  });
+
+  container.querySelectorAll(".chip-list button[data-id]").forEach(btn =>
     btn.addEventListener("click", async () => {
       await excluirCategoria(btn.dataset.id);
       cacheCategorias = await listarCategorias();
