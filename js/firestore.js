@@ -66,8 +66,11 @@ export async function listarCategorias() {
   const snap = await getDocs(collection(db, "categorias"));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
-export async function criarCategoria(nome) {
-  return addDoc(collection(db, "categorias"), { nome });
+export async function criarCategoria(nome, emoji = "") {
+  return addDoc(collection(db, "categorias"), { nome, emoji });
+}
+export async function atualizarCategoria(id, dados) {
+  return updateDoc(doc(db, "categorias", id), dados);
 }
 export async function excluirCategoria(id) {
   return deleteDoc(doc(db, "categorias", id));
