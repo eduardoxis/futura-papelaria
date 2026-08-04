@@ -199,23 +199,6 @@ button {
 .menu-toggle { display: none; width: 42px; height: 42px; border-radius: 50%; align-items: center; justify-content: center; background: var(--cinza-050); }
 .menu-toggle .icon { width: 18px; height: 18px; }
 
-/* ---- header nav row ---- */
-.header-nav { border-top: 1px solid var(--cinza-100); }
-.header-nav__inner { display: flex; align-items: center; gap: 1.75rem; padding-block: 0.65rem; }
-.categories-toggle {
-  display: inline-flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
-  background: var(--azul-700); color: var(--branco);
-  padding: 0.55rem 1.1rem; border-radius: var(--raio-sm); font-weight: 600; font-size: 0.88rem;
-  transition: background var(--transicao);
-}
-.categories-toggle:hover { background: var(--azul-900); }
-.categories-toggle .icon { width: 16px; height: 16px; }
-.header-nav__links { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; flex: 1; min-width: 0; }
-.header-nav__links button { font-size: 0.9rem; font-weight: 500; color: var(--cinza-700); white-space: nowrap; transition: color var(--transicao); }
-.header-nav__links button:hover { color: var(--azul-700); }
-.header-nav__offer { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.9rem; color: var(--azul-700); white-space: nowrap; }
-.header-nav__offer .icon { width: 15px; height: 15px; }
-
 /* ===== HERO ===== */
 .hero {
   position: relative;
