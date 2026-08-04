@@ -247,12 +247,8 @@ button {
 .hero__art {
   position: relative; flex: 1 1 380px; min-width: 260px; max-width: 560px; min-height: 220px;
   display: grid; place-items: center;
-  background: var(--branco);
-  border-radius: var(--raio-lg);
-  box-shadow: var(--sombra-lg);
-  padding: 1.25rem;
 }
-.hero__art-img { width: 100%; height: auto; max-width: 100%; border-radius: var(--raio-md); object-fit: contain; }
+.hero__art-img { width: 100%; height: auto; max-width: 100%; border-radius: var(--raio-lg); object-fit: contain; }
 .btn-secondary {
   display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0.65rem 1.3rem; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
