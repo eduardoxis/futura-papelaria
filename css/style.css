@@ -238,7 +238,11 @@ button {
 .hero__subtitle { color: var(--cinza-700); font-size: clamp(1rem, 1.2vw, 1.1rem); max-width: 46ch; }
 .hero__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.35rem; }
 
-.hero__features { list-style: none; margin: 1.25rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.hero__features {
+  list-style: none; margin: 2rem 0 0; padding: 1.25rem 1.5rem; flex-basis: 100%;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem;
+  background: var(--branco); border-radius: var(--raio-md); box-shadow: var(--sombra-sm);
+}
 .hero__features li { display: flex; align-items: flex-start; gap: 0.55rem; }
 .hero__features .icon { width: 26px; height: 26px; flex-shrink: 0; color: var(--azul-700); background: var(--branco); border-radius: 50%; padding: 6px; box-shadow: var(--sombra-sm); }
 .hero__features strong { display: block; font-size: 0.82rem; color: var(--cinza-900); }
