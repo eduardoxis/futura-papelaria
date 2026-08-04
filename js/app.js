@@ -57,6 +57,13 @@ function emojiParaCategoria(nome = "") {
   return EMOJI_POR_CATEGORIA[iconeParaCategoria(nome)] || EMOJI_POR_CATEGORIA.tag;
 }
 
+function conteudoIconeCategoria(c) {
+  const custom = (c.emoji || "").trim();
+  if (!custom) return emojiParaCategoria(c.nome);
+  if (custom.startsWith("<svg")) return custom;
+  return escHtml(custom);
+}
+
 function corParaCategoria(nome = "") {
   return COR_POR_CATEGORIA[iconeParaCategoria(nome)] || COR_POR_CATEGORIA.tag;
 }
@@ -180,7 +187,7 @@ async function renderizarFiltros() {
     grid.innerHTML = categorias.length
       ? categorias.map(c => `
         <button type="button" class="category-card" data-categoria-nome="${escHtml(c.nome)}">
-          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)}">${escHtml(c.emoji) || emojiParaCategoria(c.nome)}</span>
+          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)}">${conteudoIconeCategoria(c)}</span>
           <span>${escHtml(c.nome)}</span>
         </button>`).join("")
       : `<div class="empty-state">Nenhuma categoria cadastrada ainda.</div>`;
