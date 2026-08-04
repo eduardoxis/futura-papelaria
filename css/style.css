@@ -265,10 +265,12 @@ button {
 .hero__art-card--4 { bottom: 8%; right: 22%; }
 .hero__art-card--5 { top: 42%; right: 0; background: var(--azul-900); color: var(--branco); }
 .btn-secondary {
+  display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0.65rem 1.3rem; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
   background: var(--branco); border: 1px solid var(--cinza-300); color: var(--cinza-900);
   transition: transform var(--transicao), box-shadow var(--transicao);
 }
+.btn-secondary .icon { width: 15px; height: 15px; }
 .btn-secondary:hover { box-shadow: var(--sombra-sm); transform: translateY(-1px); }
 
 /* ===== SECTIONS ===== */
