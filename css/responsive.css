@@ -11,29 +11,12 @@
 }
 
 @media (max-width: 760px) {
-  .header-top { flex-wrap: wrap; }
-  .search-bar { order: 3; flex-basis: 100%; }
-  .select-pill { display: none; }
-  .header-action span:last-child { display: none; }
-  .menu-toggle { display: grid; }
-  .hero__inner { flex-direction: column; }
-  .hero__art { min-height: auto; width: 100%; }
-  .hero__actions { flex-direction: column; align-items: stretch; }
-  .hero__actions a { justify-content: center; }
-  .hero__features { grid-template-columns: repeat(2, 1fr); }
   .cart-drawer { width: 100vw; }
-  .whatsapp-cta { flex-direction: column; }
-  .newsletter__form { flex-direction: column; }
-  .bottom-nav { display: flex; }
-  body { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
   .modal--sheet { padding-bottom: 0; }
 }
 
 @media (max-width: 480px) {
   .container { width: 94vw; }
-  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
-  .categories-grid { grid-template-columns: repeat(3, 1fr); }
-  .hero__features { grid-template-columns: 1fr; }
   .stat-card span { font-size: 1.3rem; }
 }
 
