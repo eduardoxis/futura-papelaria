@@ -160,8 +160,9 @@ function renderizarTabelaProdutos(container, produtos) {
   });
 }
 
-function abrirFormularioProduto(container, produto = null) {
+async function abrirFormularioProduto(container, produto = null) {
   const dialog = container.querySelector("#dialog-produto");
+  cacheCategorias = await listarCategorias();
   const opcoesCategoria = cacheCategorias.map(c => `<option value="${escHtml(c.nome)}" ${produto?.categoria === c.nome ? "selected" : ""}>${escHtml(c.nome)}</option>`).join("");
   const opcoesEtiquetas = cacheEtiquetas.map(e => `
     <label class="chip-check">
@@ -252,10 +253,15 @@ async function carregarAbaCategorias(container) {
   container.querySelector("#form-categoria").addEventListener("submit", async (e) => {
     e.preventDefault();
     await criarCategoria(e.target.nome.value.trim());
+    cacheCategorias = await listarCategorias();
     carregarAbaCategorias(container);
   });
   container.querySelectorAll(".chip-list button").forEach(btn =>
-    btn.addEventListener("click", async () => { await excluirCategoria(btn.dataset.id); carregarAbaCategorias(container); })
+    btn.addEventListener("click", async () => {
+      await excluirCategoria(btn.dataset.id);
+      cacheCategorias = await listarCategorias();
+      carregarAbaCategorias(container);
+    })
   );
 }
 
