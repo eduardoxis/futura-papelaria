@@ -270,9 +270,10 @@ button {
 }
 .category-card:hover { transform: translateY(-4px); box-shadow: var(--sombra-md); }
 .category-card__icon {
-  width: 52px; height: 52px; border-radius: 50%;
+  width: 64px; height: 64px; border-radius: 50%;
   background: var(--azul-100); color: var(--azul-700);
   display: grid; place-items: center;
+  font-size: 30px; line-height: 1;
 }
 .category-card__icon .icon { width: 24px; height: 24px; }
 
