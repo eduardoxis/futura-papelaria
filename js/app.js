@@ -18,12 +18,13 @@ let filtrosAtivos = {};
 
 function iconeParaCategoria(nome = "") {
   const n = nome.toLowerCase();
-  if (n.includes("escol")) return "backpack";
-  if (n.includes("escrit") || n.includes("inform") || n.includes("tecnolog")) return "laptop";
+  if (n.includes("escolar")) return "backpack";
+  if (n.includes("inform") || n.includes("tecnolog") || n.includes("computa")) return "laptop";
   if (n.includes("arte") || n.includes("criativ")) return "palette";
   if (n.includes("impress")) return "printer";
   if (n.includes("cadern") || n.includes("bloco")) return "notebook";
-  if (n.includes("canet") || n.includes("escrita") || n.includes("pen")) return "pen";
+  if (n.includes("canet") || n.includes("escrita")) return "pen";
+  if (n.includes("escritório") || n.includes("escritorio")) return "briefcase";
   if (n.includes("organiz")) return "archive";
   if (n.includes("presente") || n.includes("premium") || n.includes("kit")) return "gift";
   return "tag";
@@ -48,24 +49,38 @@ const COR_POR_CATEGORIA = {
   printer: "#f1f5f9",
   notebook: "#fee2e2",
   pen: "#e0f2fe",
+  briefcase: "#fef3c7",
   archive: "#f5f0e8",
   gift: "#ede9fe",
   tag: "#f1f5f9",
 };
 
-function emojiParaCategoria(nome = "") {
-  return EMOJI_POR_CATEGORIA[iconeParaCategoria(nome)] || EMOJI_POR_CATEGORIA.tag;
+const TEXTO_POR_CATEGORIA = {
+  backpack: "#1d4ed8",
+  laptop: "#4338ca",
+  palette: "#be185d",
+  printer: "#334155",
+  notebook: "#b91c1c",
+  pen: "#0369a1",
+  briefcase: "#a16207",
+  archive: "#78716c",
+  gift: "#6d28d9",
+  tag: "#475569",
+};
+
+function corParaCategoria(nome = "") {
+  return COR_POR_CATEGORIA[iconeParaCategoria(nome)] || COR_POR_CATEGORIA.tag;
+}
+
+function corTextoParaCategoria(nome = "") {
+  return TEXTO_POR_CATEGORIA[iconeParaCategoria(nome)] || TEXTO_POR_CATEGORIA.tag;
 }
 
 function conteudoIconeCategoria(c) {
   const custom = (c.emoji || "").trim();
-  if (!custom) return emojiParaCategoria(c.nome);
+  if (!custom) return icon(iconeParaCategoria(c.nome));
   if (custom.startsWith("<svg")) return custom;
   return escHtml(custom);
-}
-
-function corParaCategoria(nome = "") {
-  return COR_POR_CATEGORIA[iconeParaCategoria(nome)] || COR_POR_CATEGORIA.tag;
 }
 
 function aplicarIconesEstaticos() {
@@ -187,7 +202,7 @@ async function renderizarFiltros() {
     grid.innerHTML = categorias.length
       ? categorias.map(c => `
         <button type="button" class="category-card" data-categoria-nome="${escHtml(c.nome)}">
-          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)}">${conteudoIconeCategoria(c)}</span>
+          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)};color:${corTextoParaCategoria(c.nome)}">${conteudoIconeCategoria(c)}</span>
           <span>${escHtml(c.nome)}</span>
         </button>`).join("")
       : `<div class="empty-state">Nenhuma categoria cadastrada ainda.</div>`;
