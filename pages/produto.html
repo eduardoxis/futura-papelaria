@@ -11,14 +11,20 @@
 <link rel="icon" href="/assets/icons/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/modal.css">
 <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
 
 <header class="site-header">
-  <div class="container site-header__inner">
-    <a href="/" class="logo"><img src="/assets/images/logo.png" alt="Papelaria Futura">Papelaria Futura</a>
-    <a href="/" class="btn-secondary" style="margin-left:auto">← Voltar ao catálogo</a>
+  <div class="container header-top">
+    <a href="/" class="logo">
+      <span class="logo__mark" data-icon="logo"></span>
+      <span class="logo__text">Papelaria<br>Futura</span>
+    </a>
+    <a href="/" class="btn-secondary" style="margin-left:auto">
+      <span data-icon="chevronLeft"></span><span>Voltar ao catálogo</span>
+    </a>
   </div>
 </header>
 
@@ -37,6 +43,18 @@ import { obterProduto, incrementarVisualizacao } from "../js/firestore.js";
 import { formatBRL, escHtml, getQueryParam, toast } from "../js/utils.js";
 import { adicionarAoCarrinho, atualizarBadgeCarrinho, falarSobreProduto } from "../js/cart.js";
 import { compartilharProduto } from "../js/products.js";
+import { ICONS } from "../js/icons.js";
+
+function aplicarIconesEstaticos() {
+  document.querySelectorAll("[data-icon]").forEach(el => {
+    const nome = el.dataset.icon;
+    if (ICONS[nome] && !el.querySelector("svg")) {
+      el.innerHTML = ICONS[nome];
+      el.classList.add("icon");
+    }
+  });
+}
+aplicarIconesEstaticos();
 
 const id = getQueryParam("id");
 const container = document.querySelector("#detalhe-produto");
@@ -68,17 +86,19 @@ async function iniciar() {
         <span>${semEstoque ? "Sem estoque" : `${produto.quantidade} disponíveis`}</span>
       </div>
       <div class="qty-stepper">
-        <button id="dim">-</button>
+        <button id="dim" aria-label="Diminuir quantidade">−</button>
         <input id="qtd" type="number" value="1" min="1">
-        <button id="aum">+</button>
+        <button id="aum" aria-label="Aumentar quantidade">+</button>
       </div>
       <div class="product-detail__actions">
-        <button class="btn-primary" id="add-carrinho" ${semEstoque ? "disabled" : ""}>Adicionar ao carrinho</button>
-        <button class="btn-whatsapp" id="falar-produto">💬 Falar sobre este produto</button>
-        <button class="btn-secondary" id="compartilhar">Compartilhar</button>
-        <button class="btn-secondary" id="copiar-link">Copiar link</button>
+        <button class="btn-primary" id="add-carrinho" ${semEstoque ? "disabled" : ""}><span data-icon="cart"></span>Adicionar ao carrinho</button>
+        <button class="btn-whatsapp-lg" id="falar-produto"><span data-icon="whatsapp"></span>Falar sobre este produto</button>
+        <button class="btn-secondary" id="compartilhar"><span data-icon="messageSquare"></span>Compartilhar</button>
+        <button class="btn-secondary" id="copiar-link"><span data-icon="copy"></span>Copiar link</button>
       </div>
     </div>`;
+
+  aplicarIconesEstaticos();
 
   document.querySelector("#dim").addEventListener("click", () => {
     const input = document.querySelector("#qtd");
