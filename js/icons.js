@@ -82,6 +82,7 @@ export const ICONS = {
   pen: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 15.5 15.5 6l2.5 2.5L8.5 18H6v-2.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13.5 8 16 10.5" stroke="currentColor" stroke-width="1.7"/><path d="M4 21h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
 
   gift: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="9.5" width="17" height="4" rx="1" stroke="currentColor" stroke-width="1.7"/><path d="M5 13.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 9.5V21" stroke="currentColor" stroke-width="1.7"/><path d="M12 9.5c-2.5 0-4.5-1-4.5-3S9 3.5 10 4.5s2 3 2 5Zm0 0c2.5 0 4.5-1 4.5-3S15 3.5 14 4.5s-2 3-2 5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  briefcase: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="7.5" width="18" height="12" rx="1.8" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 12.5h18M10.5 12v1.5M13.5 12v1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
 
   phone: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="2.5" width="10" height="19" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
 
