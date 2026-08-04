@@ -14,6 +14,14 @@ export async function listarProdutos({ apenasAtivos = true } = {}) {
   return produtos;
 }
 
+export function escutarProdutos(callback, { apenasAtivos = true } = {}) {
+  return onSnapshot(collection(db, "produtos"), (snap) => {
+    let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
+    callback(produtos);
+  });
+}
+
 export async function obterProduto(id) {
   const ref = doc(db, "produtos", id);
   const snap = await getDoc(ref);
@@ -65,6 +73,11 @@ export async function ajustarEstoque(id, delta, motivo = "") {
 export async function listarCategorias() {
   const snap = await getDocs(collection(db, "categorias"));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export function escutarCategorias(callback) {
+  return onSnapshot(collection(db, "categorias"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
 }
 export async function criarCategoria(nome, emoji = "") {
   return addDoc(collection(db, "categorias"), { nome, emoji });
