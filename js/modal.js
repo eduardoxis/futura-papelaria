@@ -23,7 +23,7 @@ export function iniciarModais() {
 
   document.querySelectorAll(".modal").forEach(modal => {
     modal.addEventListener("click", (e) => {
-      if (e.target === modal || e.target.hasAttribute("data-modal-close")) {
+      if (e.target === modal || e.target.closest("[data-modal-close]")) {
         fecharModal(modal);
       }
     });
