@@ -180,7 +180,7 @@ async function renderizarFiltros() {
     grid.innerHTML = categorias.length
       ? categorias.map(c => `
         <button type="button" class="category-card" data-categoria-nome="${escHtml(c.nome)}">
-          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)}">${emojiParaCategoria(c.nome)}</span>
+          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)}">${escHtml(c.emoji) || emojiParaCategoria(c.nome)}</span>
           <span>${escHtml(c.nome)}</span>
         </button>`).join("")
       : `<div class="empty-state">Nenhuma categoria cadastrada ainda.</div>`;
