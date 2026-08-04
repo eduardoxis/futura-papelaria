@@ -243,14 +243,14 @@ async function carregarAbaCategorias(container) {
       <p>Organize seus produtos em categorias e escolha um emoji para cada uma.</p>
     </div>
     <form id="form-categoria" class="inline-form">
-      <input name="emoji" class="emoji-input" placeholder="🏷️" maxlength="4" autocomplete="off">
+      <textarea name="emoji" class="icon-input" placeholder="🏷️ ou cole um &lt;svg&gt;...&lt;/svg&gt;"></textarea>
       <input name="nome" placeholder="Nova categoria" required autocomplete="off">
       <button type="submit" class="btn-primary">${icon("plus")}Adicionar</button>
     </form>
     <ul class="chip-list chip-list--categorias">
       ${categorias.map(c => `
         <li data-id="${c.id}">
-          <input class="emoji-input" data-emoji-edit value="${escHtml(c.emoji || "")}" maxlength="4" placeholder="🏷️">
+          <textarea class="icon-input" data-emoji-edit placeholder="🏷️ ou &lt;svg&gt;...">${escHtml(c.emoji || "")}</textarea>
           <span class="chip-list__nome">${escHtml(c.nome)}</span>
           <button data-id="${c.id}" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
