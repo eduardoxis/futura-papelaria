@@ -188,12 +188,16 @@
 .chip-list--categorias { gap: 0.6rem; }
 .chip-list--categorias li { padding: 0.3rem 0.5rem 0.3rem 0.4rem; border-radius: var(--raio-sm); }
 .chip-list__nome { white-space: nowrap; }
-.emoji-input {
-  width: 2.4rem; height: 2.4rem; padding: 0; text-align: center; font-size: 1.15rem;
+.icon-input {
+  width: 3rem; height: 2.4rem; padding: 0.2rem; text-align: center; font-size: 1rem;
   border: 1px solid var(--cinza-300); border-radius: var(--raio-sm); background: var(--branco);
-  flex-shrink: 0;
+  flex-shrink: 0; resize: none; overflow: hidden; font-family: inherit; line-height: 1.1;
 }
-.inline-form .emoji-input { flex: 0 0 auto; margin-right: 0; }
+.icon-input:focus {
+  width: 14rem; height: 6rem; overflow: auto; text-align: left; font-size: 0.7rem;
+  font-family: ui-monospace, monospace; z-index: 2; position: relative;
+}
+.inline-form .icon-input { flex: 0 0 auto; margin-right: 0; }
 
 .leads-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
 .btn-recover { background: var(--azul-700); color: var(--branco); padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
