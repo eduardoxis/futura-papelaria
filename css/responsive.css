@@ -24,6 +24,9 @@
   .cart-drawer { width: 100vw; }
   .whatsapp-cta { flex-direction: column; }
   .newsletter__form { flex-direction: column; }
+  .bottom-nav { display: flex; }
+  body { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .modal--sheet { padding-bottom: 0; }
 }
 
 @media (max-width: 480px) {
