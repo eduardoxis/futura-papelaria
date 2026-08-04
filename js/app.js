@@ -7,7 +7,7 @@ import {
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
 import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
-import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair } from "./auth.js";
+import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
 import { ICONS, icon } from "./icons.js";
@@ -131,6 +131,13 @@ async function iniciar() {
       document.querySelectorAll(".bottom-nav__item").forEach(i => i.classList.remove("is-active"));
       el.classList.add("is-active");
     });
+  });
+
+  document.querySelector("#bottom-nav-conta")?.addEventListener("click", () => {
+    const modal = usuarioAtual
+      ? document.querySelector("#modal-conta")
+      : document.querySelector("#modal-login");
+    if (modal) abrirModal(modal);
   });
 
   document.querySelector("#toggle-categorias-grid")?.addEventListener("click", () => {
