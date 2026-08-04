@@ -3,14 +3,36 @@ import { escHtml, formatBRL } from "./utils.js";
 import { incrementarCompartilhamento } from "./firestore.js";
 import { icon } from "./icons.js";
 
+const CHAVE_FAVORITOS = "futura_favoritos";
+
+export function obterFavoritos() {
+  try { return JSON.parse(localStorage.getItem(CHAVE_FAVORITOS)) || []; }
+  catch { return []; }
+}
+
+function salvarFavoritos(lista) {
+  localStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(lista));
+}
+
+function alternarFavorito(id) {
+  const lista = obterFavoritos();
+  const idx = lista.indexOf(id);
+  if (idx >= 0) lista.splice(idx, 1);
+  else lista.push(id);
+  salvarFavoritos(lista);
+  return lista.includes(id);
+}
+
 export function cartaoProduto(produto) {
   const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
   const etiquetasHtml = (produto.etiquetas || [])
     .map(e => `<span class="tag-badge">${escHtml(e)}</span>`)
     .join("");
+  const favoritado = obterFavoritos().includes(produto.id);
 
   return `
     <div class="product-card ${semEstoque ? "is-out" : ""}" data-id="${produto.id}">
+      <button class="product-card__fav ${favoritado ? "is-active" : ""}" data-fav-id="${produto.id}" aria-label="Favoritar produto" aria-pressed="${favoritado}">${icon("heart")}</button>
       <a class="product-card__link" href="/pages/produto.html?id=${produto.id}">
         <div class="product-card__image">
           <img src="${produto.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(produto.nome)}" loading="lazy">
@@ -41,6 +63,14 @@ export function renderizarGrade(container, produtos) {
   if (!container.dataset.acoesLigadas) {
     container.dataset.acoesLigadas = "1";
     container.addEventListener("click", (e) => {
+      const btnFav = e.target.closest("[data-fav-id]");
+      if (btnFav) {
+        e.preventDefault();
+        const ativo = alternarFavorito(btnFav.dataset.favId);
+        btnFav.classList.toggle("is-active", ativo);
+        btnFav.setAttribute("aria-pressed", String(ativo));
+        return;
+      }
       const btnAdd = e.target.closest("[data-add-id]");
       const btnAsk = e.target.closest("[data-ask-id]");
       if (!btnAdd && !btnAsk) return;
