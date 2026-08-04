@@ -228,7 +228,7 @@ button {
 .hero__content { display: grid; gap: 1.1rem; }
 .hero__eyebrow {
   display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content;
-  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
   background: var(--azul-100); color: var(--azul-700);
   padding: 0.35rem 0.8rem; border-radius: 999px;
 }
