@@ -29,6 +29,38 @@ function iconeParaCategoria(nome = "") {
   return "tag";
 }
 
+const EMOJI_POR_CATEGORIA = {
+  backpack: "🎒",
+  laptop: "💻",
+  palette: "🎨",
+  printer: "🖨️",
+  notebook: "📓",
+  pen: "🖊️",
+  archive: "🗄️",
+  gift: "🎁",
+  tag: "🏷️",
+};
+
+const COR_POR_CATEGORIA = {
+  backpack: "#dbeafe",
+  laptop: "#e0e7ff",
+  palette: "#fce7f3",
+  printer: "#f1f5f9",
+  notebook: "#fee2e2",
+  pen: "#e0f2fe",
+  archive: "#f5f0e8",
+  gift: "#ede9fe",
+  tag: "#f1f5f9",
+};
+
+function emojiParaCategoria(nome = "") {
+  return EMOJI_POR_CATEGORIA[iconeParaCategoria(nome)] || EMOJI_POR_CATEGORIA.tag;
+}
+
+function corParaCategoria(nome = "") {
+  return COR_POR_CATEGORIA[iconeParaCategoria(nome)] || COR_POR_CATEGORIA.tag;
+}
+
 function aplicarIconesEstaticos() {
   document.querySelectorAll("[data-icon]").forEach(el => {
     const nome = el.dataset.icon;
@@ -148,7 +180,7 @@ async function renderizarFiltros() {
     grid.innerHTML = categorias.length
       ? categorias.map(c => `
         <button type="button" class="category-card" data-categoria-nome="${escHtml(c.nome)}">
-          <span class="category-card__icon">${icon(iconeParaCategoria(c.nome))}</span>
+          <span class="category-card__icon" style="background:${corParaCategoria(c.nome)}">${emojiParaCategoria(c.nome)}</span>
           <span>${escHtml(c.nome)}</span>
         </button>`).join("")
       : `<div class="empty-state">Nenhuma categoria cadastrada ainda.</div>`;
