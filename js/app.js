@@ -317,11 +317,14 @@ function configurarLogin() {
       if (emailEl) emailEl.textContent = usuario.email || "";
       if (ehAdmin()) {
         btnAdmin?.removeAttribute("hidden");
-        btnAdmin?.addEventListener("click", async () => {
-          const modal = document.querySelector("#modal-admin");
-          abrirModal(modal);
-          await iniciarPainelAdmin(modal);
-        }, { once: true });
+        if (btnAdmin && !btnAdmin.dataset.bound) {
+          btnAdmin.dataset.bound = "1";
+          btnAdmin.addEventListener("click", async () => {
+            const modal = document.querySelector("#modal-admin");
+            abrirModal(modal);
+            await iniciarPainelAdmin(modal);
+          });
+        }
       }
     } else {
       btnEntrar?.removeAttribute("hidden");
