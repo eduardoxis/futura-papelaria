@@ -340,10 +340,12 @@ function configurarLogin() {
     const btnAdmin = document.querySelector("#abrir-admin");
     const btnEntrar = document.querySelector("#btn-entrar");
     const btnSair = document.querySelector("#btn-sair");
+    const btnMinhaConta = document.querySelector("#btn-minha-conta");
 
     if (usuario) {
       btnEntrar?.setAttribute("hidden", "");
       btnSair?.removeAttribute("hidden");
+      btnMinhaConta?.removeAttribute("hidden");
       const nomeEl = document.querySelector("#conta-nome");
       const emailEl = document.querySelector("#conta-email");
       if (nomeEl) nomeEl.textContent = usuario.displayName ? `Olá, ${usuario.displayName}!` : "Olá!";
@@ -362,6 +364,7 @@ function configurarLogin() {
     } else {
       btnEntrar?.removeAttribute("hidden");
       btnSair?.setAttribute("hidden", "");
+      btnMinhaConta?.setAttribute("hidden", "");
       btnAdmin?.setAttribute("hidden", "");
     }
 
