@@ -32,7 +32,10 @@ function iconeParaCategoria(nome = "") {
 function aplicarIconesEstaticos() {
   document.querySelectorAll("[data-icon]").forEach(el => {
     const nome = el.dataset.icon;
-    if (ICONS[nome] && !el.querySelector("svg")) el.innerHTML = ICONS[nome];
+    if (ICONS[nome] && !el.querySelector("svg")) {
+      el.innerHTML = ICONS[nome];
+      el.classList.add("icon");
+    }
   });
   const logo = document.querySelector("#admin-logo-icon");
   if (logo && !logo.querySelector("svg")) logo.innerHTML = ICONS.logo;
