@@ -56,6 +56,24 @@ async function iniciar() {
   await renderizarFiltros();
   configurarLinksEstaticos();
 
+  document.querySelector("#btn-sair-conta")?.addEventListener("click", () => {
+    sair();
+    fecharModal(document.querySelector("#modal-conta"));
+  });
+
+  document.querySelectorAll("[data-scroll-top]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+  document.querySelectorAll("[data-bottom-nav]").forEach(el => {
+    el.addEventListener("click", () => {
+      document.querySelectorAll(".bottom-nav__item").forEach(i => i.classList.remove("is-active"));
+      el.classList.add("is-active");
+    });
+  });
+
   document.querySelector("#toggle-categorias-grid")?.addEventListener("click", () => {
     document.querySelector("#categorias")?.scrollIntoView({ behavior: "smooth" });
   });
@@ -261,6 +279,10 @@ function configurarLogin() {
     if (usuario) {
       btnEntrar?.setAttribute("hidden", "");
       btnSair?.removeAttribute("hidden");
+      const nomeEl = document.querySelector("#conta-nome");
+      const emailEl = document.querySelector("#conta-email");
+      if (nomeEl) nomeEl.textContent = usuario.displayName ? `Olá, ${usuario.displayName}!` : "Olá!";
+      if (emailEl) emailEl.textContent = usuario.email || "";
       if (ehAdmin()) {
         btnAdmin?.removeAttribute("hidden");
         btnAdmin?.addEventListener("click", async () => {
