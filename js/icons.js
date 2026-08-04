@@ -3,7 +3,7 @@
 // Todos herdam a cor via currentColor — nada de emojis.
 
 export const ICONS = {
-  logo: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 12.5h4M8.5 15.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  logo: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 4h10a1 1 0 0 1 1 1v2.2a1 1 0 0 1-1 1H9.8V11H16a1 1 0 0 1 1 1v2.2a1 1 0 0 1-1 1H9.8V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" fill="currentColor"/></svg>`,
 
   close: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
 
