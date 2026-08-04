@@ -17,8 +17,7 @@
   .header-actions { order: 2; margin-left: auto; }
   .header-action { padding: 0.4rem 0; }
   .search-bar { order: 3; flex-basis: 100%; }
-  .select-pill { order: 4; flex-basis: 100%; }
-  .select-pill select { width: 100%; }
+  .select-pill { display: none; }
 
   /* ---- hero: empilhado, imagem abaixo do texto ---- */
   .hero { padding-block: 1.75rem; }
