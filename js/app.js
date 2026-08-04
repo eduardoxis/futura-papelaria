@@ -1,5 +1,5 @@
 // js/app.js
-import { listarProdutos, listarCategorias, listarEtiquetas } from "./firestore.js";
+import { listarEtiquetas, escutarProdutos, escutarCategorias } from "./firestore.js";
 import { renderizarGrade, aplicarFiltros, ordenarProdutos } from "./products.js";
 import { buscarProdutos, ativarBuscaTempoReal } from "./search.js";
 import {
@@ -103,12 +103,17 @@ async function iniciar() {
   aplicarIconesEstaticos();
   atualizarBadgeCarrinho();
 
-  TODOS_PRODUTOS = await listarProdutos({ apenasAtivos: true });
-  renderizarGrade(document.querySelector("#grade-produtos"), TODOS_PRODUTOS);
-  renderizarDestaques();
-  renderizarRecentes();
-  await renderizarFiltros();
+  escutarProdutos((produtos) => {
+    TODOS_PRODUTOS = produtos;
+    aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
+    renderizarDestaques();
+    renderizarRecentes();
+  }, { apenasAtivos: true });
+
+  escutarCategorias((categorias) => renderizarFiltros(categorias));
+
   configurarLinksEstaticos();
+  configurarEventosCategorias();
 
   document.querySelector("#btn-sair-conta")?.addEventListener("click", () => {
     sair();
@@ -175,26 +180,19 @@ function renderizarRecentes() {
   renderizarGrade(container, recentes);
 }
 
-async function renderizarFiltros() {
-  const categorias = await listarCategorias();
+function renderizarFiltros(categorias) {
   const seletor = document.querySelector("#filtro-categoria");
   if (seletor) {
+    const valorAtual = seletor.value;
     seletor.innerHTML = `<option value="">Todas as categorias</option>` +
       categorias.map(c => `<option value="${escHtml(c.nome)}">${escHtml(c.nome)}</option>`).join("");
-    seletor.addEventListener("change", () => {
-      filtrosAtivos.categoria = seletor.value || undefined;
-      aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
-      document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
-    });
+    seletor.value = valorAtual;
   }
 
   const navLinks = document.querySelector("#header-nav-links");
   if (navLinks) {
     navLinks.innerHTML = categorias.slice(0, 6)
       .map(c => `<button type="button" data-categoria-nome="${escHtml(c.nome)}">${escHtml(c.nome)}</button>`).join("");
-    navLinks.querySelectorAll("[data-categoria-nome]").forEach(btn => {
-      btn.addEventListener("click", () => selecionarCategoria(btn.dataset.categoriaNome));
-    });
   }
 
   const grid = document.querySelector("#grade-categorias");
@@ -206,10 +204,23 @@ async function renderizarFiltros() {
           <span>${escHtml(c.nome)}</span>
         </button>`).join("")
       : `<div class="empty-state">Nenhuma categoria cadastrada ainda.</div>`;
-    grid.querySelectorAll("[data-categoria-nome]").forEach(btn => {
-      btn.addEventListener("click", () => selecionarCategoria(btn.dataset.categoriaNome));
-    });
   }
+}
+
+function configurarEventosCategorias() {
+  document.querySelector("#filtro-categoria")?.addEventListener("change", (e) => {
+    filtrosAtivos.categoria = e.target.value || undefined;
+    aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
+    document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
+  });
+  document.querySelector("#header-nav-links")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-categoria-nome]");
+    if (btn) selecionarCategoria(btn.dataset.categoriaNome);
+  });
+  document.querySelector("#grade-categorias")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-categoria-nome]");
+    if (btn) selecionarCategoria(btn.dataset.categoriaNome);
+  });
 }
 
 function selecionarCategoria(nome) {
