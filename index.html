@@ -182,6 +182,89 @@
   </div>
 </div>
 
+<!-- BOTTOM NAV (mobile) -->
+<nav class="bottom-nav">
+  <a href="#" class="bottom-nav__item is-active" data-scroll-top>
+    <span data-icon="home"></span><span>Início</span>
+  </a>
+  <a href="#categorias" class="bottom-nav__item" data-bottom-nav="categorias">
+    <span data-icon="grid"></span><span>Categorias</span>
+  </a>
+  <a href="#destaques" class="bottom-nav__item" data-bottom-nav="ofertas">
+    <span data-icon="tag"></span><span>Ofertas</span>
+  </a>
+  <button type="button" class="bottom-nav__item" data-modal-target="#modal-conta" data-bottom-nav="conta">
+    <span data-icon="user"></span><span>Conta</span>
+  </button>
+</nav>
+
+<!-- MODAL CONTA (bottom sheet) -->
+<div class="modal modal--sheet" id="modal-conta">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div>
+        <h2>Meu perfil</h2>
+        <p class="modal__head-sub">Gerencie sua conta e preferências</p>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body">
+      <div class="account-profile">
+        <span class="account-profile__avatar" data-icon="user"></span>
+        <div>
+          <strong id="conta-nome">Olá, Usuário!</strong>
+          <span id="conta-email">usuario@email.com</span>
+        </div>
+        <span class="account-profile__chevron" data-icon="chevronRight"></span>
+      </div>
+      <ul class="account-menu">
+        <li>
+          <button type="button" class="account-menu__item">
+            <span class="account-menu__icon" data-icon="shoppingBag"></span>
+            <span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos</small></span>
+            <span class="account-menu__chevron" data-icon="chevronRight"></span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="account-menu__item">
+            <span class="account-menu__icon" data-icon="mapPin"></span>
+            <span><strong>Endereços</strong><small>Gerencie seus endereços de entrega</small></span>
+            <span class="account-menu__chevron" data-icon="chevronRight"></span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="account-menu__item">
+            <span class="account-menu__icon" data-icon="creditCard"></span>
+            <span><strong>Formas de pagamento</strong><small>Cartões e métodos de pagamento</small></span>
+            <span class="account-menu__chevron" data-icon="chevronRight"></span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="account-menu__item">
+            <span class="account-menu__icon" data-icon="heart"></span>
+            <span><strong>Favoritos</strong><small>Produtos que você ama</small></span>
+            <span class="account-menu__chevron" data-icon="chevronRight"></span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="account-menu__item">
+            <span class="account-menu__icon" data-icon="settings"></span>
+            <span><strong>Configurações</strong><small>Notificações, privacidade e mais</small></span>
+            <span class="account-menu__chevron" data-icon="chevronRight"></span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="account-menu__item account-menu__item--danger" id="btn-sair-conta">
+            <span class="account-menu__icon" data-icon="logOut"></span>
+            <span><strong>Sair da conta</strong><small>Encerrar sessão com segurança</small></span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="container footer-grid">
     <div>
