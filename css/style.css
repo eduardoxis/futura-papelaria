@@ -224,8 +224,8 @@ button {
   background: radial-gradient(circle at 15% 20%, var(--azul-100), transparent 55%),
               radial-gradient(circle at 100% 0%, #dce8ff, transparent 50%);
 }
-.hero__inner { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: center; }
-.hero__content { display: grid; gap: 1.1rem; min-width: 0; }
+.hero__inner { display: flex; flex-wrap: wrap; align-items: center; gap: clamp(1.5rem, 4vw, 3rem); }
+.hero__content { flex: 1.15 1 340px; min-width: 260px; display: grid; gap: 1.1rem; }
 .hero__eyebrow {
   display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content;
   font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
@@ -244,8 +244,15 @@ button {
 .hero__features strong { display: block; font-size: 0.82rem; color: var(--cinza-900); }
 .hero__features span { display: block; font-size: 0.74rem; color: var(--cinza-500); }
 
-.hero__art { position: relative; min-height: 280px; min-width: 0; display: grid; place-items: center; }
-.hero__art-img { width: 100%; height: auto; min-width: 220px; max-width: 560px; border-radius: var(--raio-lg); object-fit: contain; }
+.hero__art {
+  position: relative; flex: 1 1 380px; min-width: 260px; max-width: 560px; min-height: 220px;
+  display: grid; place-items: center;
+  background: var(--branco);
+  border-radius: var(--raio-lg);
+  box-shadow: var(--sombra-lg);
+  padding: 1.25rem;
+}
+.hero__art-img { width: 100%; height: auto; max-width: 100%; border-radius: var(--raio-md); object-fit: contain; }
 .btn-secondary {
   display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0.65rem 1.3rem; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
