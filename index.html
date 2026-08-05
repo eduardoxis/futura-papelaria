@@ -216,35 +216,35 @@
       </div>
       <ul class="account-menu">
         <li>
-          <button type="button" class="account-menu__item">
+          <button type="button" class="account-menu__item" id="btn-abrir-pedidos">
             <span class="account-menu__icon" data-icon="shoppingBag"></span>
             <span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos</small></span>
             <span class="account-menu__chevron" data-icon="chevronRight"></span>
           </button>
         </li>
         <li>
-          <button type="button" class="account-menu__item">
+          <button type="button" class="account-menu__item" id="btn-abrir-enderecos">
             <span class="account-menu__icon" data-icon="mapPin"></span>
             <span><strong>Endereços</strong><small>Gerencie seus endereços de entrega</small></span>
             <span class="account-menu__chevron" data-icon="chevronRight"></span>
           </button>
         </li>
         <li>
-          <button type="button" class="account-menu__item">
+          <button type="button" class="account-menu__item" id="btn-abrir-pagamento">
             <span class="account-menu__icon" data-icon="creditCard"></span>
             <span><strong>Formas de pagamento</strong><small>Cartões e métodos de pagamento</small></span>
             <span class="account-menu__chevron" data-icon="chevronRight"></span>
           </button>
         </li>
         <li>
-          <button type="button" class="account-menu__item">
+          <button type="button" class="account-menu__item" id="btn-abrir-favoritos">
             <span class="account-menu__icon" data-icon="heart"></span>
             <span><strong>Favoritos</strong><small>Produtos que você ama</small></span>
             <span class="account-menu__chevron" data-icon="chevronRight"></span>
           </button>
         </li>
         <li>
-          <button type="button" class="account-menu__item">
+          <button type="button" class="account-menu__item" id="btn-abrir-configuracoes">
             <span class="account-menu__icon" data-icon="settings"></span>
             <span><strong>Configurações</strong><small>Notificações, privacidade e mais</small></span>
             <span class="account-menu__chevron" data-icon="chevronRight"></span>
@@ -257,6 +257,134 @@
           </button>
         </li>
       </ul>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MEUS PEDIDOS -->
+<div class="modal modal--sheet" id="modal-pedidos">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div class="modal__head-title">
+        <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <div>
+          <h2>Meus pedidos</h2>
+          <p class="modal__head-sub">Acompanhe seus pedidos</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body" id="lista-pedidos">
+      <div class="empty-state">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ENDEREÇOS -->
+<div class="modal modal--sheet" id="modal-enderecos">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div class="modal__head-title">
+        <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <div>
+          <h2>Endereços</h2>
+          <p class="modal__head-sub">Gerencie seus endereços de entrega</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body">
+      <ul class="chip-list chip-list--enderecos" id="lista-enderecos"></ul>
+      <form id="form-endereco" class="stacked-form">
+        <h3 class="stacked-form__title">Novo endereço</h3>
+        <input name="apelido" placeholder="Apelido (ex: Casa, Trabalho)" required>
+        <div class="stacked-form__row">
+          <input name="rua" placeholder="Rua" required>
+          <input name="numero" placeholder="Número" required>
+        </div>
+        <input name="bairro" placeholder="Bairro" required>
+        <div class="stacked-form__row">
+          <input name="cidade" placeholder="Cidade" required>
+          <input name="cep" placeholder="CEP">
+        </div>
+        <button type="submit" class="btn-primary">Salvar endereço</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORMAS DE PAGAMENTO -->
+<div class="modal modal--sheet" id="modal-pagamento">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div class="modal__head-title">
+        <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <div>
+          <h2>Formas de pagamento</h2>
+          <p class="modal__head-sub">Sua preferência para os pedidos</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body">
+      <p class="modal__note">Não processamos pagamentos no site — o pedido é fechado por WhatsApp. Aqui você só define sua preferência, pra já vir junto na mensagem.</p>
+      <form id="form-pagamento" class="stacked-form">
+        <label class="radio-option"><input type="radio" name="forma" value="Pix"><span><strong>Pix</strong><small>Chave enviada na confirmação</small></span></label>
+        <label class="radio-option"><input type="radio" name="forma" value="Cartão na entrega"><span><strong>Cartão na entrega</strong><small>Maquininha na hora da entrega/retirada</small></span></label>
+        <label class="radio-option"><input type="radio" name="forma" value="Dinheiro"><span><strong>Dinheiro</strong><small>Pagamento em espécie</small></span></label>
+        <button type="submit" class="btn-primary">Salvar preferência</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FAVORITOS -->
+<div class="modal modal--sheet" id="modal-favoritos">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div class="modal__head-title">
+        <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <div>
+          <h2>Favoritos</h2>
+          <p class="modal__head-sub">Produtos que você ama</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body" id="lista-favoritos">
+      <div class="empty-state">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIGURAÇÕES -->
+<div class="modal modal--sheet" id="modal-configuracoes">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div class="modal__head-title">
+        <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <div>
+          <h2>Configurações</h2>
+          <p class="modal__head-sub">Notificações, privacidade e mais</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body">
+      <label class="switch-option">
+        <span><strong>Notificações de promoções</strong><small>Receber avisos de ofertas por e-mail</small></span>
+        <input type="checkbox" id="toggle-notificacoes">
+      </label>
+      <button type="button" id="btn-alterar-senha" class="account-menu__item">
+        <span class="account-menu__icon" data-icon="settings"></span>
+        <span><strong>Alterar senha</strong><small>Enviaremos um link por e-mail</small></span>
+        <span class="account-menu__chevron" data-icon="chevronRight"></span>
+      </button>
     </div>
   </div>
 </div>
