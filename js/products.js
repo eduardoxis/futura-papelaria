@@ -14,7 +14,7 @@ function salvarFavoritos(lista) {
   localStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(lista));
 }
 
-function alternarFavorito(id) {
+export function alternarFavorito(id) {
   const lista = obterFavoritos();
   const idx = lista.indexOf(id);
   if (idx >= 0) lista.splice(idx, 1);
