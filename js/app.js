@@ -1,13 +1,17 @@
 // js/app.js
-import { listarEtiquetas, escutarProdutos, escutarCategorias } from "./firestore.js";
-import { renderizarGrade, aplicarFiltros, ordenarProdutos } from "./products.js";
+import {
+  listarEtiquetas, escutarProdutos, escutarCategorias,
+  criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
+  atualizarPerfilUsuario, obterPerfilUsuario
+} from "./firestore.js";
+import { renderizarGrade, aplicarFiltros, ordenarProdutos, obterFavoritos, alternarFavorito } from "./products.js";
 import { buscarProdutos, ativarBuscaTempoReal } from "./search.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
 import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
-import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual } from "./auth.js";
+import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, redefinirSenha } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
 import { ICONS, icon } from "./icons.js";
@@ -152,6 +156,7 @@ async function iniciar() {
   configurarCarrinhoUI();
   configurarLogin();
   configurarModalAuth();
+  configurarMenuConta();
 
   document.addEventListener("adicionar-carrinho", (e) => {
     adicionarAoCarrinho(e.detail, 1);
@@ -330,13 +335,23 @@ function configurarCarrinhoUI() {
   fecharBtn?.addEventListener("click", fechar);
   overlay?.addEventListener("click", fechar);
 
-  document.querySelector("#finalizar-pedido")?.addEventListener("click", () => {
-    if (!obterCarrinho().length) { toast("Seu carrinho está vazio.", "error"); return; }
+  document.querySelector("#finalizar-pedido")?.addEventListener("click", async () => {
+    const carrinho = obterCarrinho();
+    if (!carrinho.length) { toast("Seu carrinho está vazio.", "error"); return; }
     if (!podeExecutar("finalizar-pedido", 5, 60_000)) {
       toast("Muitos pedidos em pouco tempo. Aguarde um instante.", "error");
       return;
     }
     const nome = document.querySelector("#nome-cliente")?.value?.trim();
+    if (usuarioAtual) {
+      const { total } = calcularTotais();
+      criarPedido({
+        usuarioId: usuarioAtual.uid,
+        nomeCliente: nome || usuarioAtual.displayName || "",
+        itens: carrinho.map(i => ({ id: i.id, nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
+        total
+      }).catch(() => {});
+    }
     finalizarPedidoWhatsApp(nome);
     fechar();
   });
@@ -430,6 +445,156 @@ function configurarModalAuth() {
     } catch {
       erroEl.textContent = "Não foi possível criar a conta.";
     }
+  });
+}
+
+function abrirSubModalConta(idModal) {
+  fecharModal(document.querySelector("#modal-conta"));
+  const modal = document.querySelector(idModal);
+  if (modal) abrirModal(modal);
+  return modal;
+}
+
+async function renderizarPedidos() {
+  const container = document.querySelector("#lista-pedidos");
+  if (!container || !usuarioAtual) return;
+  container.innerHTML = `<div class="empty-state">Carregando...</div>`;
+  const pedidos = await listarPedidosUsuario(usuarioAtual.uid);
+  container.innerHTML = pedidos.length ? pedidos.map(p => `
+    <div class="pedido-card">
+      <div class="pedido-card__head">
+        <strong>${formatBRL(p.total || 0)}</strong>
+        <span class="pedido-card__status">${escHtml(p.status || "pendente")}</span>
+      </div>
+      <p class="pedido-card__itens">${(p.itens || []).map(i => `${i.quantidade}x ${escHtml(i.nome)}`).join(", ")}</p>
+    </div>`).join("") : `<div class="empty-state">Você ainda não fez nenhum pedido.</div>`;
+}
+
+async function renderizarEnderecos() {
+  const lista = document.querySelector("#lista-enderecos");
+  if (!lista || !usuarioAtual) return;
+  const enderecos = await listarEnderecos(usuarioAtual.uid);
+  lista.innerHTML = enderecos.length ? enderecos.map(e => `
+    <li class="endereco-card" data-id="${e.id}">
+      <div class="endereco-card__info">
+        <strong>${escHtml(e.apelido)}</strong>
+        <span>${escHtml(e.rua)}, ${escHtml(e.numero)} - ${escHtml(e.bairro)}, ${escHtml(e.cidade)}${e.cep ? " - " + escHtml(e.cep) : ""}</span>
+      </div>
+      <button type="button" data-excluir-endereco="${e.id}" class="account-menu__icon">${icon("trash")}</button>
+    </li>`).join("") : `<div class="empty-state">Nenhum endereço cadastrado ainda.</div>`;
+
+  lista.querySelectorAll("[data-excluir-endereco]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await excluirEndereco(btn.dataset.excluirEndereco);
+      renderizarEnderecos();
+    });
+  });
+}
+
+async function renderizarFavoritos() {
+  const container = document.querySelector("#lista-favoritos");
+  if (!container) return;
+  const ids = obterFavoritos();
+  const produtos = TODOS_PRODUTOS.filter(p => ids.includes(p.id));
+  container.innerHTML = produtos.length ? produtos.map(p => `
+    <div class="favorito-card" data-id="${p.id}">
+      <img src="${p.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(p.nome)}">
+      <div class="favorito-card__info">
+        <strong>${escHtml(p.nome)}</strong>
+        <span>${formatBRL(p.preco)}</span>
+      </div>
+      <div class="favorito-card__acoes">
+        <button type="button" data-add-favorito="${p.id}" class="account-menu__icon" aria-label="Adicionar ao carrinho">${icon("cart")}</button>
+        <button type="button" data-remover-favorito="${p.id}" class="account-menu__icon" aria-label="Remover dos favoritos">${icon("trash")}</button>
+      </div>
+    </div>`).join("") : `<div class="empty-state">Você ainda não favoritou nenhum produto.</div>`;
+
+  container.querySelectorAll("[data-remover-favorito]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      alternarFavorito(btn.dataset.removerFavorito);
+      renderizarFavoritos();
+    });
+  });
+  container.querySelectorAll("[data-add-favorito]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const produto = TODOS_PRODUTOS.find(p => p.id === btn.dataset.addFavorito);
+      if (produto) { adicionarAoCarrinho(produto, 1); toast("Produto adicionado ao carrinho."); }
+    });
+  });
+}
+
+function configurarMenuConta() {
+  document.querySelector("#btn-abrir-pedidos")?.addEventListener("click", () => {
+    abrirSubModalConta("#modal-pedidos");
+    renderizarPedidos();
+  });
+
+  document.querySelector("#btn-abrir-enderecos")?.addEventListener("click", () => {
+    abrirSubModalConta("#modal-enderecos");
+    renderizarEnderecos();
+  });
+
+  document.querySelector("#btn-abrir-pagamento")?.addEventListener("click", async () => {
+    abrirSubModalConta("#modal-pagamento");
+    if (usuarioAtual) {
+      const perfil = await obterPerfilUsuario(usuarioAtual.uid);
+      const form = document.querySelector("#form-pagamento");
+      if (perfil?.formaPagamentoPreferida && form) {
+        const input = form.querySelector(`input[value="${perfil.formaPagamentoPreferida}"]`);
+        if (input) input.checked = true;
+      }
+    }
+  });
+
+  document.querySelector("#btn-abrir-favoritos")?.addEventListener("click", () => {
+    abrirSubModalConta("#modal-favoritos");
+    renderizarFavoritos();
+  });
+
+  document.querySelector("#btn-abrir-configuracoes")?.addEventListener("click", async () => {
+    abrirSubModalConta("#modal-configuracoes");
+    if (usuarioAtual) {
+      const perfil = await obterPerfilUsuario(usuarioAtual.uid);
+      const toggle = document.querySelector("#toggle-notificacoes");
+      if (toggle) toggle.checked = !!perfil?.notificacoesPromocoes;
+    }
+  });
+
+  document.querySelector("#form-endereco")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!usuarioAtual) return;
+    const form = e.target;
+    await criarEndereco(usuarioAtual.uid, {
+      apelido: form.apelido.value.trim(),
+      rua: form.rua.value.trim(),
+      numero: form.numero.value.trim(),
+      bairro: form.bairro.value.trim(),
+      cidade: form.cidade.value.trim(),
+      cep: form.cep.value.trim()
+    });
+    form.reset();
+    renderizarEnderecos();
+    toast("Endereço salvo.");
+  });
+
+  document.querySelector("#form-pagamento")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!usuarioAtual) return;
+    const forma = e.target.forma.value;
+    if (!forma) { toast("Escolha uma forma de pagamento.", "error"); return; }
+    await atualizarPerfilUsuario(usuarioAtual.uid, { formaPagamentoPreferida: forma });
+    toast("Preferência salva.");
+  });
+
+  document.querySelector("#toggle-notificacoes")?.addEventListener("change", async (e) => {
+    if (!usuarioAtual) return;
+    await atualizarPerfilUsuario(usuarioAtual.uid, { notificacoesPromocoes: e.target.checked });
+    toast("Preferência atualizada.");
+  });
+
+  document.querySelector("#btn-alterar-senha")?.addEventListener("click", async () => {
+    if (!usuarioAtual?.email) return;
+    await redefinirSenha(usuarioAtual.email);
   });
 }
 
