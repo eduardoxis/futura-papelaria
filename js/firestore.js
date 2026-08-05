@@ -1,7 +1,7 @@
 // js/firestore.js
 import { db } from "../firebase/firebase-config.js";
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, orderBy, limit, serverTimestamp, increment, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -115,6 +115,33 @@ export async function listarLeadsPerdidos() {
 }
 export async function marcarLeadRecuperado(id) {
   return updateDoc(doc(db, "leadsPerdidos", id), { status: "recuperado" });
+}
+
+// ---------- PEDIDOS ----------
+export async function criarPedido(dados) {
+  return addDoc(collection(db, "pedidos"), { ...dados, status: "pendente", criadoEm: serverTimestamp() });
+}
+export async function listarPedidosUsuario(usuarioId) {
+  const snap = await getDocs(query(collection(db, "pedidos"), where("usuarioId", "==", usuarioId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
+}
+
+// ---------- ENDEREÇOS ----------
+export async function listarEnderecos(usuarioId) {
+  const snap = await getDocs(query(collection(db, "enderecos"), where("usuarioId", "==", usuarioId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export async function criarEndereco(usuarioId, dados) {
+  return addDoc(collection(db, "enderecos"), { ...dados, usuarioId, criadoEm: serverTimestamp() });
+}
+export async function excluirEndereco(id) {
+  return deleteDoc(doc(db, "enderecos", id));
+}
+
+// ---------- PERFIL (preferências / configurações) ----------
+export async function atualizarPerfilUsuario(uid, dados) {
+  return setDoc(doc(db, "usuarios", uid), dados, { merge: true });
 }
 
 // ---------- USUÁRIOS ----------
