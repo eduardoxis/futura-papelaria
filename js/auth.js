@@ -2,7 +2,7 @@
 import { auth, db } from "../firebase/firebase-config.js";
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, onAuthStateChanged
+  signOut, onAuthStateChanged, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { toast } from "./utils.js";
@@ -54,6 +54,16 @@ export async function cadastrar(nome, email, senha) {
 export async function sair() {
   await signOut(auth);
   window.location.href = "/index.html";
+}
+
+export async function redefinirSenha(email) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    toast("Enviamos um link de redefinição para seu e-mail.");
+  } catch (err) {
+    toast(traduzErroAuth(err.code), "error");
+    throw err;
+  }
 }
 
 function traduzErroAuth(code) {
