@@ -546,6 +546,13 @@ button {
 .social-row a { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); display: grid; place-items: center; }
 .social-row a .icon { width: 16px; height: 16px; }
 .footer-bottom { text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.12); color: #7d9bd6; font-size: 0.8rem; }
+.footer-bottom:only-child { margin-top: 0; padding-top: 0; border-top: none; }
+.site-footer--compact { padding-block: 1.5rem; }
+.site-footer--compact .footer-brand {
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+  margin-bottom: 0.75rem; color: var(--branco); font-weight: 700; font-family: var(--fonte-titulo, inherit);
+}
+.site-footer--compact .footer-brand img { width: 28px; height: 28px; }
 
 /* ===== TOAST ===== */
 .toast {
