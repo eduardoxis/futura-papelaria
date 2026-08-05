@@ -26,6 +26,12 @@ export function iniciarModais() {
       if (e.target === modal || e.target.closest("[data-modal-close]")) {
         fecharModal(modal);
       }
+      const voltarBtn = e.target.closest("[data-modal-back]");
+      if (voltarBtn) {
+        const alvo = document.querySelector(voltarBtn.dataset.modalBack);
+        fecharModal(modal);
+        if (alvo) abrirModal(alvo);
+      }
     });
   });
 
