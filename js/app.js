@@ -352,7 +352,7 @@ function configurarCarrinhoUI() {
         total
       }).catch(() => {});
     }
-    finalizarPedidoWhatsApp(nome);
+    finalizarPedidoWhatsApp(usuarioAtual ? null : nome);
     fechar();
   });
 }
