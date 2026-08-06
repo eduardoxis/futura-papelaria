@@ -161,6 +161,11 @@ async function iniciar() {
   if (inputBusca) {
     ativarBuscaTempoReal(inputBusca, (termo) => aplicarBuscaEFiltros(termo));
   }
+  document.querySelector(".search-bar")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    aplicarBuscaEFiltros(inputBusca?.value || "");
+    document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
+  });
 
   configurarCarrinhoUI();
   configurarLogin();
