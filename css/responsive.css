@@ -7,6 +7,10 @@
   .tabs-nav button .nav-label { display: none; }
   .tabs-nav__summary { display: none; }
   .product-detail { grid-template-columns: 1fr; }
+  .product-detail__gallery { flex-direction: column-reverse; }
+  .product-detail__thumbs { flex-direction: row; overflow-x: auto; }
+  .product-detail__thumb { width: 56px; height: 56px; }
+  .product-detail__specs li { grid-template-columns: 18px 110px 1fr; }
   .product-detail__image { aspect-ratio: 4 / 3; }
   .product-detail__image img { object-fit: contain; padding: 1.25rem; box-sizing: border-box; background: var(--branco); }
   .header-nav__links { display: none; }
