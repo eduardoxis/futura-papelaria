@@ -89,6 +89,26 @@ export async function excluirCategoria(id) {
   return deleteDoc(doc(db, "categorias", id));
 }
 
+// ---------- MARCAS ----------
+export async function listarMarcas() {
+  const snap = await getDocs(collection(db, "marcas"));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export function escutarMarcas(callback) {
+  return onSnapshot(collection(db, "marcas"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+export async function criarMarca(dados) {
+  return addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
+}
+export async function atualizarMarca(id, dados) {
+  return updateDoc(doc(db, "marcas", id), dados);
+}
+export async function excluirMarca(id) {
+  return deleteDoc(doc(db, "marcas", id));
+}
+
 // ---------- ETIQUETAS ----------
 export async function listarEtiquetas() {
   const snap = await getDocs(collection(db, "etiquetas"));
