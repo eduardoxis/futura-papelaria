@@ -240,52 +240,99 @@ async function abrirFormularioProduto(container, produto = null) {
 // ---------- CATEGORIAS ----------
 async function carregarAbaCategorias(container) {
   if (!container) return;
-  const categorias = await listarCategorias();
+  cacheCategorias = (await listarCategorias());
+
   container.innerHTML = `
     <div class="admin-panel-head">
       <h1>Categorias</h1>
-      <p>Organize seus produtos em categorias e escolha um emoji para cada uma.</p>
+      <p>Cadastre as categorias da loja, com nome e imagem.</p>
     </div>
-    <form id="form-categoria" class="inline-form">
-      <textarea name="emoji" class="icon-input" placeholder="🏷️ ou cole um &lt;svg&gt;...&lt;/svg&gt;"></textarea>
-      <input name="nome" placeholder="Nova categoria" required autocomplete="off">
-      <button type="submit" class="btn-primary">${icon("plus")}Adicionar</button>
-    </form>
-    <ul class="chip-list chip-list--categorias">
-      ${categorias.map(c => `
+    <div class="admin-toolbar">
+      <button class="btn-primary" id="btn-nova-categoria">${icon("plus")}Nova categoria</button>
+    </div>
+    <ul class="chip-list chip-list--marcas">
+      ${cacheCategorias.map(c => `
         <li data-id="${c.id}">
-          <textarea class="icon-input" data-emoji-edit placeholder="🏷️ ou &lt;svg&gt;...">${escHtml(c.emoji || "")}</textarea>
+          <img class="thumb" src="${c.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(c.nome)}">
           <span class="chip-list__nome">${escHtml(c.nome)}</span>
-          <button data-id="${c.id}" title="Remover">${icon("close")}</button>
+          <button data-action="editar" title="Editar">${icon("pencil")}</button>
+          <button data-action="excluir" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
-    </ul>`;
+    </ul>
+    <dialog id="dialog-categoria" class="dialog-form"></dialog>`;
 
-  container.querySelector("#form-categoria").addEventListener("submit", async (e) => {
+  container.querySelector("#btn-nova-categoria").addEventListener("click", () => abrirFormularioCategoria(container));
+
+  container.querySelectorAll(".chip-list--marcas li[data-id]").forEach(li => {
+    const id = li.dataset.id;
+    const categoria = cacheCategorias.find(c => c.id === id);
+    li.querySelector('[data-action="editar"]')?.addEventListener("click", () => abrirFormularioCategoria(container, categoria));
+    li.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
+      if (confirm(`Remover a categoria "${categoria.nome}"?`)) {
+        await excluirCategoria(id);
+        cacheCategorias = await listarCategorias();
+        toast("Categoria removida.");
+        carregarAbaCategorias(container);
+      }
+    });
+  });
+}
+
+async function abrirFormularioCategoria(container, categoria = null) {
+  const dialog = container.querySelector("#dialog-categoria");
+  dialog.innerHTML = `
+    <form id="form-categoria" class="product-form">
+      <h3>${categoria ? "Editar categoria" : "Nova categoria"}</h3>
+      <div class="form-grid">
+        <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(categoria?.nome || "")}"></label>
+        <label>Imagem<input name="imagem" type="file" accept="image/*"></label>
+      </div>
+      ${categoria?.imagem ? `
+        <div class="logo-atual" id="imagem-atual-wrap">
+          <img class="thumb" src="${categoria.imagem}" alt="">
+          <button type="button" id="btn-remover-imagem" class="btn-remover-logo" title="Apagar imagem">${icon("close")} Apagar imagem</button>
+        </div>` : ""}
+      <div class="form-actions">
+        <button type="button" data-modal-close-dialog>Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar</button>
+      </div>
+    </form>`;
+
+  dialog.showModal();
+  dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
+
+  let imagemRemovida = false;
+  dialog.querySelector("#btn-remover-imagem")?.addEventListener("click", () => {
+    imagemRemovida = true;
+    dialog.querySelector("#imagem-atual-wrap").remove();
+    toast("Imagem removida. Salve para confirmar.");
+  });
+
+  dialog.querySelector("#form-categoria").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
-    await criarCategoria(form.nome.value.trim(), form.emoji.value.trim());
+    const dados = { nome: form.nome.value.trim() };
+
+    const arquivoImagem = form.imagem.files[0];
+    if (arquivoImagem) {
+      dados.imagem = await compressImageToBase64(arquivoImagem, 500, 0.9, "png");
+    } else if (imagemRemovida) {
+      dados.imagem = "";
+    } else if (categoria?.imagem) {
+      dados.imagem = categoria.imagem;
+    }
+
+    if (categoria) {
+      await atualizarCategoria(categoria.id, dados);
+      toast("Categoria atualizada.");
+    } else {
+      await criarCategoria(dados.nome, "", dados.imagem);
+      toast("Categoria cadastrada.");
+    }
     cacheCategorias = await listarCategorias();
+    dialog.close();
     carregarAbaCategorias(container);
   });
-
-  container.querySelectorAll("[data-emoji-edit]").forEach(input => {
-    const salvar = async () => {
-      const id = input.closest("li").dataset.id;
-      await atualizarCategoria(id, { emoji: input.value.trim() });
-      cacheCategorias = await listarCategorias();
-      toast("Emoji atualizado.");
-    };
-    input.addEventListener("change", salvar);
-    input.addEventListener("blur", salvar);
-  });
-
-  container.querySelectorAll(".chip-list button[data-id]").forEach(btn =>
-    btn.addEventListener("click", async () => {
-      await excluirCategoria(btn.dataset.id);
-      cacheCategorias = await listarCategorias();
-      carregarAbaCategorias(container);
-    })
-  );
 }
 
 // ---------- MARCAS ----------
