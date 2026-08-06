@@ -438,7 +438,7 @@ button {
   background: var(--branco); border: 1px solid var(--cinza-100);
   display: flex; align-items: center; justify-content: center; padding: 1.25rem;
 }
-.brands__badge img { max-width: 100%; max-height: 76px; width: auto; height: auto; object-fit: contain; }
+.brands__badge img { max-width: 140px; max-height: 60px; width: auto; height: auto; object-fit: contain; }
 
 /* ===== TESTIMONIALS ===== */
 .testimonials__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; }
