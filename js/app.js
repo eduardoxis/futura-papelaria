@@ -82,6 +82,7 @@ function corTextoParaCategoria(nome = "") {
 }
 
 function conteudoIconeCategoria(c) {
+  if (c.imagem) return `<img class="category-card__img" src="${c.imagem}" alt="">`;
   const custom = (c.emoji || "").trim();
   if (!custom) return icon(iconeParaCategoria(c.nome));
   if (custom.startsWith("<svg")) return custom;
