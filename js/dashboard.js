@@ -3,6 +3,7 @@ import {
   listarProdutos, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
   listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
+  listarMarcas, criarMarca, atualizarMarca, excluirMarca,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
 import { formatBRL, escHtml, generateCode, compressImageToBase64, toast } from "./utils.js";
@@ -17,6 +18,7 @@ export async function iniciarPainelAdmin(root) {
   await carregarDashboard(root.querySelector("#painel-dashboard"));
   await carregarAbaProdutos(root.querySelector("#painel-produtos"));
   await carregarAbaCategorias(root.querySelector("#painel-categorias"));
+  await carregarAbaMarcas(root.querySelector("#painel-marcas"));
   await carregarAbaEtiquetas(root.querySelector("#painel-etiquetas"));
   await carregarAbaEstoque(root.querySelector("#painel-estoque"));
   await carregarPainelLeads(root.querySelector("#painel-leads"));
@@ -282,6 +284,91 @@ async function carregarAbaCategorias(container) {
       carregarAbaCategorias(container);
     })
   );
+}
+
+// ---------- MARCAS ----------
+let cacheMarcas = [];
+
+async function carregarAbaMarcas(container) {
+  if (!container) return;
+  cacheMarcas = (await listarMarcas()).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+  container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Marcas</h1>
+      <p>Cadastre as marcas parceiras exibidas na loja, com nome e logo.</p>
+    </div>
+    <div class="admin-toolbar">
+      <button class="btn-primary" id="btn-nova-marca">${icon("plus")}Nova marca</button>
+    </div>
+    <ul class="chip-list chip-list--marcas">
+      ${cacheMarcas.map(m => `
+        <li data-id="${m.id}">
+          <img class="thumb" src="${m.logo || "/assets/images/placeholder.svg"}" alt="${escHtml(m.nome)}">
+          <span class="chip-list__nome">${escHtml(m.nome)}</span>
+          <button data-action="editar" title="Editar">${icon("pencil")}</button>
+          <button data-action="excluir" title="Remover">${icon("close")}</button>
+        </li>`).join("") || `<li class="chip-list__empty">Nenhuma marca cadastrada.</li>`}
+    </ul>
+    <dialog id="dialog-marca" class="dialog-form"></dialog>`;
+
+  container.querySelector("#btn-nova-marca").addEventListener("click", () => abrirFormularioMarca(container));
+
+  container.querySelectorAll(".chip-list--marcas li").forEach(li => {
+    const id = li.dataset.id;
+    const marca = cacheMarcas.find(m => m.id === id);
+    li.querySelector('[data-action="editar"]').addEventListener("click", () => abrirFormularioMarca(container, marca));
+    li.querySelector('[data-action="excluir"]').addEventListener("click", async () => {
+      if (confirm(`Remover a marca "${marca.nome}"?`)) {
+        await excluirMarca(id);
+        toast("Marca removida.");
+        carregarAbaMarcas(container);
+      }
+    });
+  });
+}
+
+async function abrirFormularioMarca(container, marca = null) {
+  const dialog = container.querySelector("#dialog-marca");
+  dialog.innerHTML = `
+    <form id="form-marca" class="product-form">
+      <h3>${marca ? "Editar marca" : "Nova marca"}</h3>
+      <div class="form-grid">
+        <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(marca?.nome || "")}"></label>
+        <label>Logo (imagem)<input name="logo" type="file" accept="image/*"></label>
+      </div>
+      ${marca?.logo ? `<img class="thumb" src="${marca.logo}" alt="" style="margin-top:0.5rem">` : ""}
+      <div class="form-actions">
+        <button type="button" data-modal-close-dialog>Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar</button>
+      </div>
+    </form>`;
+
+  dialog.showModal();
+  dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
+
+  dialog.querySelector("#form-marca").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const dados = { nome: form.nome.value.trim() };
+
+    const arquivoLogo = form.logo.files[0];
+    if (arquivoLogo) {
+      dados.logo = await compressImageToBase64(arquivoLogo, 400, 0.8);
+    } else if (marca?.logo) {
+      dados.logo = marca.logo;
+    }
+
+    if (marca) {
+      await atualizarMarca(marca.id, dados);
+      toast("Marca atualizada.");
+    } else {
+      await criarMarca(dados);
+      toast("Marca cadastrada.");
+    }
+    dialog.close();
+    carregarAbaMarcas(container);
+  });
 }
 
 // ---------- ETIQUETAS ----------
