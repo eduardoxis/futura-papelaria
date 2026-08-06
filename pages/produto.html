@@ -32,6 +32,17 @@
   <div class="product-detail" id="detalhe-produto">
     <p>Carregando produto...</p>
   </div>
+
+  <section class="related-products" id="produtos-relacionados" hidden>
+    <div class="related-products__head">
+      <h2>Produtos relacionados</h2>
+      <div class="related-products__nav">
+        <button type="button" class="related-products__arrow" id="relacionados-prev" aria-label="Ver anteriores"><span data-icon="chevronLeft"></span></button>
+        <button type="button" class="related-products__arrow" id="relacionados-next" aria-label="Ver próximos"><span data-icon="chevronRight"></span></button>
+      </div>
+    </div>
+    <div class="related-products__track" id="relacionados-track"></div>
+  </section>
 </main>
 
 <footer class="site-footer site-footer--compact">
@@ -45,10 +56,10 @@
 </footer>
 
 <script type="module">
-import { obterProduto, incrementarVisualizacao } from "../js/firestore.js";
+import { obterProduto, incrementarVisualizacao, listarProdutos } from "../js/firestore.js";
 import { formatBRL, escHtml, getQueryParam, toast } from "../js/utils.js";
 import { adicionarAoCarrinho, atualizarBadgeCarrinho, falarSobreProduto } from "../js/cart.js";
-import { compartilharProduto } from "../js/products.js";
+import { compartilharProduto, cartaoProduto, renderizarGrade } from "../js/products.js";
 import { ICONS } from "../js/icons.js";
 
 function aplicarIconesEstaticos() {
@@ -137,6 +148,48 @@ async function iniciar() {
 
   incrementarVisualizacao(id);
   atualizarBadgeCarrinho();
+  carregarRelacionados(produto);
+}
+
+async function carregarRelacionados(produtoAtual) {
+  const secao = document.querySelector("#produtos-relacionados");
+  const track = document.querySelector("#relacionados-track");
+  const btnPrev = document.querySelector("#relacionados-prev");
+  const btnNext = document.querySelector("#relacionados-next");
+
+  const todos = await listarProdutos({ apenasAtivos: true });
+  const outros = todos.filter(p => p.id !== produtoAtual.id);
+
+  const mesmaCategoria = outros.filter(p => p.categoria && p.categoria === produtoAtual.categoria);
+  const resto = outros.filter(p => !mesmaCategoria.includes(p));
+  const relacionados = [...mesmaCategoria, ...resto].slice(0, 8);
+
+  if (!relacionados.length) return;
+
+  secao.hidden = false;
+  renderizarGrade(track, relacionados);
+
+  track.addEventListener("adicionar-carrinho", (e) => {
+    adicionarAoCarrinho(e.detail, 1);
+    toast("Produto adicionado ao carrinho.");
+  });
+  track.addEventListener("falar-produto", (e) => falarSobreProduto(e.detail));
+
+  function atualizarSetas() {
+    const max = track.scrollWidth - track.clientWidth - 2;
+    btnPrev.disabled = track.scrollLeft <= 0;
+    btnNext.disabled = track.scrollLeft >= max;
+  }
+
+  btnPrev.addEventListener("click", () => {
+    track.scrollBy({ left: -track.clientWidth * 0.9, behavior: "smooth" });
+  });
+  btnNext.addEventListener("click", () => {
+    track.scrollBy({ left: track.clientWidth * 0.9, behavior: "smooth" });
+  });
+  track.addEventListener("scroll", atualizarSetas);
+  window.addEventListener("resize", atualizarSetas);
+  requestAnimationFrame(atualizarSetas);
 }
 
 iniciar();
