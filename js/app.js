@@ -10,7 +10,7 @@ import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
-import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
+import { formatBRL, escHtml, getQueryParam, toast, podeExecutar } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, redefinirSenha } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
@@ -115,7 +115,14 @@ async function iniciar() {
     renderizarRecentes();
   }, { apenasAtivos: true });
 
-  escutarCategorias((categorias) => renderizarFiltros(categorias));
+  escutarCategorias((categorias) => {
+    renderizarFiltros(categorias);
+    const catUrl = getQueryParam("categoria");
+    if (catUrl && !window.__categoriaAplicadaDaUrl) {
+      window.__categoriaAplicadaDaUrl = true;
+      selecionarCategoria(decodeURIComponent(catUrl));
+    }
+  });
 
   configurarLinksEstaticos();
   configurarEventosCategorias();
