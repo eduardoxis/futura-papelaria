@@ -34,6 +34,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if ehAdmin();
     }
+    match /marcas/{id} {
+      allow read: if true;
+      allow write: if ehAdmin();
+    }
 
     // ---------- HISTÓRICO DE ESTOQUE ----------
     match /historicoEstoque/{id} {
