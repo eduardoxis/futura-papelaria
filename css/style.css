@@ -440,23 +440,6 @@ button {
 }
 .brands__badge img { max-width: 100%; max-height: 44px; width: auto; height: auto; object-fit: contain; }
 
-.brand-logo { font-weight: 700; letter-spacing: -0.01em; text-align: center; line-height: 1.15; }
-.brand-logo--tilibra {
-  font-family: Georgia, serif; font-size: 1.6rem; color: #0057a8;
-  border: 2px solid #0057a8; border-radius: 999px; padding: 0.3rem 1rem;
-}
-.brand-logo--faber { font-family: Georgia, serif; font-size: 1.15rem; color: #1f4d3a; display: flex; flex-direction: column; }
-.brand-logo--faber small { font-family: Georgia, serif; font-style: italic; font-weight: 400; font-size: 0.6rem; color: #1f4d3a; margin-top: 0.1rem; }
-.brand-logo--bic {
-  font-family: var(--fonte-display); font-size: 1.7rem; font-style: italic; color: #111;
-  background: #ffc72c; padding: 0.3rem 1.1rem; border-radius: 999px 999px 999px 0;
-}
-.brand-logo--compactor { font-family: Georgia, serif; font-style: italic; font-size: 1.15rem; color: #d61f2c; }
-.brand-logo--pilot { font-family: var(--fonte-display); font-size: 1.5rem; color: #005bac; }
-.brand-logo--cis { font-family: var(--fonte-display); font-size: 1.9rem; color: #0072ce; }
-.brand-logo--acrilex { font-family: var(--fonte-display); font-size: 1.35rem; color: #10233f; }
-.brand-logo--tris { font-family: Georgia, serif; font-style: italic; font-size: 1.7rem; color: #e2101e; }
-
 /* ===== TESTIMONIALS ===== */
 .testimonials__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; }
 .testimonial-card { background: var(--branco); border: 1px solid var(--cinza-100); border-radius: var(--raio-md); padding: 1.25rem; }
