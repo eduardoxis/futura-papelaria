@@ -29,6 +29,8 @@
 </header>
 
 <main class="container" id="conteudo-produto">
+  <nav class="breadcrumb" id="breadcrumb" aria-label="Trilha de navegação"></nav>
+
   <div class="product-detail" id="detalhe-produto">
     <p>Carregando produto...</p>
   </div>
@@ -88,20 +90,46 @@ async function iniciar() {
   document.querySelector("#og-image").content = produto.imagem || "";
 
   const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
+  const imagens = (Array.isArray(produto.imagens) && produto.imagens.length ? produto.imagens : [produto.imagem]).filter(Boolean);
+  if (!imagens.length) imagens.push("/assets/images/placeholder.svg");
+
+  const especificacoes = [
+    { icon: "tag", label: "Categoria", valor: produto.categoria },
+    { icon: "bookmark", label: "Marca", valor: produto.marca },
+    { icon: "copy", label: "Código", valor: produto.codigo },
+    { icon: "box", label: "Disponibilidade", valor: semEstoque ? "Sem estoque" : `${produto.quantidade} disponíveis` },
+    ...(Array.isArray(produto.especificacoes) ? produto.especificacoes.map(e => ({ icon: "clipboardList", label: e.label, valor: e.valor })) : [])
+  ].filter(e => e.valor);
+
+  document.querySelector("#breadcrumb").innerHTML = `
+    <a href="/">Início</a>
+    <span data-icon="chevronRight"></span>
+    <a href="/#produtos">Catálogo</a>
+    ${produto.categoria ? `
+      <span data-icon="chevronRight"></span>
+      <a href="/?categoria=${encodeURIComponent(produto.categoria)}#produtos">${escHtml(produto.categoria)}</a>
+    ` : ""}
+    <span data-icon="chevronRight"></span>
+    <span class="breadcrumb__atual">${escHtml(produto.nome)}</span>`;
 
   container.innerHTML = `
-    <div class="product-detail__image">
-      <img src="${produto.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(produto.nome)}">
+    <div class="product-detail__gallery">
+      ${imagens.length > 1 ? `
+        <div class="product-detail__thumbs">
+          ${imagens.map((img, i) => `
+            <button type="button" class="product-detail__thumb ${i === 0 ? "is-active" : ""}" data-thumb="${i}">
+              <img src="${img}" alt="${escHtml(produto.nome)} - imagem ${i + 1}">
+            </button>`).join("")}
+        </div>` : ""}
+      <div class="product-detail__image">
+        <img id="imagem-principal" src="${imagens[0]}" alt="${escHtml(produto.nome)}">
+      </div>
     </div>
     <div class="product-detail__info">
       ${produto.marca ? `<span class="product-detail__brand">${escHtml(produto.marca)}</span>` : ""}
       <h1 class="product-detail__name">${escHtml(produto.nome)}</h1>
       <span class="product-detail__price">${formatBRL(produto.preco)}</span>
       <p class="product-detail__desc">${escHtml(produto.descricao || "")}</p>
-      <div class="product-detail__meta">
-        <span>Código: ${escHtml(produto.codigo || "-")}</span>
-        <span>${semEstoque ? "Sem estoque" : `${produto.quantidade} disponíveis`}</span>
-      </div>
       <div class="qty-stepper">
         <button id="dim" aria-label="Diminuir quantidade">−</button>
         <input id="qtd" type="number" value="1" min="1">
@@ -113,9 +141,26 @@ async function iniciar() {
         <button class="btn-secondary" id="compartilhar"><span data-icon="messageSquare"></span>Compartilhar</button>
         <button class="btn-secondary" id="copiar-link"><span data-icon="copy"></span>Copiar link</button>
       </div>
+      ${especificacoes.length ? `
+      <ul class="product-detail__specs">
+        ${especificacoes.map(e => `
+          <li>
+            <span class="product-detail__specs-icon" data-icon="${e.icon}"></span>
+            <strong>${escHtml(e.label)}</strong>
+            <span>${escHtml(String(e.valor))}</span>
+          </li>`).join("")}
+      </ul>` : ""}
     </div>`;
 
   aplicarIconesEstaticos();
+
+  container.querySelectorAll("[data-thumb]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      container.querySelectorAll("[data-thumb]").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      document.querySelector("#imagem-principal").src = imagens[Number(btn.dataset.thumb)];
+    });
+  });
 
   document.querySelector("#dim").addEventListener("click", () => {
     const input = document.querySelector("#qtd");
