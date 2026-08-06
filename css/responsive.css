@@ -27,7 +27,8 @@
   .header-action span:last-child { display: none; }
   .header-action .icon { width: 17px; height: 17px; }
   .search-bar { order: 3; flex-basis: 100%; }
-  .select-pill { display: none; }
+  .select-pill { order: 4; flex-basis: 100%; }
+  .select-pill select { width: 100%; box-sizing: border-box; }
 
   /* ---- hero: empilhado, imagem abaixo do texto ---- */
   .hero { padding-block: 1.75rem; }
