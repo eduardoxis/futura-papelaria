@@ -164,9 +164,9 @@
         </ul>
 
         <div class="empresa-cta__actions">
-          <a href="#" id="empresa-orcamento-link" class="btn-whatsapp-lg" target="_blank" rel="noopener">
+          <button type="button" id="btn-solicitar-orcamento" class="btn-whatsapp-lg">
             <span data-icon="whatsapp"></span>Solicitar um orçamento
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -462,6 +462,71 @@
     <button class="btn-primary" id="finalizar-pedido">Finalizar pedido no WhatsApp</button>
   </div>
 </aside>
+
+<!-- MODAL ORÇAMENTO -->
+<div class="modal modal--sheet" id="modal-orcamento">
+  <div class="modal__panel modal__panel--orcamento" data-modal-autofocus tabindex="-1">
+    <div class="modal__head">
+      <div class="modal__head-title"><h2>Solicitar orçamento</h2></div>
+      <button class="modal__close" data-modal-close aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="modal__body modal__body--orcamento">
+
+      <!-- estado 1: escolha das 3 opções -->
+      <div class="orcamento-opcoes" data-orcamento-opcoes>
+        <button type="button" class="orcamento-opcao" data-orcamento-opcao="produtos">
+          <span class="orcamento-opcao__icon" data-icon="clipboardList"></span>
+          <span class="orcamento-opcao__text">
+            <strong>Já escolhi meus produtos</strong>
+            <small>Envie sua lista diretamente para nosso atendimento.</small>
+          </span>
+          <span class="orcamento-opcao__arrow" data-icon="chevronRight"></span>
+        </button>
+
+        <button type="button" class="orcamento-opcao" data-orcamento-opcao="atendente">
+          <span class="orcamento-opcao__icon" data-icon="headset"></span>
+          <span class="orcamento-opcao__text">
+            <strong>Conversar com um atendente</strong>
+            <small>Ainda não sabe exatamente o que precisa? Fale com nossa equipe.</small>
+          </span>
+          <span class="orcamento-opcao__arrow" data-icon="chevronRight"></span>
+        </button>
+
+        <button type="button" class="orcamento-opcao" data-orcamento-opcao="descrever">
+          <span class="orcamento-opcao__icon" data-icon="pencil"></span>
+          <span class="orcamento-opcao__text">
+            <strong>Descrever o que preciso</strong>
+            <small>Conte rapidamente quais produtos você procura.</small>
+          </span>
+          <span class="orcamento-opcao__arrow" data-icon="chevronRight"></span>
+        </button>
+      </div>
+
+      <!-- estado 2: lista de orçamento vazia -->
+      <div class="orcamento-vazio" data-orcamento-vazio hidden>
+        <span class="empty-state__icon" data-icon="gridEmpty"></span>
+        <strong>Você ainda não adicionou nenhum produto.</strong>
+        <p>Adicione itens à sua lista de orçamento ou fale direto com um atendente.</p>
+        <div class="orcamento-vazio__acoes">
+          <button type="button" class="btn-secondary" data-orcamento-continuar>Continuar navegando</button>
+          <button type="button" class="btn-primary" data-orcamento-falar-atendente>Falar com atendente</button>
+        </div>
+      </div>
+
+      <!-- estado 3: descrever a necessidade -->
+      <div class="orcamento-descrever" data-orcamento-descrever hidden>
+        <button type="button" class="modal__back" data-orcamento-voltar aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <label for="orcamento-texto">Conte rapidamente quais produtos você procura</label>
+        <textarea id="orcamento-texto" rows="5" maxlength="600" placeholder="Ex.: Preciso de materiais escolares para uma turma de 40 alunos."></textarea>
+        <button type="button" class="btn-whatsapp-lg" data-orcamento-enviar-descricao>
+          <span data-icon="whatsapp"></span>Enviar para WhatsApp
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <!-- MODAL LOGIN -->
 <div class="modal" id="modal-login">
