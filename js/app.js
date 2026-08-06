@@ -250,6 +250,12 @@ function configurarLinksEstaticos() {
     a.href = `https://wa.me/${numero}?text=${mensagem}`;
   });
 
+  const linkOrcamento = document.querySelector("#empresa-orcamento-link");
+  if (linkOrcamento) {
+    const mensagemEmpresa = encodeURIComponent(`Olá! Sou empresa e gostaria de solicitar um orçamento com condições especiais na ${STORE_CONFIG.nome}.`);
+    linkOrcamento.href = `https://wa.me/${numero}?text=${mensagemEmpresa}`;
+  }
+
   const marcasEl = document.querySelector("#marcas-parceiras");
   if (marcasEl) {
     escutarMarcas((marcas) => {
