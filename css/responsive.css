@@ -38,6 +38,8 @@
   .modal--sheet { padding-bottom: 0; }
   body:has(.bottom-nav) { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
   .bottom-nav { display: flex; }
+  .related-products__track .product-card { flex: 0 0 calc((100% - 1rem) / 2); }
+  .related-products__head h2 { font-size: 1.1rem; }
 }
 
 @media (max-width: 480px) {
