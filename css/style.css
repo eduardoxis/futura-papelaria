@@ -430,13 +430,15 @@ button {
 .whatsapp-cta__content li .icon { width: 18px; height: 18px; color: #15803d; flex-shrink: 0; }
 
 /* ===== BRANDS ===== */
-.brands__row { display: flex; flex-wrap: wrap; gap: 0.85rem; }
-.brands__badge {
-  padding: 0.75rem 1.4rem; border-radius: var(--raio-sm);
-  background: var(--branco); border: 1px solid var(--cinza-100);
-  font-family: var(--fonte-display); font-weight: 700; color: var(--cinza-700);
-  letter-spacing: -0.01em;
+.brands__row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.85rem;
 }
+.brands__badge {
+  height: 96px; border-radius: var(--raio-sm);
+  background: var(--branco); border: 1px solid var(--cinza-100);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.brands__badge img { max-width: 100%; max-height: 44px; width: auto; height: auto; object-fit: contain; }
 
 /* ===== TESTIMONIALS ===== */
 .testimonials__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; }
