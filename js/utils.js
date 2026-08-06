@@ -86,7 +86,7 @@ export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
  * @param {number} quality 0..1
  * @returns {Promise<string>} data URL base64
  */
-export function compressImageToBase64(file, maxWidth = 800, quality = 0.7) {
+export function compressImageToBase64(file, maxWidth = 800, quality = 0.7, format = "jpeg") {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -98,7 +98,8 @@ export function compressImageToBase64(file, maxWidth = 800, quality = 0.7) {
         canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        const mime = format === "png" ? "image/png" : "image/jpeg";
+        resolve(canvas.toDataURL(mime, quality));
       };
       img.onerror = reject;
       img.src = e.target.result;
