@@ -252,19 +252,16 @@ function configurarLinksEstaticos() {
 
   const marcas = document.querySelector("#marcas-parceiras");
   if (marcas) {
-    const listaMarcas = [
-      { nome: "Tilibra", dominio: "tilibra.com.br" },
-      { nome: "Faber-Castell", dominio: "faber-castell.com.br" },
-      { nome: "Bic", dominio: "bic.com" },
-      { nome: "Compactor", dominio: "compactor.com.br" },
-      { nome: "Pilot", dominio: "pilot.com.br" },
-      { nome: "Cis", dominio: "cis.com.br" },
-      { nome: "Acrilex", dominio: "acrilex.com.br" },
-      { nome: "Tris", dominio: "tris.com.br" },
-    ];
-    marcas.innerHTML = listaMarcas
-      .map(m => `<span class="brands__badge"><img src="https://logo.clearbit.com/${m.dominio}" alt="${m.nome}" loading="lazy"></span>`)
-      .join("");
+    marcas.innerHTML = `
+      <span class="brands__badge"><span class="brand-logo brand-logo--tilibra">tilibra</span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--faber">Faber-Castell<small>since 1761</small></span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--bic">BiC</span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--compactor">COMPACTOR</span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--pilot">PILOT</span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--cis">CiS</span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--acrilex">ACRILEX</span></span>
+      <span class="brands__badge"><span class="brand-logo brand-logo--tris">TRIS</span></span>
+    `;
   }
 
   const depoimentos = document.querySelector("#depoimentos");
