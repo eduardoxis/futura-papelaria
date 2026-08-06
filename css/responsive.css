@@ -31,7 +31,7 @@
 
   .cart-drawer { width: 100vw; }
   .modal--sheet { padding-bottom: 0; }
-  body { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  body:has(.bottom-nav) { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
   .bottom-nav { display: flex; }
 }
 
