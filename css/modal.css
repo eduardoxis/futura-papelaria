@@ -185,7 +185,12 @@
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 560px; }
 .admin-table th { text-align: left; background: var(--cinza-050); padding: 0.7rem 0.9rem; color: var(--cinza-500); font-weight: 600; }
 .admin-table td { padding: 0.6rem 0.9rem; border-top: 1px solid var(--cinza-100); vertical-align: middle; }
-.admin-table .thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: var(--cinza-100); }
+.admin-table .thumb, .thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: var(--cinza-100); }
+
+.chip-list--marcas li { padding: 0.3rem 0.6rem 0.3rem 0.4rem; border-radius: var(--raio-sm); gap: 0.55rem; }
+.chip-list--marcas .thumb { object-fit: contain; padding: 2px; }
+.chip-list--marcas button[data-action="editar"] { background: transparent; color: var(--cinza-700); }
+.chip-list--marcas button[data-action="editar"]:hover { background: var(--cinza-100); }
 .row-actions { display: flex; gap: 0.35rem; }
 .row-actions button {
   width: 30px; height: 30px; display: grid; place-items: center;
