@@ -365,7 +365,7 @@ async function abrirFormularioMarca(container, marca = null) {
 
     const arquivoLogo = form.logo.files[0];
     if (arquivoLogo) {
-      dados.logo = await compressImageToBase64(arquivoLogo, 400, 0.8);
+      dados.logo = await compressImageToBase64(arquivoLogo, 500, 0.9, "png");
     } else if (logoRemovida) {
       dados.logo = "";
     } else if (marca?.logo) {
