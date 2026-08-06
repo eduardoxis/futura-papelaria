@@ -14,6 +14,7 @@ import { formatBRL, escHtml, toast, podeExecutar } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, redefinirSenha } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
+import { iniciarOrcamento } from "./orcamento.js";
 import { ICONS, icon } from "./icons.js";
 import { STORE_CONFIG } from "../firebase/firebase-config.js";
 
@@ -118,6 +119,7 @@ async function iniciar() {
 
   configurarLinksEstaticos();
   configurarEventosCategorias();
+  iniciarOrcamento();
 
   document.querySelector("#btn-sair-conta")?.addEventListener("click", () => {
     sair();
@@ -249,12 +251,6 @@ function configurarLinksEstaticos() {
   document.querySelectorAll("#hero-whatsapp, #whatsapp-cta-link").forEach(a => {
     a.href = `https://wa.me/${numero}?text=${mensagem}`;
   });
-
-  const linkOrcamento = document.querySelector("#empresa-orcamento-link");
-  if (linkOrcamento) {
-    const mensagemEmpresa = encodeURIComponent(`Olá! Sou empresa e gostaria de solicitar um orçamento com condições especiais na ${STORE_CONFIG.nome}.`);
-    linkOrcamento.href = `https://wa.me/${numero}?text=${mensagemEmpresa}`;
-  }
 
   const marcasEl = document.querySelector("#marcas-parceiras");
   if (marcasEl) {
