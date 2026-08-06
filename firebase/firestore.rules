@@ -39,6 +39,21 @@ service cloud.firestore {
       allow write: if ehAdmin();
     }
 
+    // ---------- PEDIDOS ----------
+    // Cliente cria e lê apenas os próprios pedidos; admin lê/edita tudo.
+    match /pedidos/{id} {
+      allow create: if autenticado() && request.resource.data.usuarioId == request.auth.uid;
+      allow read: if autenticado() && (resource.data.usuarioId == request.auth.uid || ehAdmin());
+      allow update, delete: if ehAdmin();
+    }
+
+    // ---------- ENDEREÇOS ----------
+    match /enderecos/{id} {
+      allow create: if autenticado() && request.resource.data.usuarioId == request.auth.uid;
+      allow read, delete: if autenticado() && (resource.data.usuarioId == request.auth.uid || ehAdmin());
+      allow update: if ehAdmin();
+    }
+
     // ---------- HISTÓRICO DE ESTOQUE ----------
     match /historicoEstoque/{id} {
       allow read, write: if ehAdmin();
