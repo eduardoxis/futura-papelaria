@@ -109,6 +109,21 @@ export async function excluirMarca(id) {
   return deleteDoc(doc(db, "marcas", id));
 }
 
+// ---------- CLIENTES ----------
+export async function listarClientes() {
+  const snap = await getDocs(collection(db, "clientes"));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export async function criarCliente(dados) {
+  return addDoc(collection(db, "clientes"), { ...dados, criadoEm: serverTimestamp() });
+}
+export async function atualizarCliente(id, dados) {
+  return updateDoc(doc(db, "clientes", id), dados);
+}
+export async function excluirCliente(id) {
+  return deleteDoc(doc(db, "clientes", id));
+}
+
 // ---------- ETIQUETAS ----------
 export async function listarEtiquetas() {
   const snap = await getDocs(collection(db, "etiquetas"));
