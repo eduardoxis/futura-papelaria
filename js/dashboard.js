@@ -4,6 +4,7 @@ import {
   listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
   listarMarcas, criarMarca, atualizarMarca, excluirMarca,
+  listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
 import { formatBRL, escHtml, generateCode, compressImageToBase64, toast } from "./utils.js";
@@ -23,6 +24,7 @@ export async function iniciarPainelAdmin(root) {
   await carregarAbaEstoque(root.querySelector("#painel-estoque"));
   await carregarPainelLeads(root.querySelector("#painel-leads"));
   await carregarAbaUsuarios(root.querySelector("#painel-usuarios"));
+  await carregarAbaClientes(root.querySelector("#painel-clientes"));
 }
 
 // ---------- DASHBOARD ----------
@@ -381,6 +383,173 @@ async function abrirFormularioMarca(container, marca = null) {
     }
     dialog.close();
     carregarAbaMarcas(container);
+  });
+}
+
+// ---------- CLIENTES ----------
+let cacheClientes = [];
+
+async function carregarAbaClientes(container) {
+  if (!container) return;
+  cacheClientes = await listarClientes();
+
+  container.innerHTML = `
+    <div class="admin-panel-head">
+      <h1>Clientes</h1>
+      <p>Cadastre clientes Pessoa Física e Empresas (PJ).</p>
+    </div>
+    <div class="admin-toolbar">
+      <div class="input-icon">
+        ${icon("search")}
+        <input type="text" id="busca-admin-clientes" placeholder="Pesquisar clientes..." autocomplete="off">
+      </div>
+      <button class="btn-primary" id="btn-novo-cliente">${icon("plus")}Novo cliente</button>
+    </div>
+    <div class="table-wrap"><table class="admin-table" id="tabela-clientes">
+      <thead><tr><th></th><th>Nome</th><th>Tipo</th><th>Telefone</th><th>WhatsApp</th><th>Ações</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="table-count" id="contagem-clientes"></p>
+    <dialog id="dialog-cliente" class="dialog-form"></dialog>`;
+
+  renderizarTabelaClientes(container, cacheClientes);
+
+  container.querySelector("#busca-admin-clientes").addEventListener("input", (e) => {
+    const termo = e.target.value.toLowerCase();
+    const filtrados = cacheClientes.filter(c => nomeCliente(c).toLowerCase().includes(termo));
+    renderizarTabelaClientes(container, filtrados);
+  });
+
+  container.querySelector("#btn-novo-cliente").addEventListener("click", () => abrirFormularioCliente(container));
+}
+
+function nomeCliente(c) {
+  return c.tipo === "pj" ? (c.nomeFantasia || c.razaoSocial || "") : (c.nome || "");
+}
+
+function renderizarTabelaClientes(container, clientes) {
+  const tbody = container.querySelector("#tabela-clientes tbody");
+  const contagem = container.querySelector("#contagem-clientes");
+  if (contagem) contagem.textContent = `Mostrando ${clientes.length} de ${cacheClientes.length} clientes`;
+
+  tbody.innerHTML = clientes.map(c => `
+    <tr data-id="${c.id}">
+      <td>${icon(c.tipo === "pj" ? "briefcase" : "user")}</td>
+      <td>${escHtml(nomeCliente(c))}</td>
+      <td><span class="status-pill">${c.tipo === "pj" ? "Empresa" : "Pessoa física"}</span></td>
+      <td>${escHtml(c.telefone || "-")}</td>
+      <td>${escHtml(c.whatsapp || "-")}</td>
+      <td class="row-actions">
+        <button data-action="editar" title="Editar">${icon("pencil")}</button>
+        <button data-action="excluir" title="Excluir">${icon("trash")}</button>
+      </td>
+    </tr>`).join("") || `<tr><td colspan="6">
+      <div class="empty-state">
+        ${icon("gridEmpty", "empty-state__icon")}
+        <strong>Nenhum cliente cadastrado</strong>
+        <p>Comece adicionando seu primeiro cliente.</p>
+        <button type="button" class="btn-secondary" id="btn-primeiro-cliente">${icon("plus")}Adicionar primeiro cliente</button>
+      </div>
+    </td></tr>`;
+
+  tbody.querySelector("#btn-primeiro-cliente")?.addEventListener("click", () => abrirFormularioCliente(container));
+
+  tbody.querySelectorAll("tr").forEach(tr => {
+    const id = tr.dataset.id;
+    const cliente = clientes.find(c => c.id === id);
+    tr.querySelector('[data-action="editar"]')?.addEventListener("click", () => abrirFormularioCliente(container, cliente));
+    tr.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
+      if (confirm(`Excluir "${nomeCliente(cliente)}"?`)) {
+        await excluirCliente(id);
+        toast("Cliente excluído.");
+        carregarAbaClientes(container);
+      }
+    });
+  });
+}
+
+function camposPF(c) {
+  return `
+    <div class="form-grid">
+      <label>Nome completo *<input name="nome" required autocomplete="off" value="${escHtml(c?.nome || "")}"></label>
+      <label>Telefone *<input name="telefone" required autocomplete="off" value="${escHtml(c?.telefone || "")}"></label>
+      <label>WhatsApp *<input name="whatsapp" required autocomplete="off" value="${escHtml(c?.whatsapp || "")}"></label>
+      <label>CPF<input name="cpf" autocomplete="off" value="${escHtml(c?.cpf || "")}"></label>
+      <label>RG<input name="rg" autocomplete="off" value="${escHtml(c?.rg || "")}"></label>
+      <label>Data de nascimento<input name="nascimento" type="date" value="${escHtml(c?.nascimento || "")}"></label>
+      <label>E-mail<input name="email" type="email" autocomplete="off" value="${escHtml(c?.email || "")}"></label>
+      <label>Endereço completo<input name="endereco" autocomplete="off" value="${escHtml(c?.endereco || "")}"></label>
+    </div>
+    <label>Observações<textarea name="observacoes" rows="3">${escHtml(c?.observacoes || "")}</textarea></label>`;
+}
+
+function camposPJ(c) {
+  return `
+    <div class="form-grid">
+      <label>Razão social *<input name="razaoSocial" required autocomplete="off" value="${escHtml(c?.razaoSocial || "")}"></label>
+      <label>Nome fantasia *<input name="nomeFantasia" required autocomplete="off" value="${escHtml(c?.nomeFantasia || "")}"></label>
+      <label>CNPJ *<input name="cnpj" required autocomplete="off" value="${escHtml(c?.cnpj || "")}"></label>
+      <label>Responsável pela empresa *<input name="responsavel" required autocomplete="off" value="${escHtml(c?.responsavel || "")}"></label>
+      <label>Telefone *<input name="telefone" required autocomplete="off" value="${escHtml(c?.telefone || "")}"></label>
+      <label>WhatsApp *<input name="whatsapp" required autocomplete="off" value="${escHtml(c?.whatsapp || "")}"></label>
+      <label>E-mail *<input name="email" type="email" required autocomplete="off" value="${escHtml(c?.email || "")}"></label>
+      <label>Endereço completo *<input name="endereco" required autocomplete="off" value="${escHtml(c?.endereco || "")}"></label>
+      <label>Inscrição estadual<input name="inscricaoEstadual" autocomplete="off" value="${escHtml(c?.inscricaoEstadual || "")}"></label>
+    </div>`;
+}
+
+async function abrirFormularioCliente(container, cliente = null) {
+  const dialog = container.querySelector("#dialog-cliente");
+  const tipoInicial = cliente?.tipo || "pf";
+
+  dialog.innerHTML = `
+    <form id="form-cliente" class="product-form">
+      <h3>${cliente ? "Editar cliente" : "Novo cliente"}</h3>
+      <label>Tipo de cliente *
+        <select name="tipo" id="select-tipo-cliente" ${cliente ? "disabled" : ""}>
+          <option value="pf" ${tipoInicial === "pf" ? "selected" : ""}>Pessoa Física (PF)</option>
+          <option value="pj" ${tipoInicial === "pj" ? "selected" : ""}>Empresa (PJ)</option>
+        </select>
+      </label>
+      <div id="campos-tipo-cliente">${tipoInicial === "pj" ? camposPJ(cliente) : camposPF(cliente)}</div>
+      <div class="form-actions">
+        <button type="button" data-modal-close-dialog>Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar</button>
+      </div>
+    </form>`;
+
+  dialog.showModal();
+  dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
+
+  if (!cliente) {
+    dialog.querySelector("#select-tipo-cliente").addEventListener("change", (e) => {
+      dialog.querySelector("#campos-tipo-cliente").innerHTML = e.target.value === "pj" ? camposPJ() : camposPF();
+    });
+  }
+
+  dialog.querySelector("#form-cliente").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const tipo = form.tipo.value;
+    const dados = { tipo };
+
+    const campos = tipo === "pj"
+      ? ["razaoSocial", "nomeFantasia", "cnpj", "responsavel", "telefone", "whatsapp", "email", "endereco", "inscricaoEstadual"]
+      : ["nome", "telefone", "whatsapp", "cpf", "rg", "nascimento", "email", "endereco", "observacoes"];
+
+    campos.forEach(campo => {
+      if (form[campo]) dados[campo] = form[campo].value.trim();
+    });
+
+    if (cliente) {
+      await atualizarCliente(cliente.id, dados);
+      toast("Cliente atualizado.");
+    } else {
+      await criarCliente(dados);
+      toast("Cliente cadastrado.");
+    }
+    dialog.close();
+    carregarAbaClientes(container);
   });
 }
 
