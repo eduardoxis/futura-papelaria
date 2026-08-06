@@ -79,8 +79,8 @@ export function escutarCategorias(callback) {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   });
 }
-export async function criarCategoria(nome, emoji = "") {
-  return addDoc(collection(db, "categorias"), { nome, emoji });
+export async function criarCategoria(nome, emoji = "", imagem = "") {
+  return addDoc(collection(db, "categorias"), { nome, emoji, imagem });
 }
 export async function atualizarCategoria(id, dados) {
   return updateDoc(doc(db, "categorias", id), dados);
