@@ -1,6 +1,6 @@
 // js/app.js
 import {
-  listarEtiquetas, escutarProdutos, escutarCategorias,
+  listarEtiquetas, escutarProdutos, escutarCategorias, escutarMarcas,
   criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
   atualizarPerfilUsuario, obterPerfilUsuario
 } from "./firestore.js";
@@ -250,18 +250,14 @@ function configurarLinksEstaticos() {
     a.href = `https://wa.me/${numero}?text=${mensagem}`;
   });
 
-  const marcas = document.querySelector("#marcas-parceiras");
-  if (marcas) {
-    marcas.innerHTML = `
-      <span class="brands__badge"><span class="brand-logo brand-logo--tilibra">tilibra</span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--faber">Faber-Castell<small>since 1761</small></span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--bic">BiC</span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--compactor">COMPACTOR</span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--pilot">PILOT</span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--cis">CiS</span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--acrilex">ACRILEX</span></span>
-      <span class="brands__badge"><span class="brand-logo brand-logo--tris">TRIS</span></span>
-    `;
+  const marcasEl = document.querySelector("#marcas-parceiras");
+  if (marcasEl) {
+    escutarMarcas((marcas) => {
+      const lista = [...marcas].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      marcasEl.innerHTML = lista
+        .map(m => `<span class="brands__badge"><img src="${m.logo || "/assets/images/placeholder.svg"}" alt="${escHtml(m.nome)}" loading="lazy"></span>`)
+        .join("") || "";
+    });
   }
 
   const depoimentos = document.querySelector("#depoimentos");
