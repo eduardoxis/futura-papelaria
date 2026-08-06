@@ -306,6 +306,7 @@ button {
 }
 .category-card__icon .icon { width: 24px; height: 24px; }
 .category-card__icon svg { width: 28px; height: 28px; display: block; }
+.category-card__img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 
 /* ===== PRODUCT GRID / CARD ===== */
 .products-grid {
@@ -362,6 +363,12 @@ button {
 .btn-whatsapp { background: #25d366; color: #fff; }
 
 .empty-state { padding: 3rem 1rem; text-align: center; color: var(--cinza-500); grid-column: 1 / -1; }
+
+/* ===== ACESSIBILIDADE ===== */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 
 /* ===== BREADCRUMB ===== */
 .breadcrumb {
