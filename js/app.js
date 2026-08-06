@@ -252,8 +252,19 @@ function configurarLinksEstaticos() {
 
   const marcas = document.querySelector("#marcas-parceiras");
   if (marcas) {
-    marcas.innerHTML = ["Tilibra", "Faber-Castell", "Bic", "Compactor", "Pilot", "Cis", "Acrilex", "Tris"]
-      .map(nome => `<span class="brands__badge">${nome}</span>`).join("");
+    const listaMarcas = [
+      { nome: "Tilibra", dominio: "tilibra.com.br" },
+      { nome: "Faber-Castell", dominio: "faber-castell.com.br" },
+      { nome: "Bic", dominio: "bic.com" },
+      { nome: "Compactor", dominio: "compactor.com.br" },
+      { nome: "Pilot", dominio: "pilot.com.br" },
+      { nome: "Cis", dominio: "cis.com.br" },
+      { nome: "Acrilex", dominio: "acrilex.com.br" },
+      { nome: "Tris", dominio: "tris.com.br" },
+    ];
+    marcas.innerHTML = listaMarcas
+      .map(m => `<span class="brands__badge"><img src="https://logo.clearbit.com/${m.dominio}" alt="${m.nome}" loading="lazy"></span>`)
+      .join("");
   }
 
   const depoimentos = document.querySelector("#depoimentos");
