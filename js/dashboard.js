@@ -314,11 +314,11 @@ async function carregarAbaMarcas(container) {
 
   container.querySelector("#btn-nova-marca").addEventListener("click", () => abrirFormularioMarca(container));
 
-  container.querySelectorAll(".chip-list--marcas li").forEach(li => {
+  container.querySelectorAll(".chip-list--marcas li[data-id]").forEach(li => {
     const id = li.dataset.id;
     const marca = cacheMarcas.find(m => m.id === id);
-    li.querySelector('[data-action="editar"]').addEventListener("click", () => abrirFormularioMarca(container, marca));
-    li.querySelector('[data-action="excluir"]').addEventListener("click", async () => {
+    li.querySelector('[data-action="editar"]')?.addEventListener("click", () => abrirFormularioMarca(container, marca));
+    li.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
       if (confirm(`Remover a marca "${marca.nome}"?`)) {
         await excluirMarca(id);
         toast("Marca removida.");
@@ -337,7 +337,11 @@ async function abrirFormularioMarca(container, marca = null) {
         <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(marca?.nome || "")}"></label>
         <label>Logo (imagem)<input name="logo" type="file" accept="image/*"></label>
       </div>
-      ${marca?.logo ? `<img class="thumb" src="${marca.logo}" alt="" style="margin-top:0.5rem">` : ""}
+      ${marca?.logo ? `
+        <div class="logo-atual" id="logo-atual-wrap">
+          <img class="thumb" src="${marca.logo}" alt="">
+          <button type="button" id="btn-remover-logo" class="btn-remover-logo" title="Apagar imagem">${icon("close")} Apagar imagem</button>
+        </div>` : ""}
       <div class="form-actions">
         <button type="button" data-modal-close-dialog>Cancelar</button>
         <button type="submit" class="btn-primary">Salvar</button>
@@ -347,6 +351,13 @@ async function abrirFormularioMarca(container, marca = null) {
   dialog.showModal();
   dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
 
+  let logoRemovida = false;
+  dialog.querySelector("#btn-remover-logo")?.addEventListener("click", () => {
+    logoRemovida = true;
+    dialog.querySelector("#logo-atual-wrap").remove();
+    toast("Imagem removida. Salve para confirmar.");
+  });
+
   dialog.querySelector("#form-marca").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -355,6 +366,8 @@ async function abrirFormularioMarca(container, marca = null) {
     const arquivoLogo = form.logo.files[0];
     if (arquivoLogo) {
       dados.logo = await compressImageToBase64(arquivoLogo, 400, 0.8);
+    } else if (logoRemovida) {
+      dados.logo = "";
     } else if (marca?.logo) {
       dados.logo = marca.logo;
     }
