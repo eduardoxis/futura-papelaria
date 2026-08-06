@@ -191,6 +191,15 @@
 .chip-list--marcas .thumb { object-fit: contain; padding: 2px; }
 .chip-list--marcas button[data-action="editar"] { background: transparent; color: var(--cinza-700); }
 .chip-list--marcas button[data-action="editar"]:hover { background: var(--cinza-100); }
+
+.logo-atual { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
+.btn-remover-logo {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: transparent; border: 1px solid #fecaca; color: #b42318;
+  border-radius: var(--raio-sm); padding: 0.35rem 0.7rem; font-size: 0.85rem;
+}
+.btn-remover-logo:hover { background: #fee2e2; }
+.btn-remover-logo .icon { width: 12px; height: 12px; }
 .row-actions { display: flex; gap: 0.35rem; }
 .row-actions button {
   width: 30px; height: 30px; display: grid; place-items: center;
