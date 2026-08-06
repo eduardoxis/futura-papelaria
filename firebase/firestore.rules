@@ -38,6 +38,9 @@ service cloud.firestore {
       allow read: if true;
       allow write: if ehAdmin();
     }
+    match /clientes/{id} {
+      allow read, write: if ehAdmin();
+    }
 
     // ---------- PEDIDOS ----------
     // Cliente cria e lê apenas os próprios pedidos; admin lê/edita tudo.
