@@ -111,6 +111,7 @@ async function iniciar() {
 
   escutarProdutos((produtos) => {
     TODOS_PRODUTOS = produtos;
+    renderizarGrade(document.querySelector("#grade-produtos"), TODOS_PRODUTOS);
     aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
     renderizarDestaques();
     renderizarRecentes();
@@ -165,7 +166,7 @@ async function iniciar() {
   document.querySelector(".search-bar")?.addEventListener("submit", (e) => {
     e.preventDefault();
     aplicarBuscaEFiltros(inputBusca?.value || "");
-    document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
+    document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
   });
 
   configurarCarrinhoUI();
@@ -188,9 +189,27 @@ async function iniciar() {
 }
 
 function aplicarBuscaEFiltros(termo = "") {
-  let lista = buscarProdutos(TODOS_PRODUTOS, termo);
+  const termoLimpo = termo.trim();
+  const secao = document.querySelector("#resultados-busca");
+  const temFiltro = !!termoLimpo || !!filtrosAtivos.categoria;
+
+  if (!temFiltro) {
+    if (secao) secao.hidden = true;
+    return;
+  }
+
+  let lista = buscarProdutos(TODOS_PRODUTOS, termoLimpo);
   lista = aplicarFiltros(lista, filtrosAtivos);
-  renderizarGrade(document.querySelector("#grade-produtos"), lista);
+  renderizarGrade(document.querySelector("#grade-resultados"), lista);
+
+  const titulo = document.querySelector("#resultados-busca-titulo");
+  if (titulo) {
+    const partes = [];
+    if (termoLimpo) partes.push(`"${termoLimpo}"`);
+    if (filtrosAtivos.categoria) partes.push(filtrosAtivos.categoria);
+    titulo.textContent = `Resultados para ${partes.join(" em ")} (${lista.length})`;
+  }
+  if (secao) secao.hidden = false;
 }
 
 function renderizarDestaques() {
@@ -238,7 +257,7 @@ function configurarEventosCategorias() {
   document.querySelector("#filtro-categoria")?.addEventListener("change", (e) => {
     filtrosAtivos.categoria = e.target.value || undefined;
     aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
-    document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
+    document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
   });
   document.querySelector("#header-nav-links")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-categoria-nome]");
@@ -248,6 +267,14 @@ function configurarEventosCategorias() {
     const btn = e.target.closest("[data-categoria-nome]");
     if (btn) selecionarCategoria(btn.dataset.categoriaNome);
   });
+  document.querySelector("#limpar-resultados")?.addEventListener("click", () => {
+    filtrosAtivos.categoria = undefined;
+    const seletor = document.querySelector("#filtro-categoria");
+    if (seletor) seletor.value = "";
+    const inputBusca = document.querySelector("#busca-header");
+    if (inputBusca) inputBusca.value = "";
+    aplicarBuscaEFiltros("");
+  });
 }
 
 function selecionarCategoria(nome) {
@@ -255,7 +282,7 @@ function selecionarCategoria(nome) {
   if (seletor) seletor.value = nome;
   filtrosAtivos.categoria = nome || undefined;
   aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
-  document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" });
+  document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
 }
 
 function configurarLinksEstaticos() {
