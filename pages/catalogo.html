@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/modal.css">
-<link rel="stylesheet" href="/css/responsive.css">
 <style>
   /* Estilos exclusivos da página de catálogo/busca. */
   .search-page__layout {
@@ -89,7 +88,14 @@
 
   .active-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
   .active-chips .chip-list li { margin: 0; }
+
+  /* Botão "Filtrar" só aparece no mobile (ver responsive.css) */
+  .search-page__btn-filtros {
+    display: none; width: 100%; align-items: center; justify-content: center; gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
 </style>
+<link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
 
@@ -151,7 +157,11 @@
   </div>
 
   <div class="search-page__layout">
-    <aside class="search-page__filters">
+    <button type="button" class="btn-secondary search-page__btn-filtros" id="btn-toggle-filtros" aria-expanded="false" aria-controls="painel-filtros">
+      <span data-icon="sort"></span> Filtrar produtos
+    </button>
+
+    <aside class="search-page__filters" id="painel-filtros">
       <div class="search-page__filters-head">
         <h2>Filtrar produtos</h2>
         <span data-icon="sort" class="icon"></span>
@@ -262,6 +272,7 @@ import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
 } from "../js/cart.js";
+import { ouvirEstadoAuth, usuarioAtual } from "../js/auth.js";
 import { ICONS } from "../js/icons.js";
 
 const MARCAS_VISIVEIS_INICIAL = 6;
@@ -300,6 +311,14 @@ document.querySelector("#busca-header").value = estado.termo;
 
 document.querySelectorAll("[data-toggle-grupo]").forEach(legend => {
   legend.addEventListener("click", () => legend.closest(".filter-group").classList.toggle("is-collapsed"));
+});
+
+const btnToggleFiltros = document.querySelector("#btn-toggle-filtros");
+const painelFiltros = document.querySelector("#painel-filtros");
+btnToggleFiltros?.addEventListener("click", () => {
+  const abrindo = !painelFiltros.classList.contains("is-aberto");
+  painelFiltros.classList.toggle("is-aberto", abrindo);
+  btnToggleFiltros.setAttribute("aria-expanded", String(abrindo));
 });
 
 document.querySelector("#form-busca-catalogo").addEventListener("submit", (e) => {
@@ -544,13 +563,24 @@ function configurarCarrinhoUI() {
       toast("Muitos pedidos em pouco tempo. Aguarde um instante.", "error");
       return;
     }
-    const nome = document.querySelector("#nome-cliente")?.value?.trim();
-    finalizarPedidoWhatsApp(nome);
+    const nomeDigitado = document.querySelector("#nome-cliente")?.value?.trim();
+    const nomeParaPedido = usuarioAtual ? (nomeDigitado || usuarioAtual.displayName || "") : nomeDigitado;
+    finalizarPedidoWhatsApp(nomeParaPedido);
     fechar();
   });
 }
 
+/** Some com o campo "Seu nome" quando o cliente já está logado e preenche
+ * o nome dele automaticamente na mensagem — sem precisar digitar de novo. */
+function configurarNomeConvidado() {
+  ouvirEstadoAuth((usuario) => {
+    const campoNome = document.querySelector("#campo-nome-convidado");
+    if (campoNome) campoNome.hidden = !!usuario;
+  });
+}
+
 async function iniciar() {
+  configurarNomeConvidado();
   CATEGORIAS = await listarCategorias();
   MARCAS = await listarMarcas();
 
