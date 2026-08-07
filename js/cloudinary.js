@@ -23,8 +23,9 @@ export async function enviarImagemParaCloudinary(blob, nomeArquivo = "produto") 
     throw new Error("Configure o Cloudinary em js/cloudinary.js antes de enviar imagens.");
   }
 
+  const extensao = blob.type === "image/png" ? "png" : "webp";
   const form = new FormData();
-  form.append("file", blob, `${nomeArquivo}.webp`);
+  form.append("file", blob, `${nomeArquivo}.${extensao}`);
   form.append("upload_preset", CLOUDINARY_CONFIG.uploadPreset);
   form.append("folder", CLOUDINARY_CONFIG.pasta);
 
@@ -77,8 +78,11 @@ export async function migrarImagensAntigas(onProgresso) {
   for (const alvo of alvos) {
     try {
       const blobOriginal = await (await fetch(alvo.valor)).blob();
-      const webp = await converterBlobParaWebP(blobOriginal);
-      const url = await enviarImagemParaCloudinary(webp, alvo.nome || alvo.tipo);
+      const usarPNG = alvo.tipo === "categoria" || alvo.tipo === "marca";
+      const convertido = usarPNG
+        ? await converterBlobParaFormato(blobOriginal, "image/png", 500, 1)
+        : await converterBlobParaFormato(blobOriginal, "image/webp", 800, 0.8);
+      const url = await enviarImagemParaCloudinary(convertido, alvo.nome || alvo.tipo);
       await alvo.atualizar(alvo.id, { [alvo.campo]: url });
     } catch (erro) {
       erros++;
@@ -90,7 +94,7 @@ export async function migrarImagensAntigas(onProgresso) {
   return { total: alvos.length, erros };
 }
 
-function converterBlobParaWebP(blob, maxWidth = 800, qualidade = 0.8) {
+function converterBlobParaFormato(blob, mime, maxWidth, qualidade) {
   return new Promise((resolve, reject) => {
     createImageBitmap(blob).then((bitmap) => {
       const scale = Math.min(1, maxWidth / bitmap.width);
@@ -98,7 +102,7 @@ function converterBlobParaWebP(blob, maxWidth = 800, qualidade = 0.8) {
       canvas.width = Math.round(bitmap.width * scale);
       canvas.height = Math.round(bitmap.height * scale);
       canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao converter para WebP"))), "image/webp", qualidade);
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(`Falha ao converter para ${mime}`))), mime, qualidade);
     }).catch(reject);
   });
 }
