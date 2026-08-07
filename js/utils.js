@@ -148,6 +148,8 @@ export function confirmarAcao(mensagem, { titulo = "Confirmar ação", textoConf
     dialog.addEventListener("cancel", () => finalizar(false));
   });
 }
+
+export function compressImageToBase64(file, maxWidth = 800, quality = 0.7, format = "jpeg") {
   // Mantida apenas para compatibilidade com dados antigos que ainda tenham
   // imagens em base64 no Firestore (ver migrarImagensAntigas em cloudinary.js).
   // Novos uploads NÃO devem usar esta função — usar converterParaWebP().
