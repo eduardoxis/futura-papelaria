@@ -471,7 +471,7 @@ function configurarModalAuth() {
       return;
     }
     try {
-      await entrar(form.email.value, form.senha.value);
+      await entrar(form.email.value, form.senha.value, form.manterLogin.checked);
       fecharModal(modal);
       form.reset();
     } catch {
