@@ -77,9 +77,9 @@ export function atualizarBadgeCarrinho() {
 export function montarMensagemWhatsApp(nomeCliente = "") {
   const carrinho = obterCarrinho();
   const { total } = calcularTotais();
-  let msg = "Olá! 👋\nTenho interesse nestes produtos:\n\n";
+  let msg = "Olá!\nTenho interesse nestes produtos:\n\n";
   carrinho.forEach(item => {
-    msg += `📦 ${item.nome}\nQuantidade: ${item.quantidade}\nValor: ${formatBRL(item.preco * item.quantidade)}\n\n`;
+    msg += `${item.nome}\nQuantidade: ${item.quantidade}\nValor: ${formatBRL(item.preco * item.quantidade)}\n\n`;
   });
   msg += `------------------\nTotal: ${formatBRL(total)}\n\n`;
   msg += `Meu nome é: ${nomeCliente || "____________"}\n\n`;
@@ -102,7 +102,7 @@ export function finalizarPedidoWhatsApp(nomeCliente = "") {
  */
 export function falarSobreProduto(produto) {
   const marcaStr = produto.marca ? ` [${produto.marca}]` : "";
-  const link = produto.id ? `\n🔗 Link do produto: ${window.location.origin}/pages/produto.html?id=${produto.id}` : "";
+  const link = produto.id ? `\nLink do produto: ${window.location.origin}/pages/produto.html?id=${produto.id}` : "";
   const mensagem = `Olá!\nTenho interesse neste produto:\n*${produto.nome}*${marcaStr}${link}\n\nPoderia me passar mais informações?`;
   const url = `https://wa.me/${STORE_CONFIG.whatsapp}?text=${encodeURIComponent(mensagem)}`;
   window.open(url, "_blank");
