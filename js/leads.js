@@ -43,7 +43,7 @@ export async function carregarPainelLeads(container) {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
       const tel = btn.dataset.tel || STORE_CONFIG.whatsapp;
-      window.open(`https://wa.me/${tel}?text=${encodeURIComponent("Olá! Vi que você demonstrou interesse em alguns produtos. Posso te ajudar a finalizar o pedido? 😊")}`, "_blank");
+      window.open(`https://wa.me/${tel}?text=${encodeURIComponent("Olá! Vi que você demonstrou interesse em alguns produtos. Posso te ajudar a finalizar o pedido?")}`, "_blank");
       await marcarLeadRecuperado(id);
       carregarPainelLeads(container);
     });
