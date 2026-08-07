@@ -7,13 +7,29 @@ import {
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
-import { formatBRL, escHtml, generateCode, compressImageToBase64, toast } from "./utils.js";
+import { formatBRL, escHtml, generateCode, converterParaWebP, toast } from "./utils.js";
+import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
 import { carregarPainelLeads } from "./leads.js";
 import { ICONS, icon } from "./icons.js";
 
 let cacheProdutos = [];
 let cacheCategorias = [];
 let cacheEtiquetas = [];
+
+/**
+ * Converte o arquivo selecionado para WebP (máx. 800px, qualidade 80%) e
+ * envia para o Cloudinary. Retorna a URL pública ou null se falhar — nunca
+ * salvamos base64 no Firestore nem usamos Firebase Storage.
+ */
+async function enviarImagem(file, nomeBase) {
+  try {
+    const webp = await converterParaWebP(file, 800, 0.8);
+    return await enviarImagemParaCloudinary(webp, nomeBase);
+  } catch (erro) {
+    toast(erro.message || "Falha ao enviar a imagem.", "error");
+    return null;
+  }
+}
 
 export async function iniciarPainelAdmin(root) {
   await carregarDashboard(root.querySelector("#painel-dashboard"));
@@ -58,7 +74,37 @@ async function carregarDashboard(container) {
         <h4>Produtos mais compartilhados</h4>
         <ol>${maisCompartilhados.map(p => `<li>${escHtml(p.nome)} <span>${p.compartilhamentos || 0}</span></li>`).join("") || "<li>Sem dados ainda</li>"}</ol>
       </div>
+    </div>
+    <div class="dash-list" id="bloco-migracao-imagens">
+      <h4>Imagens antigas (base64)</h4>
+      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
+        Converte produtos, categorias e marcas que ainda tenham imagem salva direto no Firestore
+        para WebP hospedado no Cloudinary.
+      </p>
+      <button class="btn-secondary" id="btn-migrar-imagens">${icon("archive")}Migrar imagens antigas</button>
+      <p id="status-migracao" style="margin-top:0.6rem;font-size:0.82rem;color:var(--cinza-500);"></p>
     </div>`;
+
+  container.querySelector("#btn-migrar-imagens")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const status = container.querySelector("#status-migracao");
+    btn.disabled = true;
+    status.textContent = "Procurando imagens antigas...";
+    try {
+      const resultado = await migrarImagensAntigas((feitos, total) => {
+        status.textContent = `Migrando ${feitos}/${total}...`;
+      });
+      status.textContent = resultado.total === 0
+        ? "Nenhuma imagem antiga encontrada — tudo já está em WebP/Cloudinary."
+        : `Concluído: ${resultado.total - resultado.erros} de ${resultado.total} migradas${resultado.erros ? `, ${resultado.erros} com erro (veja o console)` : ""}.`;
+      toast("Migração de imagens concluída.");
+    } catch (erro) {
+      status.textContent = "Erro na migração: " + (erro.message || "tente novamente.");
+      toast("Falha na migração de imagens.", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 // ---------- PRODUTOS ----------
@@ -206,6 +252,19 @@ async function abrirFormularioProduto(container, produto = null) {
   dialog.querySelector("#form-produto").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
+    const btnSalvar = form.querySelector('button[type="submit"]');
+    const arquivoImagem = form.imagem.files[0];
+
+    let novaImagem = null;
+    if (arquivoImagem) {
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = "Enviando imagem...";
+      novaImagem = await enviarImagem(arquivoImagem, form.nome.value.trim() || "produto");
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = "Salvar";
+      if (!novaImagem) return; // erro já mostrado via toast; mantém o dialog aberto
+    }
+
     const dados = {
       nome: form.nome.value.trim(),
       marca: form.marca.value.trim(),
@@ -218,9 +277,8 @@ async function abrirFormularioProduto(container, produto = null) {
       etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value)
     };
 
-    const arquivoImagem = form.imagem.files[0];
-    if (arquivoImagem) {
-      dados.imagem = await compressImageToBase64(arquivoImagem);
+    if (novaImagem) {
+      dados.imagem = novaImagem;
     } else if (produto?.imagem) {
       dados.imagem = produto.imagem;
     }
@@ -311,11 +369,18 @@ async function abrirFormularioCategoria(container, categoria = null) {
   dialog.querySelector("#form-categoria").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
+    const btnSalvar = form.querySelector('button[type="submit"]');
     const dados = { nome: form.nome.value.trim() };
 
     const arquivoImagem = form.imagem.files[0];
     if (arquivoImagem) {
-      dados.imagem = await compressImageToBase64(arquivoImagem, 500, 0.9, "png");
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = "Enviando imagem...";
+      const novaImagem = await enviarImagem(arquivoImagem, dados.nome || "categoria");
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = "Salvar";
+      if (!novaImagem) return;
+      dados.imagem = novaImagem;
     } else if (imagemRemovida) {
       dados.imagem = "";
     } else if (categoria?.imagem) {
@@ -410,11 +475,18 @@ async function abrirFormularioMarca(container, marca = null) {
   dialog.querySelector("#form-marca").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
+    const btnSalvar = form.querySelector('button[type="submit"]');
     const dados = { nome: form.nome.value.trim() };
 
     const arquivoLogo = form.logo.files[0];
     if (arquivoLogo) {
-      dados.logo = await compressImageToBase64(arquivoLogo, 500, 0.9, "png");
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = "Enviando imagem...";
+      const novaLogo = await enviarImagem(arquivoLogo, dados.nome || "marca");
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = "Salvar";
+      if (!novaLogo) return;
+      dados.logo = novaLogo;
     } else if (logoRemovida) {
       dados.logo = "";
     } else if (marca?.logo) {
