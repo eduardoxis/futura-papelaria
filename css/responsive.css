@@ -53,9 +53,20 @@
      — o ícone de usuário no topo fica redundante e some daqui pra baixo. */
   #btn-entrar { display: none; }
 
-  /* Toast: fica no topo (ver base em style.css) — só soma a safe-area do
-     notch/status bar pra não colar em cima do relógio/bateria do celular. */
-  .toast { top: calc(14px + env(safe-area-inset-top, 0px)); }
+  /* Toast no mobile: embaixo (no desktop fica em cima, ver style.css). */
+  .toast {
+    top: auto;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, 20px);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+
+  /* Com o carrinho aberto, o rodapé (subtotal/total/botão Finalizar) reserva
+     um espaço extra embaixo pra caber o toast sem tampar o botão. */
+  .cart-drawer__summary { padding-bottom: calc(1.25rem + 60px); }
+  body:has(.cart-drawer.is-open) .toast {
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
 
   /* ---- catálogo/busca: filtros viram painel recolhível ---- */
   .search-page__btn-filtros { display: flex; }
