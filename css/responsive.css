@@ -48,6 +48,14 @@
   .bottom-nav { display: flex; }
   .related-products__track .product-card { flex: 0 0 calc((100% - 1rem) / 2); }
   .related-products__head h2 { font-size: 1.1rem; }
+
+  /* ---- catálogo/busca: filtros viram painel recolhível ---- */
+  .search-page__btn-filtros { display: flex; }
+  .search-page__filters {
+    display: none;
+    margin-bottom: 1.25rem;
+  }
+  .search-page__filters.is-aberto { display: block; }
 }
 
 @media (max-width: 480px) {
