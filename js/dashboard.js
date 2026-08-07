@@ -7,7 +7,7 @@ import {
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
-import { formatBRL, escHtml, generateCode, converterParaWebP, toast, confirmarAcao } from "./utils.js";
+import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, toast, confirmarAcao } from "./utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
 import { carregarPainelLeads } from "./leads.js";
 import { ICONS, icon } from "./icons.js";
@@ -25,6 +25,20 @@ async function enviarImagem(file, nomeBase) {
   try {
     const webp = await converterParaWebP(file, 800, 0.8);
     return await enviarImagemParaCloudinary(webp, nomeBase);
+  } catch (erro) {
+    toast(erro.message || "Falha ao enviar a imagem.", "error");
+    return null;
+  }
+}
+
+/**
+ * Igual a enviarImagem, mas para categorias e marcas: mantém PNG (a pedido)
+ * em vez de recomprimir em WebP — bom para logos com fundo transparente.
+ */
+async function enviarImagemComoPNG(file, nomeBase) {
+  try {
+    const png = await converterParaPNG(file, 500);
+    return await enviarImagemParaCloudinary(png, nomeBase);
   } catch (erro) {
     toast(erro.message || "Falha ao enviar a imagem.", "error");
     return null;
@@ -439,7 +453,7 @@ async function abrirFormularioCategoria(container, categoria = null) {
     if (arquivoImagem) {
       btnSalvar.disabled = true;
       btnSalvar.textContent = "Enviando imagem...";
-      const novaImagem = await enviarImagem(arquivoImagem, dados.nome || "categoria");
+      const novaImagem = await enviarImagemComoPNG(arquivoImagem, dados.nome || "categoria");
       btnSalvar.disabled = false;
       btnSalvar.textContent = "Salvar";
       if (!novaImagem) return;
@@ -545,7 +559,7 @@ async function abrirFormularioMarca(container, marca = null) {
     if (arquivoLogo) {
       btnSalvar.disabled = true;
       btnSalvar.textContent = "Enviando imagem...";
-      const novaLogo = await enviarImagem(arquivoLogo, dados.nome || "marca");
+      const novaLogo = await enviarImagemComoPNG(arquivoLogo, dados.nome || "marca");
       btnSalvar.disabled = false;
       btnSalvar.textContent = "Salvar";
       if (!novaLogo) return;
