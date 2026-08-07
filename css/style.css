@@ -725,3 +725,10 @@ button {
   padding: 0.6rem 0.85rem; border: 1px solid var(--cinza-300); border-radius: var(--raio-sm); font-size: 0.9rem; font-family: inherit;
 }
 .auth-error { color: #b42318; font-size: 0.82rem; min-height: 1.1em; margin: 0; }
+#form-entrar-modal .checkbox-inline, #form-cadastrar-modal .checkbox-inline {
+  display: flex; flex-direction: row; align-items: center; gap: 0.5rem;
+  font-size: 0.85rem; color: var(--cinza-700);
+}
+#form-entrar-modal .checkbox-inline input, #form-cadastrar-modal .checkbox-inline input {
+  width: 16px; height: 16px; padding: 0; border: none; accent-color: var(--azul-700);
+}
