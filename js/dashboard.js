@@ -7,7 +7,7 @@ import {
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
-import { formatBRL, escHtml, generateCode, converterParaWebP, toast } from "./utils.js";
+import { formatBRL, escHtml, generateCode, converterParaWebP, toast, confirmarAcao } from "./utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
 import { carregarPainelLeads } from "./leads.js";
 import { ICONS, icon } from "./icons.js";
@@ -219,6 +219,13 @@ async function abrirFormularioProduto(container, produto = null) {
       <input type="checkbox" value="${escHtml(e.nome)}" ${(produto?.etiquetas || []).includes(e.nome) ? "checked" : ""}> ${escHtml(e.nome)}
     </label>`).join("");
 
+  // estado da galeria de imagens: cada item é { id, url (existente) ou file+previewUrl (novo) }
+  const iniciais = Array.isArray(produto?.imagens) && produto.imagens.length
+    ? produto.imagens
+    : (produto?.imagem ? [produto.imagem] : []);
+  let galeria = iniciais.map(url => ({ id: crypto.randomUUID(), url, file: null, previewUrl: null }));
+  let arrastando = null;
+
   dialog.innerHTML = `
     <form id="form-produto" class="product-form">
       <h3>${produto ? "Editar produto" : "Novo produto"}</h3>
@@ -236,8 +243,18 @@ async function abrirFormularioProduto(container, produto = null) {
           </select>
         </label>
         <label>Código<input name="codigo" autocomplete="off" value="${escHtml(produto?.codigo || generateCode())}"></label>
-        <label>Imagem<input name="imagem" type="file" accept="image/*"></label>
       </div>
+
+      <div class="galeria-produto">
+        <h4>Galeria de imagens do produto</h4>
+        <p class="galeria-produto__ajuda">A primeira imagem da lista é usada como capa no catálogo. Arraste as miniaturas para reordenar.</p>
+        <div class="galeria-produto__grid" id="galeria-grid"></div>
+        <label class="galeria-produto__upload">
+          ${icon("plus")}Escolher arquivos
+          <input type="file" id="input-galeria" accept="image/*" multiple hidden>
+        </label>
+      </div>
+
       <label>Descrição<textarea name="descricao" rows="3">${escHtml(produto?.descricao || "")}</textarea></label>
       <fieldset class="chip-group"><legend>Etiquetas</legend>${opcoesEtiquetas || "<em>Nenhuma etiqueta cadastrada</em>"}</fieldset>
       <div class="form-actions">
@@ -249,24 +266,74 @@ async function abrirFormularioProduto(container, produto = null) {
   dialog.showModal();
   dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
 
+  const grid = dialog.querySelector("#galeria-grid");
+
+  function renderizarGaleria() {
+    grid.innerHTML = galeria.map((item, i) => `
+      <div class="galeria-item" draggable="true" data-id="${item.id}">
+        <img src="${item.previewUrl || item.url}" alt="">
+        <button type="button" class="galeria-item__remover" data-remover="${item.id}" aria-label="Remover imagem">${icon("close")}</button>
+        ${i === 0 ? `<span class="galeria-item__principal">Principal</span>` : ""}
+      </div>`).join("");
+
+    grid.querySelectorAll("[data-remover]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const ok = await confirmarAcao("Remover esta imagem da galeria do produto?", { titulo: "Remover imagem" });
+        if (!ok) return;
+        const item = galeria.find(g => g.id === btn.dataset.remover);
+        if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        galeria = galeria.filter(g => g.id !== btn.dataset.remover);
+        renderizarGaleria();
+      });
+    });
+
+    grid.querySelectorAll(".galeria-item").forEach(el => {
+      el.addEventListener("dragstart", () => { arrastando = el.dataset.id; el.classList.add("is-dragging"); });
+      el.addEventListener("dragend", () => el.classList.remove("is-dragging"));
+      el.addEventListener("dragover", (e) => e.preventDefault());
+      el.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (!arrastando || arrastando === el.dataset.id) return;
+        const de = galeria.findIndex(g => g.id === arrastando);
+        const ate = galeria.findIndex(g => g.id === el.dataset.id);
+        const [movido] = galeria.splice(de, 1);
+        galeria.splice(ate, 0, movido);
+        renderizarGaleria();
+      });
+    });
+  }
+  renderizarGaleria();
+
+  dialog.querySelector("#input-galeria").addEventListener("change", (e) => {
+    [...e.target.files].forEach(file => {
+      galeria.push({ id: crypto.randomUUID(), url: null, file, previewUrl: URL.createObjectURL(file) });
+    });
+    e.target.value = "";
+    renderizarGaleria();
+  });
+
   dialog.querySelector("#form-produto").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
     const btnSalvar = form.querySelector('button[type="submit"]');
-    const arquivoImagem = form.imagem.files[0];
+    const nomeProduto = form.nome.value.trim() || "produto";
 
-    let novaImagem = null;
-    if (arquivoImagem) {
+    const pendentes = galeria.filter(g => g.file);
+    if (pendentes.length) {
       btnSalvar.disabled = true;
-      btnSalvar.textContent = "Enviando imagem...";
-      novaImagem = await enviarImagem(arquivoImagem, form.nome.value.trim() || "produto");
+      for (let i = 0; i < pendentes.length; i++) {
+        btnSalvar.textContent = `Enviando imagem ${i + 1}/${pendentes.length}...`;
+        const url = await enviarImagem(pendentes[i].file, `${nomeProduto}-${i + 1}`);
+        if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
+        pendentes[i].url = url;
+        if (pendentes[i].previewUrl) URL.revokeObjectURL(pendentes[i].previewUrl);
+      }
       btnSalvar.disabled = false;
       btnSalvar.textContent = "Salvar";
-      if (!novaImagem) return; // erro já mostrado via toast; mantém o dialog aberto
     }
 
     const dados = {
-      nome: form.nome.value.trim(),
+      nome: nomeProduto,
       marca: form.marca.value.trim(),
       preco: parseFloat(form.preco.value),
       quantidade: parseInt(form.quantidade.value, 10),
@@ -274,14 +341,10 @@ async function abrirFormularioProduto(container, produto = null) {
       status: form.status.value,
       codigo: form.codigo.value.trim(),
       descricao: form.descricao.value.trim(),
-      etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value)
+      etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value),
+      imagens: galeria.map(g => g.url).filter(Boolean)
     };
-
-    if (novaImagem) {
-      dados.imagem = novaImagem;
-    } else if (produto?.imagem) {
-      dados.imagem = produto.imagem;
-    }
+    dados.imagem = dados.imagens[0] || "";
 
     if (produto) {
       await atualizarProduto(produto.id, dados);
