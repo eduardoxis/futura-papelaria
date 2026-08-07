@@ -3,18 +3,103 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title id="titulo-pagina">Produto — Papelaria Futura</title>
-<meta id="meta-desc" name="description" content="">
-<meta id="og-title" property="og:title" content="">
-<meta id="og-desc" property="og:description" content="">
-<meta id="og-image" property="og:image" content="">
+<title>Catálogo completo — Papelaria Futura</title>
+<meta name="description" content="Catálogo completo da Papelaria Futura: filtre por categoria, marca, preço e disponibilidade.">
 <link rel="icon" href="/assets/icons/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/modal.css">
+<style>
+  /* Estilos exclusivos da página de catálogo/busca. */
+  .search-page__layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .search-page__filters {
+    background: var(--branco);
+    border: 1px solid var(--cinza-100);
+    border-radius: var(--raio-md);
+    padding: 1.25rem;
+    position: sticky;
+    top: 1rem;
+  }
+  .search-page__filters-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .search-page__filters-head h2 { font-size: 1.05rem; }
+  .filter-group { border: none; padding: 0; margin: 0 0 1.25rem; }
+  .filter-group + .filter-group { padding-top: 1.1rem; border-top: 1px solid var(--cinza-100); }
+  .filter-group legend {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; font-weight: 600; font-size: 0.92rem; color: var(--cinza-900);
+    margin-bottom: 0.65rem; cursor: pointer;
+  }
+  .filter-group legend .icon { width: 15px; height: 15px; transition: transform var(--transicao); }
+  .filter-group.is-collapsed legend .icon { transform: rotate(-90deg); }
+  .filter-group.is-collapsed .filter-group__body { display: none; }
+  .filter-option {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-size: 0.87rem; color: var(--cinza-700);
+    padding: 0.3rem 0; cursor: pointer;
+  }
+  .filter-option input { width: 15px; height: 15px; accent-color: var(--azul-700); flex-shrink: 0; }
+  .filter-option__count {
+    margin-left: auto; font-size: 0.78rem; color: var(--cinza-400);
+    background: var(--cinza-050); border-radius: 999px; padding: 0.05rem 0.5rem;
+  }
+  .filter-group__ver-mais {
+    background: none; color: var(--azul-700); font-size: 0.83rem;
+    font-weight: 600; padding: 0.3rem 0 0;
+  }
+  .search-page__limpar {
+    width: 100%; margin-top: 0.25rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  }
+
+  .search-page__main-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem;
+  }
+  .search-page__contador { color: var(--cinza-500); font-size: 0.9rem; }
+  .search-page__contador strong { color: var(--cinza-900); }
+  .search-page__ordenar {
+    display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--cinza-700);
+  }
+  .search-page__ordenar select {
+    border: 1px solid var(--cinza-200); border-radius: var(--raio-sm);
+    padding: 0.5rem 0.7rem; font-size: 0.85rem; background: var(--branco);
+  }
+
+  .pagination {
+    display: flex; justify-content: center; align-items: center; gap: 0.4rem;
+    margin-top: 2rem;
+  }
+  .pagination button {
+    min-width: 38px; height: 38px; padding: 0 0.5rem;
+    border: 1px solid var(--cinza-200); border-radius: var(--raio-sm);
+    background: var(--branco); color: var(--cinza-700); font-size: 0.88rem; font-weight: 600;
+  }
+  .pagination button.is-active { background: var(--azul-700); border-color: var(--azul-700); color: #fff; }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pagination__ellipsis { color: var(--cinza-400); padding: 0 0.2rem; }
+
+  .active-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  .active-chips .chip-list li { margin: 0; }
+
+  /* Botão "Filtrar" só aparece no mobile (ver responsive.css) */
+  .search-page__btn-filtros {
+    display: none; width: 100%; align-items: center; justify-content: center; gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+</style>
 <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
+
+<a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
 
 <header class="site-header">
   <div class="container header-top">
@@ -22,29 +107,121 @@
       <img src="/assets/images/logo.png" alt="Papelaria Futura" class="logo__mark">
       <span class="logo__text">Papelaria<br>Futura</span>
     </a>
-    <a href="/" class="btn-secondary" style="margin-left:auto">
-      <span data-icon="chevronLeft"></span><span>Voltar ao catálogo</span>
-    </a>
+
+    <form class="search-bar" role="search" id="form-busca-catalogo">
+      <label for="busca-header" class="sr-only">Pesquisar produtos</label>
+      <input id="busca-header" type="search" placeholder="Buscar por nome, marca ou código..." autocomplete="off">
+      <button type="submit" class="search-bar__btn" aria-label="Pesquisar"><span data-icon="search"></span></button>
+    </form>
+
+    <div class="select-pill">
+      <select id="filtro-categoria" aria-label="Filtrar por categoria">
+        <option value="">Todas as categorias</option>
+      </select>
+      <span class="select-pill__chevron" data-icon="chevronRight"></span>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-entrar" class="header-action" data-modal-target="#modal-login" aria-label="Entrar">
+        <span data-icon="user"></span><span>Entrar</span>
+      </button>
+      <button id="btn-sair" class="header-action" hidden aria-label="Sair">
+        <span data-icon="logOut"></span><span>Sair</span>
+      </button>
+      <button id="btn-minha-conta" class="header-action" hidden data-modal-target="#modal-conta" aria-label="Minha conta">
+        <span data-icon="user"></span><span>Minha conta</span>
+      </button>
+      <button id="abrir-admin" class="header-action" hidden aria-label="Painel Admin">
+        <span data-icon="home"></span><span>Painel Admin</span>
+      </button>
+      <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
+        <span data-icon="cart"></span><span class="cart-badge" data-cart-badge>0</span>
+      </button>
+      <button class="menu-toggle" aria-label="Abrir menu"><span data-icon="menu"></span></button>
+    </div>
   </div>
 </header>
 
-<main class="container" id="conteudo-produto">
-  <nav class="breadcrumb" id="breadcrumb" aria-label="Trilha de navegação"></nav>
+<main class="container" id="conteudo">
+  <nav class="breadcrumb" aria-label="Trilha de navegação">
+    <a href="/">Início</a>
+    <span data-icon="chevronRight"></span>
+    <span class="breadcrumb__atual">Catálogo completo</span>
+  </nav>
 
-  <div class="product-detail" id="detalhe-produto">
-    <p>Carregando produto...</p>
+  <div class="section__head" style="margin-top:0.5rem">
+    <div>
+      <h1 class="section__title" style="font-size:clamp(1.5rem,2.4vw,2rem)">Catálogo completo</h1>
+      <p style="color:var(--cinza-500);margin-top:0.35rem">Encontre tudo o que você precisa para estudar, trabalhar e criar.</p>
+    </div>
   </div>
 
-  <section class="related-products" id="produtos-relacionados" hidden>
-    <div class="related-products__head">
-      <h2>Produtos relacionados</h2>
-      <div class="related-products__nav">
-        <button type="button" class="related-products__arrow" id="relacionados-prev" aria-label="Ver anteriores"><span data-icon="chevronLeft"></span></button>
-        <button type="button" class="related-products__arrow" id="relacionados-next" aria-label="Ver próximos"><span data-icon="chevronRight"></span></button>
+  <div class="search-page__layout">
+    <button type="button" class="btn-secondary search-page__btn-filtros" id="btn-toggle-filtros" aria-expanded="false" aria-controls="painel-filtros">
+      <span data-icon="sort"></span> Filtrar produtos
+    </button>
+
+    <aside class="search-page__filters" id="painel-filtros">
+      <div class="search-page__filters-head">
+        <h2>Filtrar produtos</h2>
+        <span data-icon="sort" class="icon"></span>
       </div>
-    </div>
-    <div class="related-products__track" id="relacionados-track"></div>
-  </section>
+
+      <fieldset class="filter-group" data-grupo="categorias">
+        <legend data-toggle-grupo>Categorias <span data-icon="chevronRight" class="icon"></span></legend>
+        <div class="filter-group__body" id="filtros-categorias"></div>
+      </fieldset>
+
+      <fieldset class="filter-group" data-grupo="marcas">
+        <legend data-toggle-grupo>Marca <span data-icon="chevronRight" class="icon"></span></legend>
+        <div class="filter-group__body" id="filtros-marcas"></div>
+        <button type="button" class="filter-group__ver-mais" id="btn-ver-mais-marcas" hidden>Ver mais</button>
+      </fieldset>
+
+      <fieldset class="filter-group" data-grupo="preco">
+        <legend data-toggle-grupo>Faixa de preço <span data-icon="chevronRight" class="icon"></span></legend>
+        <div class="filter-group__body" id="filtros-preco">
+          <label class="filter-option"><input type="checkbox" name="preco" value="0-5"><span>Até R$ 5,00</span></label>
+          <label class="filter-option"><input type="checkbox" name="preco" value="5-15"><span>R$ 5,01 a R$ 15,00</span></label>
+          <label class="filter-option"><input type="checkbox" name="preco" value="15-30"><span>R$ 15,01 a R$ 30,00</span></label>
+          <label class="filter-option"><input type="checkbox" name="preco" value="30-"><span>Acima de R$ 30,00</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="filter-group" data-grupo="disponibilidade">
+        <legend data-toggle-grupo>Disponibilidade <span data-icon="chevronRight" class="icon"></span></legend>
+        <div class="filter-group__body" id="filtros-disponibilidade">
+          <label class="filter-option"><input type="checkbox" name="disponibilidade" value="em_estoque"><span>Em estoque</span></label>
+          <label class="filter-option"><input type="checkbox" name="disponibilidade" value="sem_estoque"><span>Sob encomenda</span></label>
+        </div>
+      </fieldset>
+
+      <button type="button" class="btn-secondary search-page__limpar" id="btn-limpar-filtros">
+        <span data-icon="trash"></span> Limpar filtros
+      </button>
+    </aside>
+
+    <section>
+      <div class="active-chips" id="chips-ativos" hidden></div>
+
+      <div class="search-page__main-head">
+        <p class="search-page__contador"><strong id="contador-produtos">0</strong> produtos encontrados</p>
+        <label class="search-page__ordenar">
+          Ordenar por
+          <select id="select-ordenar">
+            <option value="relevancia">Mais relevantes</option>
+            <option value="recentes">Mais recentes</option>
+            <option value="preco_asc">Menor preço</option>
+            <option value="preco_desc">Maior preço</option>
+            <option value="nome">Nome (A-Z)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="products-grid" id="grade-catalogo"></div>
+      <nav class="pagination" id="paginacao" aria-label="Paginação de resultados"></nav>
+    </section>
+  </div>
 </main>
 
 <footer class="site-footer">
@@ -68,12 +245,37 @@
   <div class="footer-bottom">© 2026 Papelaria Futura. Todos os direitos reservados.</div>
 </footer>
 
+<div class="cart-overlay" id="cart-overlay"></div>
+<aside class="cart-drawer" id="cart-drawer" aria-label="Carrinho de compras">
+  <div class="cart-drawer__head">
+    <h3>Seu carrinho</h3>
+    <button id="fechar-carrinho" class="modal__close" aria-label="Fechar carrinho"></button>
+  </div>
+  <div class="cart-drawer__items" id="itens-carrinho"></div>
+  <div class="cart-drawer__summary">
+    <div class="campo-nome-convidado" id="campo-nome-convidado">
+      <label for="nome-cliente">Seu nome</label>
+      <input id="nome-cliente" type="text" autocomplete="off" placeholder="Como podemos te chamar?">
+    </div>
+    <div class="summary-row"><span>Subtotal</span><span id="subtotal-carrinho">R$ 0,00</span></div>
+    <div class="summary-row summary-row--total"><span>Total</span><span id="total-carrinho">R$ 0,00</span></div>
+    <button class="btn-primary" id="finalizar-pedido">Finalizar pedido no WhatsApp</button>
+  </div>
+</aside>
+
 <script type="module">
-import { obterProduto, incrementarVisualizacao, listarProdutos } from "../js/firestore.js";
-import { formatBRL, escHtml, getQueryParam, toast } from "../js/utils.js";
-import { adicionarAoCarrinho, atualizarBadgeCarrinho, falarSobreProduto } from "../js/cart.js";
-import { compartilharProduto, cartaoProduto, renderizarGrade } from "../js/products.js";
+import { listarProdutos, escutarProdutos, listarCategorias, listarMarcas } from "../js/firestore.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar } from "../js/utils.js";
+import { renderizarGrade, ordenarProdutos } from "../js/products.js";
+import { buscarProdutos } from "../js/search.js";
+import {
+  obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
+  atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
+} from "../js/cart.js";
 import { ICONS } from "../js/icons.js";
+
+const MARCAS_VISIVEIS_INICIAL = 6;
+const POR_PAGINA = 20;
 
 function aplicarIconesEstaticos() {
   document.querySelectorAll("[data-icon]").forEach(el => {
@@ -86,166 +288,309 @@ function aplicarIconesEstaticos() {
 }
 aplicarIconesEstaticos();
 
-const id = getQueryParam("id");
-const container = document.querySelector("#detalhe-produto");
+let TODOS_PRODUTOS = [];
+let CATEGORIAS = [];
+let MARCAS = [];
+let mostrarTodasMarcas = false;
+let paginaAtual = 1;
 
-async function iniciar() {
-  if (!id) { container.innerHTML = "<p>Produto não encontrado.</p>"; return; }
-  const produto = await obterProduto(id);
-  if (!produto) { container.innerHTML = "<p>Produto não encontrado.</p>"; return; }
+const estado = {
+  termo: getQueryParam("q") || "",
+  categorias: new Set(),
+  marcas: new Set(),
+  faixasPreco: new Set(),
+  disponibilidade: new Set(),
+  ordenar: "relevancia"
+};
 
-  document.title = `${produto.nome} — Papelaria Futura`;
-  document.querySelector("#meta-desc").content = produto.descricao || produto.nome;
-  document.querySelector("#og-title").content = produto.nome;
-  document.querySelector("#og-desc").content = produto.descricao || "";
-  document.querySelector("#og-image").content = produto.imagem || "";
+const paramCategoria = getQueryParam("categoria");
+if (paramCategoria) estado.categorias.add(paramCategoria);
 
-  const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
-  const imagens = (Array.isArray(produto.imagens) && produto.imagens.length ? produto.imagens : [produto.imagem]).filter(Boolean);
-  if (!imagens.length) imagens.push("/assets/images/placeholder.svg");
+document.querySelector("#busca-header").value = estado.termo;
 
-  const especificacoes = [
-    { icon: "tag", label: "Categoria", valor: produto.categoria },
-    { icon: "bookmark", label: "Marca", valor: produto.marca },
-    { icon: "copy", label: "Código", valor: produto.codigo },
-    { icon: "box", label: "Disponibilidade", valor: semEstoque ? "Sem estoque" : `${produto.quantidade} disponíveis` },
-    ...(Array.isArray(produto.especificacoes) ? produto.especificacoes.map(e => ({ icon: "clipboardList", label: e.label, valor: e.valor })) : [])
-  ].filter(e => e.valor);
+document.querySelectorAll("[data-toggle-grupo]").forEach(legend => {
+  legend.addEventListener("click", () => legend.closest(".filter-group").classList.toggle("is-collapsed"));
+});
 
-  document.querySelector("#breadcrumb").innerHTML = `
-    <a href="/">Início</a>
-    <span data-icon="chevronRight"></span>
-    <a href="/#produtos">Catálogo</a>
-    ${produto.categoria ? `
-      <span data-icon="chevronRight"></span>
-      <a href="/?categoria=${encodeURIComponent(produto.categoria)}#produtos">${escHtml(produto.categoria)}</a>
-    ` : ""}
-    <span data-icon="chevronRight"></span>
-    <span class="breadcrumb__atual">${escHtml(produto.nome)}</span>`;
+const btnToggleFiltros = document.querySelector("#btn-toggle-filtros");
+const painelFiltros = document.querySelector("#painel-filtros");
+btnToggleFiltros?.addEventListener("click", () => {
+  const abrindo = !painelFiltros.classList.contains("is-aberto");
+  painelFiltros.classList.toggle("is-aberto", abrindo);
+  btnToggleFiltros.setAttribute("aria-expanded", String(abrindo));
+});
 
-  container.innerHTML = `
-    <div class="product-detail__gallery">
-      ${imagens.length > 1 ? `
-        <div class="product-detail__thumbs">
-          ${imagens.map((img, i) => `
-            <button type="button" class="product-detail__thumb ${i === 0 ? "is-active" : ""}" data-thumb="${i}">
-              <img src="${img}" alt="${escHtml(produto.nome)} - imagem ${i + 1}" loading="lazy">
-            </button>`).join("")}
-        </div>` : ""}
-      <div class="product-detail__image">
-        <img id="imagem-principal" src="${imagens[0]}" alt="${escHtml(produto.nome)}" loading="lazy">
-      </div>
-    </div>
-    <div class="product-detail__info">
-      ${produto.marca ? `<span class="product-detail__brand">${escHtml(produto.marca)}</span>` : ""}
-      <h1 class="product-detail__name">${escHtml(produto.nome)}</h1>
-      <span class="product-detail__price">${formatBRL(produto.preco)}</span>
-      <p class="product-detail__desc">${escHtml(produto.descricao || "")}</p>
-      <div class="qty-stepper">
-        <button id="dim" aria-label="Diminuir quantidade">−</button>
-        <input id="qtd" type="number" value="1" min="1">
-        <button id="aum" aria-label="Aumentar quantidade">+</button>
-      </div>
-      <div class="product-detail__actions">
-        <button class="btn-primary" id="add-carrinho" ${semEstoque ? "disabled" : ""}><span data-icon="cart"></span>Adicionar ao carrinho</button>
-        <button class="btn-whatsapp-lg" id="falar-produto"><span data-icon="whatsapp"></span>Falar sobre este produto</button>
-        <button class="btn-secondary" id="compartilhar"><span data-icon="messageSquare"></span>Compartilhar</button>
-        <button class="btn-secondary" id="copiar-link"><span data-icon="copy"></span>Copiar link</button>
-      </div>
-      ${especificacoes.length ? `
-      <ul class="product-detail__specs">
-        ${especificacoes.map(e => `
-          <li>
-            <span class="product-detail__specs-icon" data-icon="${e.icon}"></span>
-            <strong>${escHtml(e.label)}</strong>
-            <span>${escHtml(String(e.valor))}</span>
-          </li>`).join("")}
-      </ul>` : ""}
-    </div>`;
+document.querySelector("#form-busca-catalogo").addEventListener("submit", (e) => {
+  e.preventDefault();
+  estado.termo = document.querySelector("#busca-header").value;
+  paginaAtual = 1;
+  render();
+});
 
-  aplicarIconesEstaticos();
+document.querySelector("#select-ordenar").addEventListener("change", (e) => {
+  estado.ordenar = e.target.value;
+  render();
+});
 
-  container.querySelectorAll("[data-thumb]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      container.querySelectorAll("[data-thumb]").forEach(b => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      document.querySelector("#imagem-principal").src = imagens[Number(btn.dataset.thumb)];
+document.querySelector("#btn-limpar-filtros").addEventListener("click", () => {
+  estado.categorias.clear();
+  estado.marcas.clear();
+  estado.faixasPreco.clear();
+  estado.disponibilidade.clear();
+  estado.termo = "";
+  document.querySelector("#busca-header").value = "";
+  document.querySelector("#filtro-categoria").value = "";
+  paginaAtual = 1;
+  desenharFiltrosLaterais();
+  render();
+});
+
+function faixaBate(preco, chave) {
+  const [minStr, maxStr] = chave.split("-");
+  const min = Number(minStr);
+  const max = maxStr === "" || maxStr === undefined ? Infinity : Number(maxStr);
+  return preco >= min && preco <= max;
+}
+
+function produtosFiltrados() {
+  let lista = buscarProdutos(TODOS_PRODUTOS, estado.termo);
+
+  if (estado.categorias.size) lista = lista.filter(p => estado.categorias.has(p.categoria));
+  if (estado.marcas.size) lista = lista.filter(p => estado.marcas.has(p.marca));
+  if (estado.faixasPreco.size) {
+    lista = lista.filter(p => [...estado.faixasPreco].some(f => faixaBate(Number(p.preco) || 0, f)));
+  }
+  if (estado.disponibilidade.size) {
+    lista = lista.filter(p => {
+      const temEstoque = p.status !== "sem_estoque" && Number(p.quantidade) > 0;
+      if (estado.disponibilidade.has("em_estoque") && temEstoque) return true;
+      if (estado.disponibilidade.has("sem_estoque") && !temEstoque) return true;
+      return false;
+    });
+  }
+
+  return estado.ordenar === "relevancia" ? lista : ordenarProdutos(lista, estado.ordenar);
+}
+
+function contarComFiltro(lista, chave, valor) {
+  return lista.filter(p => {
+    if (chave === "categoria") return p.categoria === valor;
+    if (chave === "marca") return p.marca === valor;
+    return false;
+  }).length;
+}
+
+function desenharFiltrosLaterais() {
+  const baseParaContagem = buscarProdutos(TODOS_PRODUTOS, estado.termo);
+
+  document.querySelector("#filtros-categorias").innerHTML = CATEGORIAS.map(c => `
+    <label class="filter-option">
+      <input type="checkbox" name="categoria" value="${escHtml(c.nome)}" ${estado.categorias.has(c.nome) ? "checked" : ""}>
+      <span>${escHtml(c.nome)}</span>
+      <span class="filter-option__count">${contarComFiltro(baseParaContagem, "categoria", c.nome)}</span>
+    </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma categoria cadastrada.</p>`;
+
+  const marcasParaMostrar = mostrarTodasMarcas ? MARCAS : MARCAS.slice(0, MARCAS_VISIVEIS_INICIAL);
+  document.querySelector("#filtros-marcas").innerHTML = marcasParaMostrar.map(m => `
+    <label class="filter-option">
+      <input type="checkbox" name="marca" value="${escHtml(m.nome)}" ${estado.marcas.has(m.nome) ? "checked" : ""}>
+      <span>${escHtml(m.nome)}</span>
+      <span class="filter-option__count">${contarComFiltro(baseParaContagem, "marca", m.nome)}</span>
+    </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma marca cadastrada.</p>`;
+
+  const btnVerMais = document.querySelector("#btn-ver-mais-marcas");
+  btnVerMais.hidden = MARCAS.length <= MARCAS_VISIVEIS_INICIAL;
+  btnVerMais.textContent = mostrarTodasMarcas ? "Ver menos" : "Ver mais";
+
+  document.querySelectorAll('[name="preco"]').forEach(el => { el.checked = estado.faixasPreco.has(el.value); });
+  document.querySelectorAll('[name="disponibilidade"]').forEach(el => { el.checked = estado.disponibilidade.has(el.value); });
+
+  document.querySelector("#filtros-categorias").querySelectorAll("input").forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.categorias.add(el.value) : estado.categorias.delete(el.value);
+      paginaAtual = 1;
+      desenharFiltrosLaterais();
+      render();
+    });
+  });
+  document.querySelector("#filtros-marcas").querySelectorAll("input").forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.marcas.add(el.value) : estado.marcas.delete(el.value);
+      paginaAtual = 1;
+      desenharFiltrosLaterais();
+      render();
+    });
+  });
+  document.querySelectorAll('[name="preco"]').forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.faixasPreco.add(el.value) : estado.faixasPreco.delete(el.value);
+      paginaAtual = 1;
+      render();
+    });
+  });
+  document.querySelectorAll('[name="disponibilidade"]').forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.disponibilidade.add(el.value) : estado.disponibilidade.delete(el.value);
+      paginaAtual = 1;
+      render();
     });
   });
 
-  document.querySelector("#dim").addEventListener("click", () => {
-    const input = document.querySelector("#qtd");
-    input.value = Math.max(1, parseInt(input.value, 10) - 1);
-  });
-  document.querySelector("#aum").addEventListener("click", () => {
-    const input = document.querySelector("#qtd");
-    input.value = parseInt(input.value, 10) + 1;
-  });
-
-  document.querySelector("#add-carrinho").addEventListener("click", () => {
-    const qtd = parseInt(document.querySelector("#qtd").value, 10) || 1;
-    adicionarAoCarrinho(produto, qtd);
-    toast("Produto adicionado ao carrinho.");
-  });
-
-  document.querySelector("#falar-produto").addEventListener("click", () => {
-    falarSobreProduto(produto);
-  });
-
-  document.querySelector("#compartilhar").addEventListener("click", async () => {
-    const resultado = await compartilharProduto(produto);
-    if (resultado === "copiado") toast("Link copiado para a área de transferência.");
-  });
-
-  document.querySelector("#copiar-link").addEventListener("click", async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    toast("Link copiado.");
-  });
-
-  incrementarVisualizacao(id);
-  atualizarBadgeCarrinho();
-  carregarRelacionados(produto);
+  btnVerMais.onclick = () => {
+    mostrarTodasMarcas = !mostrarTodasMarcas;
+    desenharFiltrosLaterais();
+  };
 }
 
-async function carregarRelacionados(produtoAtual) {
-  const secao = document.querySelector("#produtos-relacionados");
-  const track = document.querySelector("#relacionados-track");
-  const btnPrev = document.querySelector("#relacionados-prev");
-  const btnNext = document.querySelector("#relacionados-next");
+function desenharPaginacao(totalPaginas) {
+  const nav = document.querySelector("#paginacao");
+  if (totalPaginas <= 1) { nav.innerHTML = ""; return; }
 
-  const todos = await listarProdutos({ apenasAtivos: true });
-  const outros = todos.filter(p => p.id !== produtoAtual.id);
+  const botoes = [];
+  botoes.push(`<button type="button" data-pagina="${paginaAtual - 1}" ${paginaAtual === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`);
 
-  const mesmaCategoria = outros.filter(p => p.categoria && p.categoria === produtoAtual.categoria);
-  const resto = outros.filter(p => !mesmaCategoria.includes(p));
-  const relacionados = [...mesmaCategoria, ...resto].slice(0, 8);
-
-  if (!relacionados.length) return;
-
-  secao.hidden = false;
-  renderizarGrade(track, relacionados);
-
-  track.addEventListener("adicionar-carrinho", (e) => {
-    adicionarAoCarrinho(e.detail, 1);
-    toast("Produto adicionado ao carrinho.");
+  const paginas = new Set([1, totalPaginas, paginaAtual, paginaAtual - 1, paginaAtual + 1]);
+  let ultimo = 0;
+  [...paginas].filter(p => p >= 1 && p <= totalPaginas).sort((a, b) => a - b).forEach(p => {
+    if (ultimo && p - ultimo > 1) botoes.push(`<span class="pagination__ellipsis">…</span>`);
+    botoes.push(`<button type="button" data-pagina="${p}" class="${p === paginaAtual ? "is-active" : ""}">${p}</button>`);
+    ultimo = p;
   });
-  track.addEventListener("falar-produto", (e) => falarSobreProduto(e.detail));
 
-  function atualizarSetas() {
-    const max = track.scrollWidth - track.clientWidth - 2;
-    btnPrev.disabled = track.scrollLeft <= 0;
-    btnNext.disabled = track.scrollLeft >= max;
+  botoes.push(`<button type="button" data-pagina="${paginaAtual + 1}" ${paginaAtual === totalPaginas ? "disabled" : ""} aria-label="Próxima página">›</button>`);
+  nav.innerHTML = botoes.join("");
+
+  nav.querySelectorAll("[data-pagina]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      paginaAtual = Number(btn.dataset.pagina);
+      render();
+      document.querySelector(".search-page__main-head").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+function render() {
+  const lista = produtosFiltrados();
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
+
+  const inicio = (paginaAtual - 1) * POR_PAGINA;
+  const pagina = lista.slice(inicio, inicio + POR_PAGINA);
+
+  document.querySelector("#contador-produtos").textContent = lista.length;
+  renderizarGrade(document.querySelector("#grade-catalogo"), pagina);
+  desenharPaginacao(totalPaginas);
+}
+
+const grade = document.querySelector("#grade-catalogo");
+grade.addEventListener("adicionar-carrinho", (e) => {
+  adicionarAoCarrinho(e.detail, 1);
+  toast("Produto adicionado ao carrinho.");
+  atualizarBadgeCarrinho();
+});
+grade.addEventListener("falar-produto", (e) => falarSobreProduto(e.detail));
+
+configurarCarrinhoUI();
+
+function configurarCarrinhoUI() {
+  const drawer = document.querySelector("#cart-drawer");
+  const overlay = document.querySelector("#cart-overlay");
+  const abrirBtn = document.querySelector("#abrir-carrinho");
+  const fecharBtn = document.querySelector("#fechar-carrinho");
+
+  function renderCarrinho() {
+    const carrinho = obterCarrinho();
+    const lista = document.querySelector("#itens-carrinho");
+    const { subtotal, total } = calcularTotais();
+    lista.innerHTML = carrinho.map(item => `
+      <div class="cart-item" data-id="${item.id}">
+        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
+        <div>
+          <div class="cart-item__name">${escHtml(item.nome)}</div>
+          <div class="cart-item__brand">${escHtml(item.marca)}</div>
+          <div class="qty-stepper">
+            <button data-diminuir>-</button>
+            <input type="number" value="${item.quantidade}" min="1" data-qtd>
+            <button data-aumentar>+</button>
+          </div>
+        </div>
+        <strong>${formatBRL(item.preco * item.quantidade)}</strong>
+      </div>`).join("") || `<p class="empty-state">Seu carrinho está vazio.</p>`;
+
+    document.querySelector("#subtotal-carrinho").textContent = formatBRL(subtotal);
+    document.querySelector("#total-carrinho").textContent = formatBRL(total);
+
+    lista.querySelectorAll(".cart-item").forEach(el => {
+      const id = el.dataset.id;
+      const input = el.querySelector("[data-qtd]");
+      el.querySelector("[data-aumentar]").addEventListener("click", () => {
+        atualizarQuantidade(id, parseInt(input.value, 10) + 1);
+        renderCarrinho();
+        atualizarBadgeCarrinho();
+      });
+      el.querySelector("[data-diminuir]").addEventListener("click", () => {
+        atualizarQuantidade(id, parseInt(input.value, 10) - 1);
+        renderCarrinho();
+        atualizarBadgeCarrinho();
+      });
+      input.addEventListener("change", () => {
+        atualizarQuantidade(id, parseInt(input.value, 10) || 0);
+        renderCarrinho();
+        atualizarBadgeCarrinho();
+      });
+    });
   }
 
-  btnPrev.addEventListener("click", () => {
-    track.scrollBy({ left: -track.clientWidth * 0.9, behavior: "smooth" });
+  function abrir() {
+    renderCarrinho();
+    drawer.classList.add("is-open");
+    overlay.classList.add("is-open");
+  }
+  function fechar() {
+    drawer.classList.remove("is-open");
+    overlay.classList.remove("is-open");
+  }
+
+  abrirBtn?.addEventListener("click", abrir);
+  fecharBtn?.addEventListener("click", fechar);
+  overlay?.addEventListener("click", fechar);
+
+  document.querySelector("#finalizar-pedido")?.addEventListener("click", () => {
+    const carrinho = obterCarrinho();
+    if (!carrinho.length) { toast("Seu carrinho está vazio.", "error"); return; }
+    if (!podeExecutar("finalizar-pedido", 5, 60_000)) {
+      toast("Muitos pedidos em pouco tempo. Aguarde um instante.", "error");
+      return;
+    }
+    const nome = document.querySelector("#nome-cliente")?.value?.trim();
+    finalizarPedidoWhatsApp(nome);
+    fechar();
   });
-  btnNext.addEventListener("click", () => {
-    track.scrollBy({ left: track.clientWidth * 0.9, behavior: "smooth" });
+}
+
+async function iniciar() {
+  CATEGORIAS = await listarCategorias();
+  MARCAS = await listarMarcas();
+
+  const selectCategoria = document.querySelector("#filtro-categoria");
+  selectCategoria.innerHTML = `<option value="">Todas as categorias</option>` +
+    CATEGORIAS.map(c => `<option value="${escHtml(c.nome)}">${escHtml(c.nome)}</option>`).join("");
+  if (paramCategoria) selectCategoria.value = paramCategoria;
+  selectCategoria.addEventListener("change", () => {
+    estado.categorias.clear();
+    if (selectCategoria.value) estado.categorias.add(selectCategoria.value);
+    paginaAtual = 1;
+    desenharFiltrosLaterais();
+    render();
   });
-  track.addEventListener("scroll", atualizarSetas);
-  window.addEventListener("resize", atualizarSetas);
-  requestAnimationFrame(atualizarSetas);
+
+  escutarProdutos((produtos) => {
+    TODOS_PRODUTOS = produtos;
+    desenharFiltrosLaterais();
+    render();
+  }, { apenasAtivos: true });
+
+  atualizarBadgeCarrinho();
 }
 
 iniciar();
