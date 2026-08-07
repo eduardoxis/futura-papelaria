@@ -455,7 +455,10 @@
   </div>
   <div class="cart-drawer__items" id="itens-carrinho"></div>
   <div class="cart-drawer__summary">
-    <label>Seu nome<input id="nome-cliente" type="text" autocomplete="off" placeholder="Como podemos te chamar?"></label>
+    <div class="campo-nome-convidado" id="campo-nome-convidado">
+      <label for="nome-cliente">Seu nome</label>
+      <input id="nome-cliente" type="text" autocomplete="off" placeholder="Como podemos te chamar?">
+    </div>
     <div class="summary-row"><span>Subtotal</span><span id="subtotal-carrinho">R$ 0,00</span></div>
     <div class="summary-row summary-row--total"><span>Total</span><span id="total-carrinho">R$ 0,00</span></div>
     <button class="btn-primary" id="finalizar-pedido">Finalizar pedido no WhatsApp</button>
