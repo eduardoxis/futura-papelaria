@@ -315,6 +315,12 @@ button {
   gap: clamp(0.9rem, 2vw, 1.4rem);
 }
 
+/* Home: exatamente 5 colunas (2 linhas = 10 produtos), com fallback
+   responsivo — ver breakpoints em responsive.css */
+.products-grid--5col { grid-template-columns: repeat(5, 1fr); }
+
+.section__cta { display: flex; justify-content: center; margin-top: 2rem; }
+
 .product-card {
   position: relative;
   background: var(--branco);
