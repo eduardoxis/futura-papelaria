@@ -19,9 +19,9 @@ export const db = getFirestore(app);
 
 // Configurações gerais da loja — edite aqui
 export const STORE_CONFIG = {
-  nome: "Papelaria Futura",
+  nome: "Livraria Papelaria Futura",
   whatsapp: "5561999184452", // DDI+DDD+numero, sem espaços/símbolos
-  endereco: "Rua Exemplo, 123 - Centro",
-  instagram: "https://instagram.com/papelariafutura",
-  facebook: "https://facebook.com/papelariafutura"
+  endereco: "R. Dr. Ézio Carneiro, 158 - St. Aeroporto, Luziânia - GO, 72800-420",
+  email: "futuralza@gmail.com",
+  instagram: "https://www.instagram.com/futurapapelaria/"
 };
