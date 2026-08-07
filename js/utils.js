@@ -118,7 +118,36 @@ export function converterParaWebP(file, maxWidth = 800, qualidade = 0.8) {
   });
 }
 
-export function compressImageToBase64(file, maxWidth = 800, quality = 0.7, format = "jpeg") {
+/**
+ * Pede confirmação através de um modal (não usa o confirm() nativo do
+ * navegador). Retorna uma Promise<boolean> resolvida conforme a escolha.
+ */
+export function confirmarAcao(mensagem, { titulo = "Confirmar ação", textoConfirmar = "Remover", textoCancelar = "Cancelar" } = {}) {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "dialog-form dialog-confirm";
+    dialog.innerHTML = `
+      <div class="confirm-box">
+        <h3>${escHtml(titulo)}</h3>
+        <p>${escHtml(mensagem)}</p>
+        <div class="form-actions">
+          <button type="button" data-confirm-nao>${escHtml(textoCancelar)}</button>
+          <button type="button" class="btn-primary btn-perigo" data-confirm-sim>${escHtml(textoConfirmar)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.showModal();
+
+    const finalizar = (resultado) => {
+      dialog.close();
+      dialog.remove();
+      resolve(resultado);
+    };
+    dialog.querySelector("[data-confirm-sim]").addEventListener("click", () => finalizar(true));
+    dialog.querySelector("[data-confirm-nao]").addEventListener("click", () => finalizar(false));
+    dialog.addEventListener("cancel", () => finalizar(false));
+  });
+}
   // Mantida apenas para compatibilidade com dados antigos que ainda tenham
   // imagens em base64 no Firestore (ver migrarImagensAntigas em cloudinary.js).
   // Novos uploads NÃO devem usar esta função — usar converterParaWebP().
