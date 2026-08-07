@@ -50,7 +50,7 @@
 <footer class="site-footer">
   <div class="container footer-grid">
     <div>
-      <h4>Papelaria Futura</h4>
+      <h4>Livraria Papelaria Futura</h4>
       <p>R. Dr. Ézio Carneiro, 158 - St. Aeroporto, Luziânia - GO, 72800-420</p>
     </div>
     <div>
@@ -61,7 +61,7 @@
     <div>
       <h4>Redes sociais</h4>
       <div class="social-row">
-        <a href="#" aria-label="Instagram" target="_blank" rel="noopener"><span data-icon="instagram">https://www.instagram.com/futurapapelaria</span></a>
+        <a href="https://www.instagram.com/futurapapelaria/" aria-label="Instagram" target="_blank" rel="noopener"><span data-icon="instagram"></span></a>
       </div>
     </div>
   </div>
@@ -129,11 +129,11 @@ async function iniciar() {
         <div class="product-detail__thumbs">
           ${imagens.map((img, i) => `
             <button type="button" class="product-detail__thumb ${i === 0 ? "is-active" : ""}" data-thumb="${i}">
-              <img src="${img}" alt="${escHtml(produto.nome)} - imagem ${i + 1}">
+              <img src="${img}" alt="${escHtml(produto.nome)} - imagem ${i + 1}" loading="lazy">
             </button>`).join("")}
         </div>` : ""}
       <div class="product-detail__image">
-        <img id="imagem-principal" src="${imagens[0]}" alt="${escHtml(produto.nome)}">
+        <img id="imagem-principal" src="${imagens[0]}" alt="${escHtml(produto.nome)}" loading="lazy">
       </div>
     </div>
     <div class="product-detail__info">
