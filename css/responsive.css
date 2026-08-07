@@ -49,6 +49,10 @@
   .related-products__track .product-card { flex: 0 0 calc((100% - 1rem) / 2); }
   .related-products__head h2 { font-size: 1.1rem; }
 
+  /* No mobile o botão "Conta" do menu inferior já abre o login/minha conta
+     — o ícone de usuário no topo fica redundante e some daqui pra baixo. */
+  #btn-entrar { display: none; }
+
   /* ---- catálogo/busca: filtros viram painel recolhível ---- */
   .search-page__btn-filtros { display: flex; }
   .search-page__filters {
