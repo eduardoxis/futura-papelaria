@@ -93,6 +93,19 @@ export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
  * (nunca salvamos base64 no Firestore nem usamos Firebase Storage).
  */
 export function converterParaWebP(file, maxWidth = 800, qualidade = 0.8) {
+  return converterParaFormato(file, "image/webp", maxWidth, qualidade);
+}
+
+/**
+ * Mesma lógica de converterParaWebP, mas gera PNG — usado para imagens de
+ * categoria/marca, que costumam ser logos com fundo transparente e ficam
+ * melhor em PNG do que recomprimidas em WebP com perdas.
+ */
+export function converterParaPNG(file, maxWidth = 500) {
+  return converterParaFormato(file, "image/png", maxWidth, 1);
+}
+
+function converterParaFormato(file, mime, maxWidth, qualidade) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -105,8 +118,8 @@ export function converterParaWebP(file, maxWidth = 800, qualidade = 0.8) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
-          (blob) => (blob ? resolve(blob) : reject(new Error("Falha ao gerar WebP"))),
-          "image/webp",
+          (blob) => (blob ? resolve(blob) : reject(new Error(`Falha ao gerar ${mime}`))),
+          mime,
           qualidade
         );
       };
