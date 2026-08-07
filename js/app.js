@@ -82,7 +82,7 @@ function corTextoParaCategoria(nome = "") {
 }
 
 function conteudoIconeCategoria(c) {
-  if (c.imagem) return `<img class="category-card__img" src="${c.imagem}" alt="">`;
+  if (c.imagem) return `<img class="category-card__img" src="${c.imagem}" alt="" loading="lazy">`;
   const custom = (c.emoji || "").trim();
   if (!custom) return icon(iconeParaCategoria(c.nome));
   if (custom.startsWith("<svg")) return custom;
@@ -306,7 +306,7 @@ function configurarCarrinhoUI() {
     const { subtotal, total } = calcularTotais();
     lista.innerHTML = carrinho.map(item => `
       <div class="cart-item" data-id="${item.id}">
-        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}">
+        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
         <div>
           <div class="cart-item__name">${escHtml(item.nome)}</div>
           <div class="cart-item__brand">${escHtml(item.marca)}</div>
@@ -517,7 +517,7 @@ async function renderizarFavoritos() {
   const produtos = TODOS_PRODUTOS.filter(p => ids.includes(p.id));
   container.innerHTML = produtos.length ? produtos.map(p => `
     <div class="favorito-card" data-id="${p.id}">
-      <img src="${p.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(p.nome)}">
+      <img src="${p.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(p.nome)}" loading="lazy">
       <div class="favorito-card__info">
         <strong>${escHtml(p.nome)}</strong>
         <span>${formatBRL(p.preco)}</span>
