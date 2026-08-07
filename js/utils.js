@@ -86,7 +86,42 @@ export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
  * @param {number} quality 0..1
  * @returns {Promise<string>} data URL base64
  */
+/**
+ * Converte uma imagem (File) para WebP no navegador, redimensionando pela
+ * largura máxima e aplicando compressão de qualidade. Retorna um Blob.
+ * Usado antes do upload para o serviço externo de hospedagem de imagens
+ * (nunca salvamos base64 no Firestore nem usamos Firebase Storage).
+ */
+export function converterParaWebP(file, maxWidth = 800, qualidade = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error("Falha ao gerar WebP"))),
+          "image/webp",
+          qualidade
+        );
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function compressImageToBase64(file, maxWidth = 800, quality = 0.7, format = "jpeg") {
+  // Mantida apenas para compatibilidade com dados antigos que ainda tenham
+  // imagens em base64 no Firestore (ver migrarImagensAntigas em cloudinary.js).
+  // Novos uploads NÃO devem usar esta função — usar converterParaWebP().
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
