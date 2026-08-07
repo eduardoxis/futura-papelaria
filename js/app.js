@@ -393,16 +393,17 @@ function configurarCarrinhoUI() {
       return;
     }
     const nome = document.querySelector("#nome-cliente")?.value?.trim();
+    const nomeParaPedido = usuarioAtual ? (nome || usuarioAtual.displayName || "") : nome;
     if (usuarioAtual) {
       const { total } = calcularTotais();
       criarPedido({
         usuarioId: usuarioAtual.uid,
-        nomeCliente: nome || usuarioAtual.displayName || "",
+        nomeCliente: nomeParaPedido,
         itens: carrinho.map(i => ({ id: i.id, nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
         total
       }).catch(() => {});
     }
-    finalizarPedidoWhatsApp(usuarioAtual ? null : nome);
+    finalizarPedidoWhatsApp(nomeParaPedido);
     fechar();
   });
 }
