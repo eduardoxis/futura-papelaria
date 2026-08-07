@@ -111,7 +111,9 @@ async function iniciar() {
 
   escutarProdutos((produtos) => {
     TODOS_PRODUTOS = produtos;
-    renderizarGrade(document.querySelector("#grade-produtos"), TODOS_PRODUTOS);
+    // Home mostra só uma prévia (5 colunas x 2 linhas); o catálogo completo
+    // fica na página dedicada /pages/catalogo.html.
+    renderizarGrade(document.querySelector("#grade-produtos"), TODOS_PRODUTOS.slice(0, 10));
     aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
     renderizarDestaques();
     renderizarRecentes();
