@@ -342,6 +342,8 @@ function configurarCarrinhoUI() {
 
   function abrir() {
     renderCarrinho();
+    const campoNome = document.querySelector("#campo-nome-convidado");
+    if (campoNome) campoNome.hidden = !!usuarioAtual;
     drawer.classList.add("is-open");
     overlay.classList.add("is-open");
   }
