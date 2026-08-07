@@ -692,6 +692,8 @@ button {
 .site-footer--compact .footer-brand img { width: 28px; height: 28px; }
 
 /* ===== TOAST ===== */
+/* Desktop: topo da tela (padrão). No mobile isso é invertido pra embaixo
+   — ver css/responsive.css. */
 .toast {
   position: fixed; top: 24px; left: 50%; transform: translate(-50%, -20px);
   background: var(--cinza-900); color: var(--branco);
