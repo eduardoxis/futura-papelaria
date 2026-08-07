@@ -2,7 +2,8 @@
 import { auth, db } from "../firebase/firebase-config.js";
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, onAuthStateChanged, sendPasswordResetEmail
+  signOut, onAuthStateChanged, sendPasswordResetEmail,
+  setPersistence, browserLocalPersistence, browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { toast } from "./utils.js";
@@ -28,8 +29,12 @@ export function ehAdmin() {
   return !!perfilAtual?.cargos?.includes("admin");
 }
 
-export async function entrar(email, senha) {
+export async function entrar(email, senha, manterLogin = true) {
   try {
+    // "Manter conectado" marcado -> sessão sobrevive ao fechar o navegador
+    // (browserLocalPersistence). Desmarcado -> some ao fechar a aba/janela
+    // (browserSessionPersistence), útil em computador compartilhado.
+    await setPersistence(auth, manterLogin ? browserLocalPersistence : browserSessionPersistence);
     const { user } = await signInWithEmailAndPassword(auth, email, senha);
     return user;
   } catch (err) {
