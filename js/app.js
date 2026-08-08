@@ -10,7 +10,7 @@ import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
-import { formatBRL, escHtml, getQueryParam, toast, podeExecutar } from "./utils.js";
+import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, redefinirSenha } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
@@ -453,12 +453,47 @@ function configurarModalAuth() {
   const modal = document.querySelector("#modal-login");
   if (!modal) return;
 
+  function mostrarView(view) {
+    modal.querySelector("#form-entrar-modal").hidden = view !== "entrar";
+    modal.querySelector("#form-esqueci-senha").hidden = view !== "esqueci";
+    modal.querySelector("#form-cadastrar-modal").hidden = view !== "cadastrar";
+    modal.querySelector(".auth-tabs:not(.auth-tabs--tipo)").hidden = view === "esqueci";
+  }
+
   modal.querySelectorAll("[data-auth-tab]").forEach(btn => {
     btn.addEventListener("click", () => {
       modal.querySelectorAll("[data-auth-tab]").forEach(b => b.classList.remove("is-active"));
       btn.classList.add("is-active");
-      modal.querySelector("#form-entrar-modal").hidden = btn.dataset.authTab !== "entrar";
-      modal.querySelector("#form-cadastrar-modal").hidden = btn.dataset.authTab !== "cadastrar";
+      mostrarView(btn.dataset.authTab);
+    });
+  });
+
+  modal.querySelector("#link-esqueci-senha").addEventListener("click", () => mostrarView("esqueci"));
+  modal.querySelector("#voltar-esqueci-senha").addEventListener("click", () => {
+    modal.querySelectorAll("[data-auth-tab]").forEach(b => b.classList.toggle("is-active", b.dataset.authTab === "entrar"));
+    mostrarView("entrar");
+  });
+
+  // mostrar/ocultar senha em qualquer campo do modal
+  modal.querySelectorAll("[data-toggle-senha]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = btn.previousElementSibling;
+      const mostrando = input.type === "text";
+      input.type = mostrando ? "password" : "text";
+      btn.innerHTML = mostrando ? ICONS.eye : ICONS.eyeOff;
+      btn.setAttribute("aria-label", mostrando ? "Mostrar senha" : "Ocultar senha");
+    });
+  });
+
+  // pessoa física / empresa no cadastro
+  modal.querySelectorAll("[data-tipo-conta]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      modal.querySelectorAll("[data-tipo-conta]").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      const tipo = btn.dataset.tipoConta;
+      modal.querySelector('input[name="tipoConta"]').value = tipo;
+      modal.querySelector('[data-campos-tipo="fisica"]').hidden = tipo !== "fisica";
+      modal.querySelector('[data-campos-tipo="empresa"]').hidden = tipo !== "empresa";
     });
   });
 
@@ -480,6 +515,31 @@ function configurarModalAuth() {
     }
   });
 
+  modal.querySelector("#form-esqueci-senha").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const erroEl = modal.querySelector("#erro-esqueci-senha");
+    const sucessoEl = modal.querySelector("#sucesso-esqueci-senha");
+    erroEl.textContent = "";
+    sucessoEl.hidden = true;
+
+    const email = form.email.value.trim().toLowerCase();
+    const chave = `reset-senha-${email}`;
+    // até 5 tentativas por e-mail, depois bloqueia por 1h (persiste mesmo fechando a aba)
+    if (!podeExecutarPersistente(chave, 5, 60 * 60_000)) {
+      erroEl.textContent = "Muitas tentativas para este e-mail. Tente novamente mais tarde.";
+      return;
+    }
+    try {
+      await redefinirSenha(email);
+      sucessoEl.textContent = "Link enviado! Pode levar alguns minutos — se não chegar, confira a caixa de spam/lixo eletrônico ou promoções.";
+      sucessoEl.hidden = false;
+      form.reset();
+    } catch {
+      erroEl.textContent = "Não foi possível enviar o link. Confira o e-mail digitado.";
+    }
+  });
+
   modal.querySelector("#form-cadastrar-modal").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -489,8 +549,27 @@ function configurarModalAuth() {
       erroEl.textContent = "Muitas tentativas. Aguarde um minuto e tente novamente.";
       return;
     }
+    if (form.senha.value !== form.confirmarSenha.value) {
+      erroEl.textContent = "As senhas não coincidem.";
+      return;
+    }
+    const tipoConta = form.tipoConta.value;
+    const dados = tipoConta === "empresa"
+      ? {
+          email: form.email.value, senha: form.senha.value, tipoConta,
+          razaoSocial: form.razaoSocial.value.trim(),
+          cnpj: form.cnpj.value.trim(),
+          responsavel: form.responsavel.value.trim(),
+          telefone: form.telefoneEmpresa.value.trim()
+        }
+      : {
+          email: form.email.value, senha: form.senha.value, tipoConta,
+          nome: form.nome.value.trim(),
+          cpf: form.cpf.value.trim(),
+          telefone: form.telefone.value.trim()
+        };
     try {
-      await cadastrar(form.nome.value, form.email.value, form.senha.value);
+      await cadastrar(dados);
       fecharModal(modal);
       form.reset();
     } catch {
@@ -645,7 +724,13 @@ function configurarMenuConta() {
 
   document.querySelector("#btn-alterar-senha")?.addEventListener("click", async () => {
     if (!usuarioAtual?.email) return;
+    const chave = `reset-senha-${usuarioAtual.email.toLowerCase()}`;
+    if (!podeExecutarPersistente(chave, 5, 60 * 60_000)) {
+      toast("Muitas tentativas. Tente novamente mais tarde.", "error");
+      return;
+    }
     await redefinirSenha(usuarioAtual.email);
+    toast("Link enviado! Se não chegar em alguns minutos, confira a caixa de spam ou promoções.");
   });
 }
 
