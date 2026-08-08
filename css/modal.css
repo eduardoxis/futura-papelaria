@@ -56,6 +56,7 @@
 .modal__note { font-size: 0.85rem; color: var(--cinza-500); margin: 0 0 1.1rem; line-height: 1.5; }
 
 .stacked-form { display: grid; gap: 0.75rem; margin-top: 1.25rem; }
+.stacked-form label { display: grid; gap: 0.3rem; font-size: 0.85rem; color: var(--cinza-700); }
 .stacked-form__title { margin: 0 0 -0.25rem; font-size: 0.95rem; color: var(--azul-900); }
 .stacked-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .stacked-form input {
