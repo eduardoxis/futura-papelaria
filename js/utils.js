@@ -66,6 +66,33 @@ export function getQueryParam(name) {
  * @param {number} janelaMs período em milissegundos para o limite
  * @returns {boolean} true se a ação pode ser executada agora
  */
+export function mascararCPF(valor) {
+  return valor.replace(/\D/g, "").slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+export function mascararCNPJ(valor) {
+  return valor.replace(/\D/g, "").slice(0, 14)
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+export function mascararTelefone(valor) {
+  const numeros = valor.replace(/\D/g, "").slice(0, 11);
+  if (numeros.length <= 10) {
+    return numeros
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d{1,4})$/, "$1-$2");
+  }
+  return numeros
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d{1,4})$/, "$1-$2");
+}
+
 export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
   const agora = Date.now();
   const registro = JSON.parse(sessionStorage.getItem(`ratelimit_${chave}`) || "[]")
