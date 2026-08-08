@@ -11,7 +11,7 @@ import {
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
 import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone } from "./utils.js";
-import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, redefinirSenha } from "./auth.js";
+import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
 import { iniciarOrcamento } from "./orcamento.js";
@@ -393,7 +393,8 @@ function configurarCarrinhoUI() {
       return;
     }
     const nome = document.querySelector("#nome-cliente")?.value?.trim();
-    const nomeParaPedido = usuarioAtual ? (nome || usuarioAtual.displayName || "") : nome;
+    const nomeDoPerfil = usuarioAtual?.displayName || perfilAtual?.nome || perfilAtual?.responsavel || perfilAtual?.razaoSocial || "";
+    const nomeParaPedido = usuarioAtual ? (nome || nomeDoPerfil) : nome;
     if (usuarioAtual) {
       const { total } = calcularTotais();
       criarPedido({
