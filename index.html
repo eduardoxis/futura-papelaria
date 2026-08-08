@@ -253,7 +253,7 @@
       <button class="modal__close" data-modal-close aria-label="Fechar"></button>
     </div>
     <div class="modal__body sheet__body">
-      <div class="account-profile">
+      <div class="account-profile" id="btn-abrir-perfil" role="button" tabindex="0">
         <span class="account-profile__avatar" data-icon="user"></span>
         <div>
           <strong id="conta-nome">Olá, Usuário!</strong>
@@ -308,7 +308,80 @@
   </div>
 </div>
 
-<!-- MODAL MEUS PEDIDOS -->
+<!-- MODAL MEU PERFIL -->
+<div class="modal modal--sheet" id="modal-perfil">
+  <div class="modal__panel modal__panel--sheet">
+    <div class="sheet__handle"></div>
+    <div class="modal__head">
+      <div class="modal__head-title">
+        <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
+        <div>
+          <h2>Meu perfil</h2>
+          <p class="modal__head-sub">Gerencie sua conta e preferências</p>
+        </div>
+      </div>
+      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+    </div>
+    <div class="modal__body sheet__body">
+
+      <div class="perfil-hero">
+        <span class="perfil-hero__avatar" data-icon="user"></span>
+        <div class="perfil-hero__info">
+          <strong id="perfil-saudacao">Olá!</strong>
+          <span id="perfil-email-hero"></span>
+          <small id="perfil-membro-desde"></small>
+        </div>
+        <button type="button" class="btn-secondary perfil-hero__editar" id="btn-editar-perfil"><span data-icon="pencil"></span>Editar perfil</button>
+      </div>
+
+      <h3 class="perfil-secao__titulo">Informações pessoais</h3>
+      <div class="perfil-lista" id="perfil-visualizacao">
+        <div class="perfil-item">
+          <span class="perfil-item__icon" data-icon="user"></span>
+          <div class="perfil-item__texto"><strong>Nome completo</strong><span id="perfil-view-nome">—</span></div>
+        </div>
+        <div class="perfil-item">
+          <span class="perfil-item__icon" data-icon="mail"></span>
+          <div class="perfil-item__texto"><strong>E-mail</strong><span id="perfil-view-email">—</span></div>
+        </div>
+        <div class="perfil-item">
+          <span class="perfil-item__icon" data-icon="phone"></span>
+          <div class="perfil-item__texto"><strong>Telefone</strong><span id="perfil-view-telefone">—</span></div>
+        </div>
+        <div class="perfil-item">
+          <span class="perfil-item__icon" data-icon="calendar"></span>
+          <div class="perfil-item__texto"><strong>Data de nascimento</strong><span id="perfil-view-nascimento">—</span></div>
+        </div>
+      </div>
+
+      <form id="form-editar-perfil" class="stacked-form" hidden>
+        <label>Nome completo<input name="nome" required autocomplete="name"></label>
+        <label>Telefone<input name="telefone" type="tel" maxlength="16" placeholder="(00) 00000-0000" autocomplete="tel"></label>
+        <label>Data de nascimento<input name="dataNascimento" type="date"></label>
+        <p class="modal__note">O e-mail não pode ser alterado por aqui por segurança.</p>
+        <div class="form-actions">
+          <button type="button" id="btn-cancelar-editar-perfil">Cancelar</button>
+          <button type="submit" class="btn-primary">Salvar alterações</button>
+        </div>
+      </form>
+
+      <h3 class="perfil-secao__titulo">Segurança da conta</h3>
+      <div class="perfil-lista">
+        <div class="perfil-item">
+          <span class="perfil-item__icon" data-icon="lock"></span>
+          <div class="perfil-item__texto"><strong>Senha</strong><span>••••••••</span></div>
+          <button type="button" class="btn-secondary" id="btn-alterar-senha-perfil">Alterar senha</button>
+        </div>
+        <div class="perfil-item">
+          <span class="perfil-item__icon" data-icon="shieldCheck"></span>
+          <div class="perfil-item__texto"><strong>Verificação em duas etapas</strong><span>Proteja ainda mais sua conta</span></div>
+          <span class="perfil-item__status">Em breve</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 <div class="modal modal--sheet" id="modal-pedidos">
   <div class="modal__panel modal__panel--sheet">
     <div class="sheet__handle"></div>
