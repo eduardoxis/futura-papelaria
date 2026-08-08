@@ -168,6 +168,7 @@
 import { obterProduto, listarProdutos, listarCategorias, incrementarVisualizacao } from "../js/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar } from "../js/utils.js";
 import { renderizarGrade, cartaoProduto, compartilharProduto, obterFavoritos, alternarFavorito } from "../js/products.js";
+import { ouvirEstadoAuth, ehAdmin, sair } from "../js/auth.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
@@ -509,8 +510,44 @@ function configurarCarrinhoUI() {
   });
 }
 
+function configurarLogin() {
+  ouvirEstadoAuth((usuario) => {
+    const btnAdmin = document.querySelector("#abrir-admin");
+    const btnEntrar = document.querySelector("#btn-entrar");
+    const btnSair = document.querySelector("#btn-sair");
+    const btnMinhaConta = document.querySelector("#btn-minha-conta");
+
+    if (usuario) {
+      btnEntrar?.setAttribute("hidden", "");
+      btnSair?.removeAttribute("hidden");
+      btnMinhaConta?.removeAttribute("hidden");
+      if (ehAdmin()) btnAdmin?.removeAttribute("hidden");
+      else btnAdmin?.setAttribute("hidden", "");
+    } else {
+      btnEntrar?.removeAttribute("hidden");
+      btnSair?.setAttribute("hidden", "");
+      btnMinhaConta?.setAttribute("hidden", "");
+      btnAdmin?.setAttribute("hidden", "");
+    }
+  });
+
+  // "Entrar", "Minha conta" e "Painel Admin" abrem os modais correspondentes
+  // — que só existem na página inicial. Aqui redireciona pra lá.
+  document.querySelector("#btn-entrar")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=login";
+  });
+  document.querySelector("#btn-minha-conta")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=conta";
+  });
+  document.querySelector("#abrir-admin")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=admin";
+  });
+  document.querySelector("#btn-sair")?.addEventListener("click", sair);
+}
+
 configurarCategoriaHeader();
 configurarCarrinhoUI();
+configurarLogin();
 atualizarBadgeCarrinho();
 iniciarProduto();
 </script>
