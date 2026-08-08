@@ -246,6 +246,7 @@ async function abrirFormularioProduto(container, produto = null) {
       <div class="form-grid">
         <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(produto?.nome || "")}"></label>
         <label>Marca<input name="marca" autocomplete="off" value="${escHtml(produto?.marca || "")}"></label>
+        <label>Cor<input name="cor" autocomplete="off" placeholder="Ex: Azul, Vermelho..." value="${escHtml(produto?.cor || "")}"></label>
         <label>Preço (R$)<input name="preco" type="number" step="0.01" required value="${produto?.preco ?? ""}"></label>
         <label>Quantidade<input name="quantidade" type="number" required value="${produto?.quantidade ?? 0}"></label>
         <label>Categoria<select name="categoria"><option value="">Selecione</option>${opcoesCategoria}</select></label>
@@ -258,6 +259,9 @@ async function abrirFormularioProduto(container, produto = null) {
         </label>
         <label>Código<input name="codigo" autocomplete="off" value="${escHtml(produto?.codigo || generateCode())}"></label>
       </div>
+      <p style="font-size:0.82rem;color:var(--cinza-500);margin:-0.5rem 0 0.5rem">
+        Dica: para um produto com variações de cor (ex: mesmo caderno em azul e vermelho), cadastre um produto separado para cada cor usando o <strong>mesmo Nome e Marca</strong> — elas aparecerão conectadas na página do produto, com um seletor de cor.
+      </p>
 
       <div class="galeria-produto">
         <h4>Galeria de imagens do produto</h4>
@@ -349,6 +353,7 @@ async function abrirFormularioProduto(container, produto = null) {
     const dados = {
       nome: nomeProduto,
       marca: form.marca.value.trim(),
+      cor: form.cor.value.trim(),
       preco: parseFloat(form.preco.value),
       quantidade: parseInt(form.quantidade.value, 10),
       categoria: form.categoria.value,
