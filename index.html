@@ -543,7 +543,7 @@
 
 <!-- MODAL LOGIN -->
 <div class="modal" id="modal-login">
-  <div class="modal__panel" style="max-width:420px">
+  <div class="modal__panel" style="max-width:440px">
     <div class="modal__head"><h2>Entrar</h2><button class="modal__close" data-modal-close>✕</button></div>
     <div class="tabs-content">
       <div class="auth-tabs">
@@ -553,16 +553,60 @@
 
       <form id="form-entrar-modal">
         <label>E-mail<input type="email" name="email" required autocomplete="username"></label>
-        <label>Senha<input type="password" name="senha" required autocomplete="current-password"></label>
+        <label class="campo-senha">Senha
+          <span class="campo-senha__wrap">
+            <input type="password" name="senha" required autocomplete="current-password">
+            <button type="button" class="campo-senha__toggle" data-toggle-senha aria-label="Mostrar senha"><span data-icon="eye"></span></button>
+          </span>
+        </label>
+        <button type="button" class="link-esqueci-senha" id="link-esqueci-senha">Esqueceu a senha?</button>
         <label class="checkbox-inline"><input type="checkbox" name="manterLogin" checked> Manter conectado</label>
         <p class="auth-error" id="erro-entrar-modal"></p>
         <button type="submit" class="btn-primary" style="width:100%">Entrar</button>
       </form>
 
-      <form id="form-cadastrar-modal" hidden>
-        <label>Nome<input type="text" name="nome" required autocomplete="name"></label>
+      <form id="form-esqueci-senha" hidden>
+        <p class="auth-info">Digite o e-mail da sua conta. Vamos enviar um link para você criar uma senha nova.</p>
         <label>E-mail<input type="email" name="email" required autocomplete="username"></label>
-        <label>Senha<input type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
+        <p class="auth-error" id="erro-esqueci-senha"></p>
+        <p class="auth-success" id="sucesso-esqueci-senha" hidden></p>
+        <button type="submit" class="btn-primary" style="width:100%">Enviar link de redefinição</button>
+        <button type="button" class="link-esqueci-senha" id="voltar-esqueci-senha">Voltar para o login</button>
+      </form>
+
+      <form id="form-cadastrar-modal" hidden>
+        <div class="auth-tabs auth-tabs--tipo">
+          <button type="button" data-tipo-conta="fisica" class="is-active">Pessoa física</button>
+          <button type="button" data-tipo-conta="empresa">Empresa</button>
+        </div>
+        <input type="hidden" name="tipoConta" value="fisica">
+
+        <div data-campos-tipo="fisica">
+          <label>Nome completo<input type="text" name="nome" required autocomplete="name"></label>
+          <label>CPF<input type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off"></label>
+          <label>Telefone<input type="tel" name="telefone" placeholder="(00) 00000-0000" autocomplete="tel"></label>
+        </div>
+
+        <div data-campos-tipo="empresa" hidden>
+          <label>Razão social<input type="text" name="razaoSocial" autocomplete="organization"></label>
+          <label>CNPJ<input type="text" name="cnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" autocomplete="off"></label>
+          <label>Nome do responsável<input type="text" name="responsavel" autocomplete="name"></label>
+          <label>Telefone comercial<input type="tel" name="telefoneEmpresa" placeholder="(00) 00000-0000" autocomplete="tel"></label>
+        </div>
+
+        <label>E-mail<input type="email" name="email" required autocomplete="username"></label>
+        <label class="campo-senha">Senha
+          <span class="campo-senha__wrap">
+            <input type="password" name="senha" required minlength="6" autocomplete="new-password">
+            <button type="button" class="campo-senha__toggle" data-toggle-senha aria-label="Mostrar senha"><span data-icon="eye"></span></button>
+          </span>
+        </label>
+        <label class="campo-senha">Confirmar senha
+          <span class="campo-senha__wrap">
+            <input type="password" name="confirmarSenha" required minlength="6" autocomplete="new-password">
+            <button type="button" class="campo-senha__toggle" data-toggle-senha aria-label="Mostrar senha"><span data-icon="eye"></span></button>
+          </span>
+        </label>
         <p class="auth-error" id="erro-cadastrar-modal"></p>
         <button type="submit" class="btn-primary" style="width:100%">Criar conta</button>
       </form>
