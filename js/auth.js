@@ -59,6 +59,11 @@ export async function cadastrar(dados) {
   }
 }
 
+export async function atualizarNomeAuth(nome) {
+  if (!auth.currentUser) return;
+  await updateProfile(auth.currentUser, { displayName: nome });
+}
+
 export async function sair() {
   await signOut(auth);
   window.location.href = "/index.html";
