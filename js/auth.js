@@ -1,233 +1,85 @@
-// js/utils.js
-export function escHtml(str = "") {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+// js/auth.js
+import { auth, db } from "../firebase/firebase-config.js";
+import {
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile,
+  setPersistence, browserLocalPersistence, browserSessionPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { toast } from "./utils.js";
+
+export let usuarioAtual = null;
+export let perfilAtual = null;
+
+export function ouvirEstadoAuth(callback) {
+  onAuthStateChanged(auth, async (user) => {
+    usuarioAtual = user;
+    if (user) {
+      const ref = doc(db, "usuarios", user.uid);
+      const snap = await getDoc(ref);
+      perfilAtual = snap.exists() ? snap.data() : { cargos: ["cliente"] };
+    } else {
+      perfilAtual = null;
+    }
+    callback(usuarioAtual, perfilAtual);
+  });
 }
 
-export function formatBRL(value = 0) {
-  return Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export function ehAdmin() {
+  return !!perfilAtual?.cargos?.includes("admin");
 }
 
-export function formatDate(date) {
-  const d = date instanceof Date ? date : new Date(date);
-  return d.toLocaleDateString("pt-BR");
-}
-
-export function slugify(text = "") {
-  return text
-    .toString()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
-
-export function generateCode(prefix = "PROD") {
-  return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
-}
-
-export function debounce(fn, delay = 300) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
-
-export function toast(message, type = "info") {
-  const el = document.createElement("div");
-  el.className = `toast toast-${type}`;
-  el.textContent = message;
-  document.body.appendChild(el);
-  requestAnimationFrame(() => el.classList.add("show"));
-  setTimeout(() => {
-    el.classList.remove("show");
-    setTimeout(() => el.remove(), 300);
-  }, 3000);
-}
-
-export function getQueryParam(name) {
-  return new URLSearchParams(window.location.search).get(name);
-}
-
-/**
- * Limitador simples de ações no cliente (ex.: evitar múltiplos cliques em
- * "Finalizar pedido" ou tentativas repetidas de login). Isto é apenas uma
- * camada de UX — a proteção real contra abuso/spam deve vir do Firebase
- * App Check e das Firestore Security Rules (veja SECURITY.md).
- * @param {string} chave identificador único da ação (ex.: "login", "finalizar-pedido")
- * @param {number} limite quantidade máxima de execuções permitidas
- * @param {number} janelaMs período em milissegundos para o limite
- * @returns {boolean} true se a ação pode ser executada agora
- */
-export function mascararCPF(valor) {
-  return valor.replace(/\D/g, "").slice(0, 11)
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-}
-
-export function mascararCNPJ(valor) {
-  return valor.replace(/\D/g, "").slice(0, 14)
-    .replace(/(\d{2})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1/$2")
-    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
-}
-
-export function mascararTelefone(valor) {
-  const numeros = valor.replace(/\D/g, "").slice(0, 11);
-  if (numeros.length <= 10) {
-    return numeros
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d{1,4})$/, "$1-$2");
+export async function entrar(email, senha, manterLogin = true) {
+  try {
+    // "Manter conectado" marcado -> sessão sobrevive ao fechar o navegador
+    // (browserLocalPersistence). Desmarcado -> some ao fechar a aba/janela
+    // (browserSessionPersistence), útil em computador compartilhado.
+    await setPersistence(auth, manterLogin ? browserLocalPersistence : browserSessionPersistence);
+    const { user } = await signInWithEmailAndPassword(auth, email, senha);
+    return user;
+  } catch (err) {
+    toast(traduzErroAuth(err.code), "error");
+    throw err;
   }
-  return numeros
-    .replace(/(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d{1,4})$/, "$1-$2");
 }
 
-export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
-  const agora = Date.now();
-  const registro = JSON.parse(sessionStorage.getItem(`ratelimit_${chave}`) || "[]")
-    .filter(t => agora - t < janelaMs);
-
-  if (registro.length >= limite) return false;
-
-  registro.push(agora);
-  sessionStorage.setItem(`ratelimit_${chave}`, JSON.stringify(registro));
-  return true;
+export async function cadastrar(dados) {
+  try {
+    const { email, senha, ...perfil } = dados;
+    const { user } = await createUserWithEmailAndPassword(auth, email, senha);
+    const nomeExibicao = perfil.nome || perfil.responsavel || perfil.razaoSocial || "";
+    if (nomeExibicao) await updateProfile(user, { displayName: nomeExibicao });
+    await setDoc(doc(db, "usuarios", user.uid), {
+      email, cargos: ["cliente"], criadoEm: new Date().toISOString(), ...perfil
+    });
+    return user;
+  } catch (err) {
+    toast(traduzErroAuth(err.code), "error");
+    throw err;
+  }
 }
 
-/**
- * Igual a podeExecutar(), mas persiste em localStorage (sobrevive a fechar
- * a aba/navegador). Usado para limitar por e-mail ações sensíveis como
- * pedidos de redefinição de senha, dificultando spam mesmo reabrindo o site.
- */
-export function podeExecutarPersistente(chave, limite = 5, janelaMs = 60 * 60_000) {
-  const agora = Date.now();
-  const registro = JSON.parse(localStorage.getItem(`ratelimit_${chave}`) || "[]")
-    .filter(t => agora - t < janelaMs);
-
-  if (registro.length >= limite) return false;
-
-  registro.push(agora);
-  localStorage.setItem(`ratelimit_${chave}`, JSON.stringify(registro));
-  return true;
+export async function sair() {
+  await signOut(auth);
+  window.location.href = "/index.html";
 }
 
-/**
- * Comprime uma imagem (File) e retorna uma string Base64 (JPEG) já reduzida,
- * para caber com folga dentro do limite de 1MB por documento do Firestore.
- * @param {File} file
- * @param {number} maxWidth
- * @param {number} quality 0..1
- * @returns {Promise<string>} data URL base64
- */
-/**
- * Converte uma imagem (File) para WebP no navegador, redimensionando pela
- * largura máxima e aplicando compressão de qualidade. Retorna um Blob.
- * Usado antes do upload para o serviço externo de hospedagem de imagens
- * (nunca salvamos base64 no Firestore nem usamos Firebase Storage).
- */
-export function converterParaWebP(file, maxWidth = 800, qualidade = 0.8) {
-  return converterParaFormato(file, "image/webp", maxWidth, qualidade);
+export async function redefinirSenha(email) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (err) {
+    toast(traduzErroAuth(err.code), "error");
+    throw err;
+  }
 }
 
-/**
- * Mesma lógica de converterParaWebP, mas gera PNG — usado para imagens de
- * categoria/marca, que costumam ser logos com fundo transparente e ficam
- * melhor em PNG do que recomprimidas em WebP com perdas.
- */
-export function converterParaPNG(file, maxWidth = 500) {
-  return converterParaFormato(file, "image/png", maxWidth, 1);
-}
-
-function converterParaFormato(file, mime, maxWidth, qualidade) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob(
-          (blob) => (blob ? resolve(blob) : reject(new Error(`Falha ao gerar ${mime}`))),
-          mime,
-          qualidade
-        );
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
- * Pede confirmação através de um modal (não usa o confirm() nativo do
- * navegador). Retorna uma Promise<boolean> resolvida conforme a escolha.
- */
-export function confirmarAcao(mensagem, { titulo = "Confirmar ação", textoConfirmar = "Remover", textoCancelar = "Cancelar" } = {}) {
-  return new Promise((resolve) => {
-    const dialog = document.createElement("dialog");
-    dialog.className = "dialog-form dialog-confirm";
-    dialog.innerHTML = `
-      <div class="confirm-box">
-        <h3>${escHtml(titulo)}</h3>
-        <p>${escHtml(mensagem)}</p>
-        <div class="form-actions">
-          <button type="button" data-confirm-nao>${escHtml(textoCancelar)}</button>
-          <button type="button" class="btn-primary btn-perigo" data-confirm-sim>${escHtml(textoConfirmar)}</button>
-        </div>
-      </div>`;
-    document.body.appendChild(dialog);
-    dialog.showModal();
-
-    const finalizar = (resultado) => {
-      dialog.close();
-      dialog.remove();
-      resolve(resultado);
-    };
-    dialog.querySelector("[data-confirm-sim]").addEventListener("click", () => finalizar(true));
-    dialog.querySelector("[data-confirm-nao]").addEventListener("click", () => finalizar(false));
-    dialog.addEventListener("cancel", () => finalizar(false));
-  });
-}
-
-export function compressImageToBase64(file, maxWidth = 800, quality = 0.7, format = "jpeg") {
-  // Mantida apenas para compatibilidade com dados antigos que ainda tenham
-  // imagens em base64 no Firestore (ver migrarImagensAntigas em cloudinary.js).
-  // Novos uploads NÃO devem usar esta função — usar converterParaWebP().
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const mime = format === "png" ? "image/png" : "image/jpeg";
-        resolve(canvas.toDataURL(mime, quality));
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function traduzErroAuth(code) {
+  const mapa = {
+    "auth/invalid-credential": "E-mail ou senha inválidos.",
+    "auth/user-not-found": "Usuário não encontrado.",
+    "auth/email-already-in-use": "Este e-mail já está cadastrado.",
+    "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
+    "auth/too-many-requests": "Muitas tentativas. Aguarde um pouco antes de tentar de novo."
+  };
+  return mapa[code] || "Ocorreu um erro. Tente novamente.";
 }
