@@ -247,6 +247,7 @@ async function abrirFormularioProduto(container, produto = null) {
         <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(produto?.nome || "")}"></label>
         <label>Marca<input name="marca" autocomplete="off" value="${escHtml(produto?.marca || "")}"></label>
         <label>Cor<input name="cor" autocomplete="off" placeholder="Ex: Azul, Vermelho..." value="${escHtml(produto?.cor || "")}"></label>
+        <label>Cor (bolinha)<input name="corHex" type="color" value="${produto?.corHex || "#cccccc"}" style="height:42px;padding:0.25rem"></label>
         <label>Preço (R$)<input name="preco" type="number" step="0.01" required value="${produto?.preco ?? ""}"></label>
         <label>Quantidade<input name="quantidade" type="number" required value="${produto?.quantidade ?? 0}"></label>
         <label>Categoria<select name="categoria"><option value="">Selecione</option>${opcoesCategoria}</select></label>
@@ -260,7 +261,7 @@ async function abrirFormularioProduto(container, produto = null) {
         <label>Código<input name="codigo" autocomplete="off" value="${escHtml(produto?.codigo || generateCode())}"></label>
       </div>
       <p style="font-size:0.82rem;color:var(--cinza-500);margin:-0.5rem 0 0.5rem">
-        Dica: para um produto com variações de cor (ex: mesmo caderno em azul e vermelho), cadastre um produto separado para cada cor usando o <strong>mesmo Nome e Marca</strong> — elas aparecerão conectadas na página do produto, com um seletor de cor.
+        Dica: para um produto com variações de cor (ex: mesmo caderno em azul e vermelho), cadastre um produto separado para cada cor usando o <strong>mesmo Nome e Marca</strong> — elas aparecerão conectadas na página do produto, com um seletor de cor. Escolha a bolinha na cor real do produto (é só visual, não precisa ser exata).
       </p>
 
       <div class="galeria-produto">
@@ -274,6 +275,10 @@ async function abrirFormularioProduto(container, produto = null) {
       </div>
 
       <label>Descrição<textarea name="descricao" rows="3">${escHtml(produto?.descricao || "")}</textarea></label>
+      <label>Destaques do produto (opcional)
+        <textarea name="destaques" rows="3" placeholder="Um por linha, ex:&#10;Material resistente e durável&#10;Zíperes de alta qualidade">${escHtml((produto?.destaques || []).join("\n"))}</textarea>
+      </label>
+      <p style="font-size:0.78rem;color:var(--cinza-500);margin:-0.5rem 0 0.5rem">Aparece como uma caixinha "Destaques do produto" na página do produto. Um item por linha. Deixe em branco se não quiser essa seção.</p>
       <fieldset class="chip-group"><legend>Etiquetas</legend>${opcoesEtiquetas || "<em>Nenhuma etiqueta cadastrada</em>"}</fieldset>
       <div class="form-actions">
         <button type="button" data-modal-close-dialog>Cancelar</button>
@@ -354,12 +359,14 @@ async function abrirFormularioProduto(container, produto = null) {
       nome: nomeProduto,
       marca: form.marca.value.trim(),
       cor: form.cor.value.trim(),
+      corHex: form.cor.value.trim() ? form.corHex.value : "",
       preco: parseFloat(form.preco.value),
       quantidade: parseInt(form.quantidade.value, 10),
       categoria: form.categoria.value,
       status: form.status.value,
       codigo: form.codigo.value.trim(),
       descricao: form.descricao.value.trim(),
+      destaques: form.destaques.value.split("\n").map(l => l.trim()).filter(Boolean),
       etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value),
       imagens: galeria.map(g => g.url).filter(Boolean)
     };
