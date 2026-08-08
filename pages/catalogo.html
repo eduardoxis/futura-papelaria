@@ -272,7 +272,7 @@ import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
 } from "../js/cart.js";
-import { ouvirEstadoAuth, usuarioAtual } from "../js/auth.js";
+import { ouvirEstadoAuth, usuarioAtual, ehAdmin, sair } from "../js/auth.js";
 import { ICONS } from "../js/icons.js";
 
 const MARCAS_VISIVEIS_INICIAL = 6;
@@ -576,7 +576,38 @@ function configurarNomeConvidado() {
   ouvirEstadoAuth((usuario) => {
     const campoNome = document.querySelector("#campo-nome-convidado");
     if (campoNome) campoNome.hidden = !!usuario;
+
+    const btnAdmin = document.querySelector("#abrir-admin");
+    const btnEntrar = document.querySelector("#btn-entrar");
+    const btnSair = document.querySelector("#btn-sair");
+    const btnMinhaConta = document.querySelector("#btn-minha-conta");
+
+    if (usuario) {
+      btnEntrar?.setAttribute("hidden", "");
+      btnSair?.removeAttribute("hidden");
+      btnMinhaConta?.removeAttribute("hidden");
+      if (ehAdmin()) btnAdmin?.removeAttribute("hidden");
+      else btnAdmin?.setAttribute("hidden", "");
+    } else {
+      btnEntrar?.removeAttribute("hidden");
+      btnSair?.setAttribute("hidden", "");
+      btnMinhaConta?.setAttribute("hidden", "");
+      btnAdmin?.setAttribute("hidden", "");
+    }
   });
+
+  // "Entrar", "Minha conta" e "Painel Admin" abrem modais que só existem
+  // na página inicial — aqui redireciona pra lá já sinalizando qual abrir.
+  document.querySelector("#btn-entrar")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=login";
+  });
+  document.querySelector("#btn-minha-conta")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=conta";
+  });
+  document.querySelector("#abrir-admin")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=admin";
+  });
+  document.querySelector("#btn-sair")?.addEventListener("click", sair);
 }
 
 async function iniciar() {
