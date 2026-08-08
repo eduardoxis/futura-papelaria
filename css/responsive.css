@@ -79,8 +79,11 @@
   .search-page__filters {
     display: none;
     margin-bottom: 1.25rem;
+    position: static;
+    padding: 0.25rem 1.1rem;
   }
   .search-page__filters.is-aberto { display: block; }
+  .search-page__filters-head { display: none; }
 }
 
 @media (max-width: 480px) {
