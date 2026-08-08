@@ -79,6 +79,23 @@ export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
 }
 
 /**
+ * Igual a podeExecutar(), mas persiste em localStorage (sobrevive a fechar
+ * a aba/navegador). Usado para limitar por e-mail ações sensíveis como
+ * pedidos de redefinição de senha, dificultando spam mesmo reabrindo o site.
+ */
+export function podeExecutarPersistente(chave, limite = 5, janelaMs = 60 * 60_000) {
+  const agora = Date.now();
+  const registro = JSON.parse(localStorage.getItem(`ratelimit_${chave}`) || "[]")
+    .filter(t => agora - t < janelaMs);
+
+  if (registro.length >= limite) return false;
+
+  registro.push(agora);
+  localStorage.setItem(`ratelimit_${chave}`, JSON.stringify(registro));
+  return true;
+}
+
+/**
  * Comprime uma imagem (File) e retorna uma string Base64 (JPEG) já reduzida,
  * para caber com folga dentro do limite de 1MB por documento do Firestore.
  * @param {File} file
