@@ -93,6 +93,10 @@ export function mascararTelefone(valor) {
     .replace(/(\d{5})(\d{1,4})$/, "$1-$2");
 }
 
+export function pareceEmail(valor = "") {
+  return /\S+@\S+\.\S+/.test(valor);
+}
+
 export function podeExecutar(chave, limite = 5, janelaMs = 60_000) {
   const agora = Date.now();
   const registro = JSON.parse(sessionStorage.getItem(`ratelimit_${chave}`) || "[]")
