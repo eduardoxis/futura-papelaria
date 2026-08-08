@@ -392,5 +392,8 @@ dialog.dialog-form::backdrop { background: rgba(11, 33, 73, 0.45); backdrop-filt
 .chip-group legend { font-size: 0.85rem; color: var(--cinza-700); margin-bottom: 0.3rem; }
 .chip-check { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
 .form-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+.import-result { margin: 1rem 0; font-size: 0.9rem; }
+.import-result__errors { margin: 0.5rem 0 0; padding-left: 1.1rem; color: #b42318; max-height: 220px; overflow-y: auto; }
+.import-result__errors li { margin-bottom: 0.3rem; }
 .form-actions button[type="submit"] { padding: 0.55rem 1.2rem; }
 .form-actions button[type="button"] { padding: 0.55rem 1rem; border-radius: var(--raio-sm); background: var(--cinza-100); }
