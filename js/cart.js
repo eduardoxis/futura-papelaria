@@ -82,7 +82,7 @@ export function montarMensagemWhatsApp(nomeCliente = "") {
     msg += `${item.nome}\nQuantidade: ${item.quantidade}\nValor: ${formatBRL(item.preco * item.quantidade)}\n\n`;
   });
   msg += `------------------\nTotal: ${formatBRL(total)}\n\n`;
-  msg += `Meu nome é: ${nomeCliente || "____________"}\n\n`;
+  if (nomeCliente) msg += `Meu nome é: ${nomeCliente}\n\n`;
   msg += "Gostaria de mais informações.";
   return msg;
 }
