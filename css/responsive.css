@@ -7,6 +7,8 @@
   .tabs-nav button .nav-label { display: none; }
   .tabs-nav__summary { display: none; }
   .product-detail { grid-template-columns: 1fr; }
+  .product-tabs { grid-template-columns: 1fr; }
+  .trust-badges { grid-template-columns: repeat(2, 1fr); }
   .product-detail__gallery { flex-direction: column-reverse; }
   .product-detail__thumbs { flex-direction: row; overflow-x: auto; }
   .product-detail__thumb { width: 56px; height: 56px; }
