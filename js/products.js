@@ -40,7 +40,7 @@ export function cartaoProduto(produto) {
           ${semEstoque ? `<span class="badge-outofstock">Sem estoque</span>` : ""}
         </div>
         <div class="product-card__body">
-          ${produto.marca ? `<span class="product-card__brand">${escHtml(produto.marca)}</span>` : ""}
+          ${produto.marca ? `<span class="product-card__brand">${escHtml(produto.marca)}${produto.cor ? ` · ${escHtml(produto.cor)}` : ""}</span>` : (produto.cor ? `<span class="product-card__brand">${escHtml(produto.cor)}</span>` : "")}
           <h3 class="product-card__name">${escHtml(produto.nome)}</h3>
           <span class="product-card__price">${formatBRL(produto.preco)}</span>
         </div>
