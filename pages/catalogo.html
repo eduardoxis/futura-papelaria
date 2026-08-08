@@ -31,16 +31,20 @@
     margin-bottom: 0.75rem;
   }
   .search-page__filters-head h2 { font-size: 1.05rem; }
-  .filter-group { border: none; padding: 0; margin: 0 0 1.25rem; }
-  .filter-group + .filter-group { padding-top: 1.1rem; border-top: 1px solid var(--cinza-100); }
+  .filter-group { border: none; padding: 0; margin: 0; }
+  .filter-group + .filter-group { border-top: 1px solid var(--cinza-100); }
   .filter-group legend {
-    display: flex; align-items: center; justify-content: space-between;
-    width: 100%; font-weight: 600; font-size: 0.92rem; color: var(--cinza-900);
-    margin-bottom: 0.65rem; cursor: pointer;
+    display: flex; align-items: center; gap: 0.75rem;
+    width: 100%; font-weight: 600; font-size: 0.95rem; color: var(--cinza-900);
+    padding: 0.95rem 0; cursor: pointer;
   }
-  .filter-group legend .icon { width: 15px; height: 15px; transition: transform var(--transicao); }
-  .filter-group.is-collapsed legend .icon { transform: rotate(-90deg); }
-  .filter-group.is-collapsed .filter-group__body { display: none; }
+  .filter-group__icon { width: 18px; height: 18px; color: var(--cinza-500); flex-shrink: 0; }
+  .filter-group__icon svg { width: 100%; height: 100%; display: block; }
+  .filter-group__chevron { width: 15px; height: 15px; margin-left: auto; color: var(--cinza-400); transition: transform var(--transicao); }
+  .filter-group:not(.is-collapsed) .filter-group__chevron { transform: rotate(90deg); }
+  .filter-group.is-collapsed .filter-group__body,
+  .filter-group.is-collapsed .filter-group__ver-mais { display: none; }
+  .filter-group__body { padding: 0 0 1rem; }
   .filter-option {
     display: flex; align-items: center; gap: 0.55rem;
     font-size: 0.87rem; color: var(--cinza-700);
@@ -167,19 +171,19 @@
         <span data-icon="sort" class="icon"></span>
       </div>
 
-      <fieldset class="filter-group" data-grupo="categorias">
-        <legend data-toggle-grupo>Categorias <span data-icon="chevronRight" class="icon"></span></legend>
+      <fieldset class="filter-group is-collapsed" data-grupo="categorias">
+        <legend data-toggle-grupo><span data-icon="tag" class="filter-group__icon"></span> Categorias <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
         <div class="filter-group__body" id="filtros-categorias"></div>
       </fieldset>
 
-      <fieldset class="filter-group" data-grupo="marcas">
-        <legend data-toggle-grupo>Marca <span data-icon="chevronRight" class="icon"></span></legend>
+      <fieldset class="filter-group is-collapsed" data-grupo="marcas">
+        <legend data-toggle-grupo><span data-icon="star" class="filter-group__icon"></span> Marca <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
         <div class="filter-group__body" id="filtros-marcas"></div>
         <button type="button" class="filter-group__ver-mais" id="btn-ver-mais-marcas" hidden>Ver mais</button>
       </fieldset>
 
-      <fieldset class="filter-group" data-grupo="preco">
-        <legend data-toggle-grupo>Faixa de preço <span data-icon="chevronRight" class="icon"></span></legend>
+      <fieldset class="filter-group is-collapsed" data-grupo="preco">
+        <legend data-toggle-grupo><span data-icon="dollarSign" class="filter-group__icon"></span> Faixa de preço <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
         <div class="filter-group__body" id="filtros-preco">
           <label class="filter-option"><input type="checkbox" name="preco" value="0-5"><span>Até R$ 5,00</span></label>
           <label class="filter-option"><input type="checkbox" name="preco" value="5-15"><span>R$ 5,01 a R$ 15,00</span></label>
@@ -188,8 +192,8 @@
         </div>
       </fieldset>
 
-      <fieldset class="filter-group" data-grupo="disponibilidade">
-        <legend data-toggle-grupo>Disponibilidade <span data-icon="chevronRight" class="icon"></span></legend>
+      <fieldset class="filter-group is-collapsed" data-grupo="disponibilidade">
+        <legend data-toggle-grupo><span data-icon="box" class="filter-group__icon"></span> Disponibilidade <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
         <div class="filter-group__body" id="filtros-disponibilidade">
           <label class="filter-option"><input type="checkbox" name="disponibilidade" value="em_estoque"><span>Em estoque</span></label>
           <label class="filter-option"><input type="checkbox" name="disponibilidade" value="sem_estoque"><span>Sob encomenda</span></label>
