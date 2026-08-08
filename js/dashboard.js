@@ -147,6 +147,8 @@ async function carregarAbaProdutos(container) {
           <option value="preco_desc">Maior preço</option>
         </select>
       </div>
+      <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
+      <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
     </div>
     <div class="table-wrap"><table class="admin-table" id="tabela-produtos">
@@ -154,7 +156,14 @@ async function carregarAbaProdutos(container) {
       <tbody></tbody>
     </table></div>
     <p class="table-count" id="contagem-produtos"></p>
-    <dialog id="dialog-produto" class="dialog-form"></dialog>`;
+    <dialog id="dialog-produto" class="dialog-form"></dialog>
+    <dialog id="dialog-importar-json" class="dialog-form">
+      <h2>Resultado da importação</h2>
+      <div id="resultado-importacao-json" class="import-result"></div>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" id="btn-fechar-importacao">Fechar</button>
+      </div>
+    </dialog>`;
 
   renderizarTabelaProdutos(container, cacheProdutos);
 
@@ -174,6 +183,102 @@ async function carregarAbaProdutos(container) {
   });
 
   container.querySelector("#btn-novo-produto").addEventListener("click", () => abrirFormularioProduto(container));
+
+  const inputJson = container.querySelector("#input-importar-json");
+  container.querySelector("#btn-importar-json").addEventListener("click", () => inputJson.click());
+  inputJson.addEventListener("change", async () => {
+    const arquivo = inputJson.files?.[0];
+    inputJson.value = "";
+    if (!arquivo) return;
+    await importarProdutosJson(container, arquivo);
+  });
+}
+
+function normalizarProdutoImportado(item, categoriasValidas) {
+  const erros = [];
+  const nome = String(item.nome || "").trim();
+  if (!nome) erros.push("nome ausente");
+
+  const preco = Number(item.preco);
+  if (!Number.isFinite(preco) || preco < 0) erros.push("preço inválido");
+
+  const categoria = String(item.categoria || "").trim();
+  if (categoria && categoriasValidas.length && !categoriasValidas.includes(categoria)) {
+    erros.push(`categoria "${categoria}" não existe`);
+  }
+
+  if (erros.length) return { ok: false, nome: nome || "(sem nome)", erros };
+
+  const imagens = Array.isArray(item.imagens) ? item.imagens.filter(Boolean)
+    : (item.imagem ? [item.imagem] : []);
+
+  return {
+    ok: true,
+    dados: {
+      nome,
+      marca: String(item.marca || "").trim(),
+      cor: String(item.cor || "").trim(),
+      corHex: String(item.corHex || "").trim(),
+      preco,
+      quantidade: Number.isFinite(Number(item.quantidade)) ? parseInt(item.quantidade, 10) : 0,
+      categoria,
+      status: ["disponivel", "esgotado", "oculto"].includes(item.status) ? item.status : "disponivel",
+      codigo: String(item.codigo || generateCode()).trim(),
+      descricao: String(item.descricao || "").trim(),
+      destaques: Array.isArray(item.destaques) ? item.destaques.map(String) : [],
+      etiquetas: Array.isArray(item.etiquetas) ? item.etiquetas.map(String) : [],
+      imagens,
+      imagem: imagens[0] || ""
+    }
+  };
+}
+
+async function importarProdutosJson(container, arquivo) {
+  const dialog = container.querySelector("#dialog-importar-json");
+  const resultado = container.querySelector("#resultado-importacao-json");
+
+  let itens;
+  try {
+    const texto = await arquivo.text();
+    const json = JSON.parse(texto);
+    itens = Array.isArray(json) ? json : (Array.isArray(json.produtos) ? json.produtos : null);
+    if (!itens) throw new Error("formato");
+  } catch {
+    toast("Arquivo JSON inválido. Envie uma lista de produtos (array) ou { \"produtos\": [...] }.", "error");
+    return;
+  }
+
+  if (!itens.length) {
+    toast("O arquivo não tem nenhum produto.", "error");
+    return;
+  }
+
+  const categoriasValidas = cacheCategorias.map(c => c.nome);
+  const validos = [];
+  const invalidos = [];
+
+  itens.forEach((item, i) => {
+    const r = normalizarProdutoImportado(item, categoriasValidas);
+    if (r.ok) validos.push(r.dados);
+    else invalidos.push({ linha: i + 1, nome: r.nome, erros: r.erros });
+  });
+
+  for (const dados of validos) {
+    await criarProduto(dados);
+  }
+
+  resultado.innerHTML = `
+    <p><strong>${validos.length}</strong> produto(s) importado(s) com sucesso.</p>
+    ${invalidos.length ? `
+      <p><strong>${invalidos.length}</strong> ignorado(s):</p>
+      <ul class="import-result__errors">
+        ${invalidos.map(e => `<li>#${e.linha} "${escHtml(e.nome)}": ${escHtml(e.erros.join(", "))}</li>`).join("")}
+      </ul>` : ""}`;
+
+  dialog.querySelector("#btn-fechar-importacao").onclick = () => { dialog.close(); carregarAbaProdutos(container); };
+
+  dialog.showModal();
+  if (validos.length) toast(`${validos.length} produto(s) importado(s).`);
 }
 
 function renderizarTabelaProdutos(container, produtos) {
