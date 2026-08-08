@@ -10,7 +10,7 @@ import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
-import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente } from "./utils.js";
+import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, redefinirSenha } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
@@ -495,6 +495,17 @@ function configurarModalAuth() {
       modal.querySelector('[data-campos-tipo="fisica"]').hidden = tipo !== "fisica";
       modal.querySelector('[data-campos-tipo="empresa"]').hidden = tipo !== "empresa";
     });
+  });
+
+  // máscaras de CPF, CNPJ e telefone, aplicadas enquanto a pessoa digita
+  const campoCpf = modal.querySelector('input[name="cpf"]');
+  campoCpf?.addEventListener("input", () => { campoCpf.value = mascararCPF(campoCpf.value); });
+
+  const campoCnpj = modal.querySelector('input[name="cnpj"]');
+  campoCnpj?.addEventListener("input", () => { campoCnpj.value = mascararCNPJ(campoCnpj.value); });
+
+  modal.querySelectorAll('input[name="telefone"], input[name="telefoneEmpresa"]').forEach(campo => {
+    campo.addEventListener("input", () => { campo.value = mascararTelefone(campo.value); });
   });
 
   modal.querySelector("#form-entrar-modal").addEventListener("submit", async (e) => {
