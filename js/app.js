@@ -11,7 +11,7 @@ import {
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
 import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail } from "./utils.js";
-import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha } from "./auth.js";
+import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha, atualizarNomeAuth } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
 import { iniciarOrcamento } from "./orcamento.js";
@@ -184,9 +184,19 @@ async function iniciar() {
     falarSobreProduto(e.detail);
   });
 
-  window.addEventListener("beforeunload", () => registrarLeadPerdidoSeNecessario());
+  function dadosLeadAtual() {
+    const nomeDigitado = document.querySelector("#nome-cliente")?.value?.trim();
+    const nome = usuarioAtual
+      ? (nomeDigitado && !pareceEmail(nomeDigitado) ? nomeDigitado
+        : [usuarioAtual.displayName, perfilAtual?.nome, perfilAtual?.responsavel, perfilAtual?.razaoSocial].find(c => c && !pareceEmail(c)) || "")
+      : (nomeDigitado && !pareceEmail(nomeDigitado) ? nomeDigitado : "");
+    const telefone = perfilAtual?.telefone || "";
+    return { nome, telefone };
+  }
+
+  window.addEventListener("beforeunload", () => registrarLeadPerdidoSeNecessario(dadosLeadAtual()));
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") registrarLeadPerdidoSeNecessario();
+    if (document.visibilityState === "hidden") registrarLeadPerdidoSeNecessario(dadosLeadAtual());
   });
 }
 
@@ -593,6 +603,46 @@ function configurarModalAuth() {
   });
 }
 
+function formatarMesAno(isoString) {
+  if (!isoString) return "";
+  const data = new Date(isoString);
+  if (isNaN(data)) return "";
+  const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  return `${meses[data.getMonth()]}/${data.getFullYear()}`;
+}
+
+function formatarDataBR(isoDate) {
+  if (!isoDate) return "";
+  const [ano, mes, dia] = isoDate.split("-");
+  if (!ano || !mes || !dia) return "";
+  const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  return `${parseInt(dia, 10)} de ${meses[parseInt(mes, 10) - 1]} de ${ano}`;
+}
+
+function renderizarPerfil() {
+  if (!usuarioAtual) return;
+  const primeiroNome = (perfilAtual?.nome || usuarioAtual.displayName || "").split(" ")[0];
+  document.querySelector("#perfil-saudacao").textContent = primeiroNome ? `Olá, ${primeiroNome}! 👋` : "Olá! 👋";
+  document.querySelector("#perfil-email-hero").textContent = usuarioAtual.email || "";
+  document.querySelector("#perfil-membro-desde").textContent = perfilAtual?.criadoEm ? `Membro desde ${formatarMesAno(perfilAtual.criadoEm)}` : "";
+
+  document.querySelector("#perfil-view-nome").textContent = perfilAtual?.nome || usuarioAtual.displayName || "Não informado";
+  document.querySelector("#perfil-view-email").textContent = usuarioAtual.email || "—";
+  document.querySelector("#perfil-view-telefone").textContent = perfilAtual?.telefone || "Não informado";
+  document.querySelector("#perfil-view-nascimento").textContent = formatarDataBR(perfilAtual?.dataNascimento) || "Não informado";
+}
+
+async function dispararRedefinicaoSenha() {
+  if (!usuarioAtual?.email) return;
+  const chave = `reset-senha-${usuarioAtual.email.toLowerCase()}`;
+  if (!podeExecutarPersistente(chave, 5, 60 * 60_000)) {
+    toast("Muitas tentativas. Tente novamente mais tarde.", "error");
+    return;
+  }
+  await redefinirSenha(usuarioAtual.email);
+  toast("Link enviado! Se não chegar em alguns minutos, confira a caixa de spam ou promoções.");
+}
+
 function abrirSubModalConta(idModal) {
   fecharModal(document.querySelector("#modal-conta"));
   const modal = document.querySelector(idModal);
@@ -669,6 +719,59 @@ async function renderizarFavoritos() {
 }
 
 function configurarMenuConta() {
+  document.querySelector("#btn-abrir-perfil")?.addEventListener("click", () => {
+    abrirSubModalConta("#modal-perfil");
+    renderizarPerfil();
+  });
+  document.querySelector("#btn-abrir-perfil")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.target.click(); }
+  });
+
+  document.querySelector("#btn-editar-perfil")?.addEventListener("click", () => {
+    const form = document.querySelector("#form-editar-perfil");
+    form.nome.value = perfilAtual?.nome || usuarioAtual?.displayName || "";
+    form.telefone.value = perfilAtual?.telefone || "";
+    form.dataNascimento.value = perfilAtual?.dataNascimento || "";
+    document.querySelector("#perfil-visualizacao").hidden = true;
+    document.querySelector("#btn-editar-perfil").hidden = true;
+    form.hidden = false;
+    form.nome.focus();
+  });
+
+  document.querySelector("#btn-cancelar-editar-perfil")?.addEventListener("click", () => {
+    document.querySelector("#form-editar-perfil").hidden = true;
+    document.querySelector("#perfil-visualizacao").hidden = false;
+    document.querySelector("#btn-editar-perfil").hidden = false;
+  });
+
+  document.querySelector('#form-editar-perfil input[name="telefone"]')?.addEventListener("input", (e) => {
+    e.target.value = mascararTelefone(e.target.value);
+  });
+
+  document.querySelector("#form-editar-perfil")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!usuarioAtual) return;
+    const form = e.target;
+    const nome = form.nome.value.trim();
+    const dados = {
+      nome,
+      telefone: form.telefone.value.trim(),
+      dataNascimento: form.dataNascimento.value
+    };
+    await atualizarPerfilUsuario(usuarioAtual.uid, dados);
+    if (nome) await atualizarNomeAuth(nome);
+    if (perfilAtual) Object.assign(perfilAtual, dados);
+
+    document.querySelector("#conta-nome").textContent = nome ? `Olá, ${nome}!` : "Olá!";
+    form.hidden = true;
+    document.querySelector("#perfil-visualizacao").hidden = false;
+    document.querySelector("#btn-editar-perfil").hidden = false;
+    renderizarPerfil();
+    toast("Perfil atualizado.");
+  });
+
+  document.querySelector("#btn-alterar-senha-perfil")?.addEventListener("click", dispararRedefinicaoSenha);
+
   document.querySelector("#btn-abrir-pedidos")?.addEventListener("click", () => {
     abrirSubModalConta("#modal-pedidos");
     renderizarPedidos();
@@ -737,16 +840,7 @@ function configurarMenuConta() {
     toast("Preferência atualizada.");
   });
 
-  document.querySelector("#btn-alterar-senha")?.addEventListener("click", async () => {
-    if (!usuarioAtual?.email) return;
-    const chave = `reset-senha-${usuarioAtual.email.toLowerCase()}`;
-    if (!podeExecutarPersistente(chave, 5, 60 * 60_000)) {
-      toast("Muitas tentativas. Tente novamente mais tarde.", "error");
-      return;
-    }
-    await redefinirSenha(usuarioAtual.email);
-    toast("Link enviado! Se não chegar em alguns minutos, confira a caixa de spam ou promoções.");
-  });
+  document.querySelector("#btn-alterar-senha")?.addEventListener("click", dispararRedefinicaoSenha);
 }
 
 iniciar();
