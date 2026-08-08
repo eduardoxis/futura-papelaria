@@ -423,6 +423,7 @@ function configurarCarrinhoUI() {
 }
 
 function configurarLogin() {
+  let jaAbriuViaParam = false;
   ouvirEstadoAuth((usuario) => {
     const btnAdmin = document.querySelector("#abrir-admin");
     const btnEntrar = document.querySelector("#btn-entrar");
@@ -456,6 +457,27 @@ function configurarLogin() {
     }
 
     btnSair?.addEventListener("click", sair);
+
+    // Veio de outra página (produto/catálogo) pedindo pra abrir um modal
+    // específico — ex: /?abrir=login vindo do botão "Entrar" da produto.html.
+    if (!jaAbriuViaParam) {
+      jaAbriuViaParam = true;
+      const abrir = getQueryParam("abrir");
+      if (abrir === "login" && !usuario) {
+        abrirModal(document.querySelector("#modal-login"));
+      } else if (abrir === "conta" && usuario) {
+        abrirModal(document.querySelector("#modal-conta"));
+      } else if (abrir === "admin" && usuario && ehAdmin()) {
+        const modal = document.querySelector("#modal-admin");
+        abrirModal(modal);
+        iniciarPainelAdmin(modal);
+      }
+      if (abrir) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("abrir");
+        window.history.replaceState({}, "", url);
+      }
+    }
   });
 
   document.querySelectorAll("[data-tab-trigger]").forEach(tab => {
