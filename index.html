@@ -584,14 +584,14 @@
         <div data-campos-tipo="fisica">
           <label>Nome completo<input type="text" name="nome" required autocomplete="name"></label>
           <label>CPF<input type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off"></label>
-          <label>Telefone<input type="tel" name="telefone" placeholder="(00) 00000-0000" autocomplete="tel"></label>
+          <label>Telefone<input type="tel" name="telefone" maxlength="16" placeholder="(00) 00000-0000" autocomplete="tel"></label>
         </div>
 
         <div data-campos-tipo="empresa" hidden>
           <label>Razão social<input type="text" name="razaoSocial" autocomplete="organization"></label>
           <label>CNPJ<input type="text" name="cnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" autocomplete="off"></label>
           <label>Nome do responsável<input type="text" name="responsavel" autocomplete="name"></label>
-          <label>Telefone comercial<input type="tel" name="telefoneEmpresa" placeholder="(00) 00000-0000" autocomplete="tel"></label>
+          <label>Telefone comercial<input type="tel" name="telefoneEmpresa" maxlength="16" placeholder="(00) 00000-0000" autocomplete="tel"></label>
         </div>
 
         <label>E-mail<input type="email" name="email" required autocomplete="username"></label>
