@@ -14,17 +14,21 @@
   /* Estilos exclusivos da página de catálogo/busca. */
   .search-page__layout {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 1fr;
     gap: 1.75rem;
     align-items: start;
+  }
+  @media (min-width: 981px) {
+    .search-page__layout { grid-template-columns: 260px 1fr; }
   }
   .search-page__filters {
     background: var(--branco);
     border: 1px solid var(--cinza-100);
     border-radius: var(--raio-md);
     padding: 1.25rem;
-    position: sticky;
-    top: 1rem;
+  }
+  @media (min-width: 981px) {
+    .search-page__filters { position: sticky; top: 1rem; }
   }
   .search-page__filters-head {
     display: flex; align-items: center; justify-content: space-between;
