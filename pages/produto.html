@@ -66,6 +66,8 @@
   .product-highlights li .icon { width: 16px; height: 16px; color: #15803d; flex-shrink: 0; margin-top: 2px; }
 
   .related-section { padding-block: 1rem 2.5rem; }
+  .related-section__footer { display: flex; justify-content: center; margin-top: 1.5rem; }
+  .related-section__footer .btn-secondary { padding: 0.75rem 1.75rem; }
 </style>
 </head>
 <body>
@@ -129,6 +131,9 @@
   <section class="related-section" id="secao-relacionados" hidden>
     <div class="section__head"><h2 class="section__title">Você também pode gostar</h2></div>
     <div class="products-grid" id="grade-relacionados"></div>
+    <div class="related-section__footer">
+      <button type="button" class="btn-secondary" id="btn-ver-catalogo">Ver catálogo</button>
+    </div>
   </section>
 </main>
 
@@ -232,7 +237,7 @@ async function renderizarRelacionados(produto) {
     const todos = await listarProdutos({ apenasAtivos: true });
     const relacionados = todos
       .filter(p => p.id !== produto.id && p.categoria === produto.categoria)
-      .slice(0, 5);
+      .slice(0, 6);
     if (!relacionados.length) return;
     document.querySelector("#secao-relacionados").hidden = false;
     renderizarGrade(document.querySelector("#grade-relacionados"), relacionados);
@@ -418,6 +423,9 @@ async function iniciarProduto() {
 }
 
 const gradeRelacionados = document.querySelector("#grade-relacionados");
+document.querySelector("#btn-ver-catalogo")?.addEventListener("click", () => {
+  window.location.href = "/pages/catalogo.html";
+});
 gradeRelacionados.addEventListener("adicionar-carrinho", (e) => {
   adicionarAoCarrinho(e.detail, 1);
   toast("Produto adicionado ao carrinho.");
