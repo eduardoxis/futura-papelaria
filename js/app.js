@@ -5,7 +5,7 @@ import {
   atualizarPerfilUsuario, obterPerfilUsuario
 } from "./firestore.js";
 import { renderizarGrade, aplicarFiltros, ordenarProdutos, obterFavoritos, alternarFavorito } from "./products.js";
-import { buscarProdutos, ativarBuscaTempoReal } from "./search.js";
+import { buscarProdutos } from "./search.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
@@ -162,13 +162,12 @@ async function iniciar() {
   });
 
   const inputBusca = document.querySelector("#busca-header");
-  if (inputBusca) {
-    ativarBuscaTempoReal(inputBusca, (termo) => aplicarBuscaEFiltros(termo));
-  }
   document.querySelector(".search-bar")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    aplicarBuscaEFiltros(inputBusca?.value || "");
-    document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
+    const termo = inputBusca?.value?.trim() || "";
+    window.location.href = termo
+      ? `/pages/catalogo.html?q=${encodeURIComponent(termo)}`
+      : "/pages/catalogo.html";
   });
 
   configurarCarrinhoUI();
