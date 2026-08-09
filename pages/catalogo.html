@@ -1,1 +1,646 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo completo — Papelaria Futura</title>
+<meta name="description" content="Catálogo completo da Papelaria Futura: filtre por categoria, marca, preço e disponibilidade.">
+<link rel="icon" href="/assets/icons/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/modal.css">
+<link rel="stylesheet" href="/css/responsive.css">
+<style>
+  /* Estilos exclusivos da página de catálogo/busca. */
+  .search-page__layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .search-page__filters {
+    background: var(--branco);
+    border: 1px solid var(--cinza-100);
+    border-radius: var(--raio-md);
+    padding: 1.25rem;
+    position: sticky;
+    top: 1rem;
+  }
+  .search-page__filters-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .search-page__filters-head h2 { font-size: 1.05rem; }
+  .filter-group { border: none; padding: 0; margin: 0; }
+  .filter-group + .filter-group { border-top: 1px solid var(--cinza-100); }
+  .filter-group legend {
+    display: flex; align-items: center; gap: 0.75rem;
+    width: 100%; font-weight: 600; font-size: 0.95rem; color: var(--cinza-900);
+    padding: 0.95rem 0; cursor: pointer;
+  }
+  .filter-group__icon { width: 18px; height: 18px; color: var(--cinza-500); flex-shrink: 0; }
+  .filter-group__icon svg { width: 100%; height: 100%; display: block; }
+  .filter-group__chevron { width: 15px; height: 15px; margin-left: auto; color: var(--cinza-400); transition: transform var(--transicao); }
+  .filter-group:not(.is-collapsed) .filter-group__chevron { transform: rotate(90deg); }
+  .filter-group.is-collapsed .filter-group__body,
+  .filter-group.is-collapsed .filter-group__ver-mais { display: none; }
+  .filter-group__body { padding: 0 0 1rem; }
+  .filter-option {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-size: 0.87rem; color: var(--cinza-700);
+    padding: 0.3rem 0; cursor: pointer;
+  }
+  .filter-option input { width: 15px; height: 15px; accent-color: var(--azul-700); flex-shrink: 0; }
+  .filter-option__count {
+    margin-left: auto; font-size: 0.78rem; color: var(--cinza-400);
+    background: var(--cinza-050); border-radius: 999px; padding: 0.05rem 0.5rem;
+  }
+  .filter-group__ver-mais {
+    background: none; color: var(--azul-700); font-size: 0.83rem;
+    font-weight: 600; padding: 0.3rem 0 0;
+  }
+  .search-page__limpar {
+    width: 100%; margin-top: 0.25rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  }
 
+  .search-page__main-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem;
+  }
+  .search-page__contador { color: var(--cinza-500); font-size: 0.9rem; }
+  .search-page__contador strong { color: var(--cinza-900); }
+  .search-page__ordenar {
+    display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--cinza-700);
+  }
+  .search-page__ordenar select {
+    border: 1px solid var(--cinza-200); border-radius: var(--raio-sm);
+    padding: 0.5rem 0.7rem; font-size: 0.85rem; background: var(--branco);
+  }
+
+  .pagination {
+    display: flex; justify-content: center; align-items: center; gap: 0.4rem;
+    margin-top: 2rem;
+  }
+  .pagination button {
+    min-width: 38px; height: 38px; padding: 0 0.5rem;
+    border: 1px solid var(--cinza-200); border-radius: var(--raio-sm);
+    background: var(--branco); color: var(--cinza-700); font-size: 0.88rem; font-weight: 600;
+  }
+  .pagination button.is-active { background: var(--azul-700); border-color: var(--azul-700); color: #fff; }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pagination__ellipsis { color: var(--cinza-400); padding: 0 0.2rem; }
+
+  .active-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  .active-chips .chip-list li { margin: 0; }
+
+  /* Botão "Filtrar" só aparece no mobile (ver responsive.css) */
+  .search-page__btn-filtros {
+    display: none; width: 100%; align-items: center; justify-content: center; gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+
+<header class="site-header">
+  <div class="container header-top">
+    <a href="/" class="logo">
+      <img src="/assets/images/logo.png" alt="Papelaria Futura" class="logo__mark">
+      <span class="logo__text">Papelaria<br>Futura</span>
+    </a>
+
+    <form class="search-bar" role="search" id="form-busca-catalogo">
+      <label for="busca-header" class="sr-only">Pesquisar produtos</label>
+      <input id="busca-header" type="search" placeholder="Buscar por nome, marca ou código..." autocomplete="off">
+      <button type="submit" class="search-bar__btn" aria-label="Pesquisar"><span data-icon="search"></span></button>
+    </form>
+
+    <div class="select-pill">
+      <select id="filtro-categoria" aria-label="Filtrar por categoria">
+        <option value="">Todas as categorias</option>
+      </select>
+      <span class="select-pill__chevron" data-icon="chevronRight"></span>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-entrar" class="header-action" data-modal-target="#modal-login" aria-label="Entrar">
+        <span data-icon="user"></span><span>Entrar</span>
+      </button>
+      <button id="btn-sair" class="header-action" hidden aria-label="Sair">
+        <span data-icon="logOut"></span><span>Sair</span>
+      </button>
+      <button id="btn-minha-conta" class="header-action" hidden data-modal-target="#modal-conta" aria-label="Minha conta">
+        <span data-icon="user"></span><span>Minha conta</span>
+      </button>
+      <button id="abrir-admin" class="header-action" hidden aria-label="Painel Admin">
+        <span data-icon="home"></span><span>Painel Admin</span>
+      </button>
+      <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
+        <span data-icon="cart"></span><span class="cart-badge" data-cart-badge>0</span>
+      </button>
+      <button class="menu-toggle" aria-label="Abrir menu"><span data-icon="menu"></span></button>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="conteudo">
+  <nav class="breadcrumb" aria-label="Trilha de navegação">
+    <a href="/">Início</a>
+    <span data-icon="chevronRight"></span>
+    <span class="breadcrumb__atual">Catálogo completo</span>
+  </nav>
+
+  <div class="section__head" style="margin-top:0.5rem">
+    <div>
+      <h1 class="section__title" style="font-size:clamp(1.5rem,2.4vw,2rem)">Catálogo completo</h1>
+      <p style="color:var(--cinza-500);margin-top:0.35rem">Encontre tudo o que você precisa para estudar, trabalhar e criar.</p>
+    </div>
+  </div>
+
+  <div class="search-page__layout">
+    <button type="button" class="btn-secondary search-page__btn-filtros" id="btn-toggle-filtros" aria-expanded="false" aria-controls="painel-filtros">
+      <span data-icon="sort"></span> Filtrar produtos
+    </button>
+
+    <aside class="search-page__filters" id="painel-filtros">
+      <div class="search-page__filters-head">
+        <h2>Filtrar produtos</h2>
+        <span data-icon="sort" class="icon"></span>
+      </div>
+
+      <fieldset class="filter-group is-collapsed" data-grupo="categorias">
+        <legend data-toggle-grupo><span data-icon="tag" class="filter-group__icon"></span> Categorias <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
+        <div class="filter-group__body" id="filtros-categorias"></div>
+      </fieldset>
+
+      <fieldset class="filter-group is-collapsed" data-grupo="marcas">
+        <legend data-toggle-grupo><span data-icon="star" class="filter-group__icon"></span> Marca <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
+        <div class="filter-group__body" id="filtros-marcas"></div>
+        <button type="button" class="filter-group__ver-mais" id="btn-ver-mais-marcas" hidden>Ver mais</button>
+      </fieldset>
+
+      <fieldset class="filter-group is-collapsed" data-grupo="preco">
+        <legend data-toggle-grupo><span data-icon="dollarSign" class="filter-group__icon"></span> Faixa de preço <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
+        <div class="filter-group__body" id="filtros-preco">
+          <label class="filter-option"><input type="checkbox" name="preco" value="0-5"><span>Até R$ 5,00</span></label>
+          <label class="filter-option"><input type="checkbox" name="preco" value="5-15"><span>R$ 5,01 a R$ 15,00</span></label>
+          <label class="filter-option"><input type="checkbox" name="preco" value="15-30"><span>R$ 15,01 a R$ 30,00</span></label>
+          <label class="filter-option"><input type="checkbox" name="preco" value="30-"><span>Acima de R$ 30,00</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="filter-group is-collapsed" data-grupo="disponibilidade">
+        <legend data-toggle-grupo><span data-icon="box" class="filter-group__icon"></span> Disponibilidade <span data-icon="chevronRight" class="icon filter-group__chevron"></span></legend>
+        <div class="filter-group__body" id="filtros-disponibilidade">
+          <label class="filter-option"><input type="checkbox" name="disponibilidade" value="em_estoque"><span>Em estoque</span></label>
+          <label class="filter-option"><input type="checkbox" name="disponibilidade" value="sem_estoque"><span>Sob encomenda</span></label>
+        </div>
+      </fieldset>
+
+      <button type="button" class="btn-secondary search-page__limpar" id="btn-limpar-filtros">
+        <span data-icon="trash"></span> Limpar filtros
+      </button>
+    </aside>
+
+    <section>
+      <div class="active-chips" id="chips-ativos" hidden></div>
+
+      <div class="search-page__main-head">
+        <p class="search-page__contador"><strong id="contador-produtos">0</strong> produtos encontrados</p>
+        <label class="search-page__ordenar">
+          Ordenar por
+          <select id="select-ordenar">
+            <option value="relevancia">Mais relevantes</option>
+            <option value="recentes">Mais recentes</option>
+            <option value="preco_asc">Menor preço</option>
+            <option value="preco_desc">Maior preço</option>
+            <option value="nome">Nome (A-Z)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="products-grid" id="grade-catalogo"></div>
+      <nav class="pagination" id="paginacao" aria-label="Paginação de resultados"></nav>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <h4>Livraria Papelaria Futura</h4>
+      <p>R. Dr. Ézio Carneiro, 158 - St. Aeroporto, Luziânia - GO, 72800-420</p>
+    </div>
+    <div>
+      <h4>Contato</h4>
+      <a href="https://wa.me/5561999184452" target="_blank" rel="noopener">WhatsApp</a>
+      <p>futuralza@gmail.com</p>
+    </div>
+    <div>
+      <h4>Redes sociais</h4>
+      <div class="social-row">
+        <a href="https://www.instagram.com/futurapapelaria/" aria-label="Instagram" target="_blank" rel="noopener"><span data-icon="instagram"></span></a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Papelaria Futura. Todos os direitos reservados.</div>
+</footer>
+
+<div class="cart-overlay" id="cart-overlay"></div>
+<aside class="cart-drawer" id="cart-drawer" aria-label="Carrinho de compras">
+  <div class="cart-drawer__head">
+    <h3>Seu carrinho</h3>
+    <button id="fechar-carrinho" class="modal__close" aria-label="Fechar carrinho"></button>
+  </div>
+  <div class="cart-drawer__items" id="itens-carrinho"></div>
+  <div class="cart-drawer__summary">
+    <div class="campo-nome-convidado" id="campo-nome-convidado">
+      <label for="nome-cliente">Seu nome</label>
+      <input id="nome-cliente" type="text" autocomplete="off" placeholder="Como podemos te chamar?">
+    </div>
+    <div class="summary-row"><span>Subtotal</span><span id="subtotal-carrinho">R$ 0,00</span></div>
+    <div class="summary-row summary-row--total"><span>Total</span><span id="total-carrinho">R$ 0,00</span></div>
+    <button class="btn-primary" id="finalizar-pedido">Finalizar pedido no WhatsApp</button>
+  </div>
+</aside>
+
+<script type="module">
+import { listarProdutos, escutarProdutos, listarCategorias, listarMarcas } from "../js/firestore.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar } from "../js/utils.js";
+import { renderizarGrade, ordenarProdutos } from "../js/products.js";
+import { buscarProdutos } from "../js/search.js";
+import {
+  obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
+  atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
+} from "../js/cart.js";
+import { ouvirEstadoAuth, usuarioAtual, ehAdmin, sair } from "../js/auth.js";
+import { ICONS } from "../js/icons.js";
+
+const MARCAS_VISIVEIS_INICIAL = 6;
+const POR_PAGINA = 20;
+
+function aplicarIconesEstaticos() {
+  document.querySelectorAll("[data-icon]").forEach(el => {
+    const nome = el.dataset.icon;
+    if (ICONS[nome] && !el.querySelector("svg")) {
+      el.innerHTML = ICONS[nome];
+      el.classList.add("icon");
+    }
+  });
+}
+aplicarIconesEstaticos();
+
+let TODOS_PRODUTOS = [];
+let CATEGORIAS = [];
+let MARCAS = [];
+let mostrarTodasMarcas = false;
+let paginaAtual = 1;
+
+const estado = {
+  termo: getQueryParam("q") || "",
+  categorias: new Set(),
+  marcas: new Set(),
+  faixasPreco: new Set(),
+  disponibilidade: new Set(),
+  ordenar: "relevancia"
+};
+
+const paramCategoria = getQueryParam("categoria");
+if (paramCategoria) estado.categorias.add(paramCategoria);
+
+document.querySelector("#busca-header").value = estado.termo;
+
+document.querySelectorAll("[data-toggle-grupo]").forEach(legend => {
+  legend.addEventListener("click", () => legend.closest(".filter-group").classList.toggle("is-collapsed"));
+});
+
+const btnToggleFiltros = document.querySelector("#btn-toggle-filtros");
+const painelFiltros = document.querySelector("#painel-filtros");
+btnToggleFiltros?.addEventListener("click", () => {
+  const abrindo = !painelFiltros.classList.contains("is-aberto");
+  painelFiltros.classList.toggle("is-aberto", abrindo);
+  btnToggleFiltros.setAttribute("aria-expanded", String(abrindo));
+});
+
+document.querySelector("#form-busca-catalogo").addEventListener("submit", (e) => {
+  e.preventDefault();
+  estado.termo = document.querySelector("#busca-header").value;
+  paginaAtual = 1;
+  render();
+});
+
+document.querySelector("#select-ordenar").addEventListener("change", (e) => {
+  estado.ordenar = e.target.value;
+  render();
+});
+
+document.querySelector("#btn-limpar-filtros").addEventListener("click", () => {
+  estado.categorias.clear();
+  estado.marcas.clear();
+  estado.faixasPreco.clear();
+  estado.disponibilidade.clear();
+  estado.termo = "";
+  document.querySelector("#busca-header").value = "";
+  document.querySelector("#filtro-categoria").value = "";
+  paginaAtual = 1;
+  desenharFiltrosLaterais();
+  render();
+});
+
+function faixaBate(preco, chave) {
+  const [minStr, maxStr] = chave.split("-");
+  const min = Number(minStr);
+  const max = maxStr === "" || maxStr === undefined ? Infinity : Number(maxStr);
+  return preco >= min && preco <= max;
+}
+
+function produtosFiltrados() {
+  let lista = buscarProdutos(TODOS_PRODUTOS, estado.termo);
+
+  if (estado.categorias.size) lista = lista.filter(p => estado.categorias.has(p.categoria));
+  if (estado.marcas.size) lista = lista.filter(p => estado.marcas.has(p.marca));
+  if (estado.faixasPreco.size) {
+    lista = lista.filter(p => [...estado.faixasPreco].some(f => faixaBate(Number(p.preco) || 0, f)));
+  }
+  if (estado.disponibilidade.size) {
+    lista = lista.filter(p => {
+      const temEstoque = p.status !== "sem_estoque" && Number(p.quantidade) > 0;
+      if (estado.disponibilidade.has("em_estoque") && temEstoque) return true;
+      if (estado.disponibilidade.has("sem_estoque") && !temEstoque) return true;
+      return false;
+    });
+  }
+
+  return estado.ordenar === "relevancia" ? lista : ordenarProdutos(lista, estado.ordenar);
+}
+
+function contarComFiltro(lista, chave, valor) {
+  return lista.filter(p => {
+    if (chave === "categoria") return p.categoria === valor;
+    if (chave === "marca") return p.marca === valor;
+    return false;
+  }).length;
+}
+
+function desenharFiltrosLaterais() {
+  const baseParaContagem = buscarProdutos(TODOS_PRODUTOS, estado.termo);
+
+  document.querySelector("#filtros-categorias").innerHTML = CATEGORIAS.map(c => `
+    <label class="filter-option">
+      <input type="checkbox" name="categoria" value="${escHtml(c.nome)}" ${estado.categorias.has(c.nome) ? "checked" : ""}>
+      <span>${escHtml(c.nome)}</span>
+      <span class="filter-option__count">${contarComFiltro(baseParaContagem, "categoria", c.nome)}</span>
+    </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma categoria cadastrada.</p>`;
+
+  const marcasParaMostrar = mostrarTodasMarcas ? MARCAS : MARCAS.slice(0, MARCAS_VISIVEIS_INICIAL);
+  document.querySelector("#filtros-marcas").innerHTML = marcasParaMostrar.map(m => `
+    <label class="filter-option">
+      <input type="checkbox" name="marca" value="${escHtml(m.nome)}" ${estado.marcas.has(m.nome) ? "checked" : ""}>
+      <span>${escHtml(m.nome)}</span>
+      <span class="filter-option__count">${contarComFiltro(baseParaContagem, "marca", m.nome)}</span>
+    </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma marca cadastrada.</p>`;
+
+  const btnVerMais = document.querySelector("#btn-ver-mais-marcas");
+  btnVerMais.hidden = MARCAS.length <= MARCAS_VISIVEIS_INICIAL;
+  btnVerMais.textContent = mostrarTodasMarcas ? "Ver menos" : "Ver mais";
+
+  document.querySelectorAll('[name="preco"]').forEach(el => { el.checked = estado.faixasPreco.has(el.value); });
+  document.querySelectorAll('[name="disponibilidade"]').forEach(el => { el.checked = estado.disponibilidade.has(el.value); });
+
+  document.querySelector("#filtros-categorias").querySelectorAll("input").forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.categorias.add(el.value) : estado.categorias.delete(el.value);
+      paginaAtual = 1;
+      desenharFiltrosLaterais();
+      render();
+    });
+  });
+  document.querySelector("#filtros-marcas").querySelectorAll("input").forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.marcas.add(el.value) : estado.marcas.delete(el.value);
+      paginaAtual = 1;
+      desenharFiltrosLaterais();
+      render();
+    });
+  });
+  document.querySelectorAll('[name="preco"]').forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.faixasPreco.add(el.value) : estado.faixasPreco.delete(el.value);
+      paginaAtual = 1;
+      render();
+    });
+  });
+  document.querySelectorAll('[name="disponibilidade"]').forEach(el => {
+    el.addEventListener("change", () => {
+      el.checked ? estado.disponibilidade.add(el.value) : estado.disponibilidade.delete(el.value);
+      paginaAtual = 1;
+      render();
+    });
+  });
+
+  btnVerMais.onclick = () => {
+    mostrarTodasMarcas = !mostrarTodasMarcas;
+    desenharFiltrosLaterais();
+  };
+}
+
+function desenharPaginacao(totalPaginas) {
+  const nav = document.querySelector("#paginacao");
+  if (totalPaginas <= 1) { nav.innerHTML = ""; return; }
+
+  const botoes = [];
+  botoes.push(`<button type="button" data-pagina="${paginaAtual - 1}" ${paginaAtual === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`);
+
+  const paginas = new Set([1, totalPaginas, paginaAtual, paginaAtual - 1, paginaAtual + 1]);
+  let ultimo = 0;
+  [...paginas].filter(p => p >= 1 && p <= totalPaginas).sort((a, b) => a - b).forEach(p => {
+    if (ultimo && p - ultimo > 1) botoes.push(`<span class="pagination__ellipsis">…</span>`);
+    botoes.push(`<button type="button" data-pagina="${p}" class="${p === paginaAtual ? "is-active" : ""}">${p}</button>`);
+    ultimo = p;
+  });
+
+  botoes.push(`<button type="button" data-pagina="${paginaAtual + 1}" ${paginaAtual === totalPaginas ? "disabled" : ""} aria-label="Próxima página">›</button>`);
+  nav.innerHTML = botoes.join("");
+
+  nav.querySelectorAll("[data-pagina]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      paginaAtual = Number(btn.dataset.pagina);
+      render();
+      document.querySelector(".search-page__main-head").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+function render() {
+  const lista = produtosFiltrados();
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
+
+  const inicio = (paginaAtual - 1) * POR_PAGINA;
+  const pagina = lista.slice(inicio, inicio + POR_PAGINA);
+
+  document.querySelector("#contador-produtos").textContent = lista.length;
+  renderizarGrade(document.querySelector("#grade-catalogo"), pagina);
+  desenharPaginacao(totalPaginas);
+}
+
+const grade = document.querySelector("#grade-catalogo");
+grade.addEventListener("adicionar-carrinho", (e) => {
+  adicionarAoCarrinho(e.detail, 1);
+  toast("Produto adicionado ao carrinho.");
+  atualizarBadgeCarrinho();
+});
+grade.addEventListener("falar-produto", (e) => falarSobreProduto(e.detail));
+
+configurarCarrinhoUI();
+
+function configurarCarrinhoUI() {
+  const drawer = document.querySelector("#cart-drawer");
+  const overlay = document.querySelector("#cart-overlay");
+  const abrirBtn = document.querySelector("#abrir-carrinho");
+  const fecharBtn = document.querySelector("#fechar-carrinho");
+
+  function renderCarrinho() {
+    const carrinho = obterCarrinho();
+    const lista = document.querySelector("#itens-carrinho");
+    const { subtotal, total } = calcularTotais();
+    lista.innerHTML = carrinho.map(item => `
+      <div class="cart-item" data-id="${item.id}">
+        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
+        <div>
+          <div class="cart-item__name">${escHtml(item.nome)}</div>
+          <div class="cart-item__brand">${escHtml(item.marca)}</div>
+          <div class="qty-stepper">
+            <button data-diminuir>-</button>
+            <input type="number" value="${item.quantidade}" min="1" data-qtd>
+            <button data-aumentar>+</button>
+          </div>
+        </div>
+        <strong>${formatBRL(item.preco * item.quantidade)}</strong>
+      </div>`).join("") || `<p class="empty-state">Seu carrinho está vazio.</p>`;
+
+    document.querySelector("#subtotal-carrinho").textContent = formatBRL(subtotal);
+    document.querySelector("#total-carrinho").textContent = formatBRL(total);
+
+    lista.querySelectorAll(".cart-item").forEach(el => {
+      const id = el.dataset.id;
+      const input = el.querySelector("[data-qtd]");
+      el.querySelector("[data-aumentar]").addEventListener("click", () => {
+        atualizarQuantidade(id, parseInt(input.value, 10) + 1);
+        renderCarrinho();
+        atualizarBadgeCarrinho();
+      });
+      el.querySelector("[data-diminuir]").addEventListener("click", () => {
+        atualizarQuantidade(id, parseInt(input.value, 10) - 1);
+        renderCarrinho();
+        atualizarBadgeCarrinho();
+      });
+      input.addEventListener("change", () => {
+        atualizarQuantidade(id, parseInt(input.value, 10) || 0);
+        renderCarrinho();
+        atualizarBadgeCarrinho();
+      });
+    });
+  }
+
+  function abrir() {
+    renderCarrinho();
+    drawer.classList.add("is-open");
+    overlay.classList.add("is-open");
+  }
+  function fechar() {
+    drawer.classList.remove("is-open");
+    overlay.classList.remove("is-open");
+  }
+
+  abrirBtn?.addEventListener("click", abrir);
+  fecharBtn?.addEventListener("click", fechar);
+  overlay?.addEventListener("click", fechar);
+
+  document.querySelector("#finalizar-pedido")?.addEventListener("click", () => {
+    const carrinho = obterCarrinho();
+    if (!carrinho.length) { toast("Seu carrinho está vazio.", "error"); return; }
+    if (!podeExecutar("finalizar-pedido", 5, 60_000)) {
+      toast("Muitos pedidos em pouco tempo. Aguarde um instante.", "error");
+      return;
+    }
+    const nomeDigitado = document.querySelector("#nome-cliente")?.value?.trim();
+    const nomeParaPedido = usuarioAtual ? (nomeDigitado || usuarioAtual.displayName || "") : nomeDigitado;
+    finalizarPedidoWhatsApp(nomeParaPedido);
+    fechar();
+  });
+}
+
+/** Some com o campo "Seu nome" quando o cliente já está logado e preenche
+ * o nome dele automaticamente na mensagem — sem precisar digitar de novo. */
+function configurarNomeConvidado() {
+  ouvirEstadoAuth((usuario) => {
+    const campoNome = document.querySelector("#campo-nome-convidado");
+    if (campoNome) campoNome.hidden = !!usuario;
+
+    const btnAdmin = document.querySelector("#abrir-admin");
+    const btnEntrar = document.querySelector("#btn-entrar");
+    const btnSair = document.querySelector("#btn-sair");
+    const btnMinhaConta = document.querySelector("#btn-minha-conta");
+
+    if (usuario) {
+      btnEntrar?.setAttribute("hidden", "");
+      btnSair?.removeAttribute("hidden");
+      btnMinhaConta?.removeAttribute("hidden");
+      if (ehAdmin()) btnAdmin?.removeAttribute("hidden");
+      else btnAdmin?.setAttribute("hidden", "");
+    } else {
+      btnEntrar?.removeAttribute("hidden");
+      btnSair?.setAttribute("hidden", "");
+      btnMinhaConta?.setAttribute("hidden", "");
+      btnAdmin?.setAttribute("hidden", "");
+    }
+  });
+
+  // "Entrar", "Minha conta" e "Painel Admin" abrem modais que só existem
+  // na página inicial — aqui redireciona pra lá já sinalizando qual abrir.
+  document.querySelector("#btn-entrar")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=login";
+  });
+  document.querySelector("#btn-minha-conta")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=conta";
+  });
+  document.querySelector("#abrir-admin")?.addEventListener("click", () => {
+    window.location.href = "/?abrir=admin";
+  });
+  document.querySelector("#btn-sair")?.addEventListener("click", sair);
+}
+
+async function iniciar() {
+  configurarNomeConvidado();
+  CATEGORIAS = await listarCategorias();
+  MARCAS = await listarMarcas();
+
+  const selectCategoria = document.querySelector("#filtro-categoria");
+  selectCategoria.innerHTML = `<option value="">Todas as categorias</option>` +
+    CATEGORIAS.map(c => `<option value="${escHtml(c.nome)}">${escHtml(c.nome)}</option>`).join("");
+  if (paramCategoria) selectCategoria.value = paramCategoria;
+  selectCategoria.addEventListener("change", () => {
+    estado.categorias.clear();
+    if (selectCategoria.value) estado.categorias.add(selectCategoria.value);
+    paginaAtual = 1;
+    desenharFiltrosLaterais();
+    render();
+  });
+
+  escutarProdutos((produtos) => {
+    TODOS_PRODUTOS = produtos;
+    desenharFiltrosLaterais();
+    render();
+  }, { apenasAtivos: true });
+
+  atualizarBadgeCarrinho();
+}
+
+iniciar();
+</script>
+</body>
+</html>
