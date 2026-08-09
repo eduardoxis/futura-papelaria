@@ -48,7 +48,7 @@ export function cartaoProduto(produto) {
       ${!semEstoque ? `
       <div class="product-card__actions">
         <button class="btn-primary product-card__add" data-add-id="${produto.id}">Adicionar</button>
-        <button class="btn-whatsapp product-card__ask" data-ask-id="${produto.id}" title="Falar sobre este produto no WhatsApp" aria-label="Falar sobre este produto no WhatsApp">${icon("whatsapp")}</button>
+        <button class="btn-whatsapp product-card__ask" data-ask-id="${produto.id}" aria-label="Falar sobre este produto no WhatsApp">${icon("whatsapp")}<span>WhatsApp</span></button>
       </div>` : ""}
     </div>`;
 }
