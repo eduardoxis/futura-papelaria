@@ -92,6 +92,21 @@
   .products-grid--5col { grid-template-columns: repeat(2, 1fr); }
   .categories-grid { grid-template-columns: repeat(3, 1fr); }
   .stat-card span { font-size: 1.3rem; }
+
+  /* Cards de produto em tamanho padrão: nome não estica o card, trunca com "..." */
+  .product-card__brand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-card__name {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; min-height: calc(1.3em * 2);
+  }
+  /* Botões empilhados em vez de lado a lado, WhatsApp com texto */
+  .product-card__actions { flex-direction: column; }
+  .product-card__add { width: 100%; padding: 0.6rem 0.8rem; font-size: 0.85rem; }
+  .product-card__ask {
+    width: 100%; height: auto; border-radius: var(--raio-sm); padding: 0.6rem 0.8rem;
+    font-size: 0.85rem; font-weight: 600; gap: 0.45rem;
+  }
+  .product-card__ask span { display: inline; }
 }
 
 @media (min-width: 1600px) {
