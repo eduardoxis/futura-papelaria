@@ -39,7 +39,10 @@
   .trust-badges__item .icon { width: 20px; height: 20px; color: var(--azul-700); flex-shrink: 0; margin-top: 1px; }
   .trust-badges__item strong { display: block; color: var(--cinza-900); font-size: 0.83rem; }
 
-  .product-tabs { margin-top: 2.5rem; display: grid; grid-template-columns: 1fr 300px; gap: 2rem; align-items: start; min-width: 0; }
+  .product-tabs { margin-top: 2.5rem; display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: start; min-width: 0; }
+  @media (min-width: 900px) {
+    .product-tabs { grid-template-columns: 1fr 300px; }
+  }
   .product-tabs > div:first-child { min-width: 0; }
   .product-tabs__nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem; border-bottom: 1px solid var(--cinza-100); }
   .product-tabs__btn {
