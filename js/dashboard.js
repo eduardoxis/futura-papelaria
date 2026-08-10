@@ -7,7 +7,7 @@ import {
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
-import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, toast, confirmarAcao, imgPos } from "./utils.js";
+import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "./utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
 import { carregarPainelLeads } from "./leads.js";
 import { ICONS, icon } from "./icons.js";
@@ -23,8 +23,8 @@ let cacheEtiquetas = [];
  */
 async function enviarImagem(file, nomeBase) {
   try {
-    const webp = await converterParaWebP(file, 800, 0.8);
-    return await enviarImagemParaCloudinary(webp, nomeBase);
+    const padronizada = await converterParaProporcaoPadrao(file);
+    return await enviarImagemParaCloudinary(padronizada, nomeBase);
   } catch (erro) {
     toast(erro.message || "Falha ao enviar a imagem.", "error");
     return null;
