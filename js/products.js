@@ -40,9 +40,13 @@ export function cartaoProduto(produto) {
           ${semEstoque ? `<span class="badge-outofstock">Sem estoque</span>` : ""}
         </div>
         <div class="product-card__body">
-          ${produto.marca ? `<span class="product-card__brand">${escHtml(produto.marca)}${produto.cor ? ` · ${escHtml(produto.cor)}` : ""}</span>` : (produto.cor ? `<span class="product-card__brand">${escHtml(produto.cor)}</span>` : "")}
+          ${produto.marca ? `<span class="product-card__brand">${escHtml(produto.marca)}</span>` : ""}
           <h3 class="product-card__name">${escHtml(produto.nome)}</h3>
           <span class="product-card__price">${formatBRL(produto.preco)}</span>
+          ${Array.isArray(produto.cores) && produto.cores.length ? `
+          <div class="product-card__cores" aria-hidden="true">
+            ${produto.cores.slice(0, 5).map(c => `<span class="product-card__cor-dot" style="background:${escHtml(c.hex || "#cccccc")}" title="${escHtml(c.nome)}"></span>`).join("")}
+          </div>` : ""}
         </div>
       </a>
       ${!semEstoque ? `
