@@ -792,7 +792,7 @@ async function carregarAbaCategorias(container) {
     <ul class="chip-list chip-list--marcas">
       ${cacheCategorias.map(c => `
         <li data-id="${c.id}">
-          <img class="thumb" src="${c.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(c.nome)}">
+          <img class="thumb" src="${imgPos(c.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(c.imagem).pos}" alt="${escHtml(c.nome)}">
           <span class="chip-list__nome">${escHtml(c.nome)}</span>
           <button data-action="editar" title="Editar">${icon("pencil")}</button>
           <button data-action="excluir" title="Remover">${icon("close")}</button>
@@ -828,7 +828,8 @@ async function abrirFormularioCategoria(container, categoria = null) {
       </div>
       ${categoria?.imagem ? `
         <div class="logo-atual" id="imagem-atual-wrap">
-          <img class="thumb" src="${categoria.imagem}" alt="">
+          <img class="thumb" id="imagem-categoria-preview" src="${imgPos(categoria.imagem).src}" style="object-position:${imgPos(categoria.imagem).pos}" alt="">
+          <button type="button" id="btn-ajustar-imagem" class="btn-secondary" title="Ajustar enquadramento">⤡ Ajustar posição</button>
           <button type="button" id="btn-remover-imagem" class="btn-remover-logo" title="Apagar imagem">${icon("close")} Apagar imagem</button>
         </div>` : ""}
       <div class="form-actions">
@@ -841,10 +842,20 @@ async function abrirFormularioCategoria(container, categoria = null) {
   dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
 
   let imagemRemovida = false;
+  let imagemAtualUrl = categoria?.imagem || "";
   dialog.querySelector("#btn-remover-imagem")?.addEventListener("click", () => {
     imagemRemovida = true;
     dialog.querySelector("#imagem-atual-wrap").remove();
     toast("Imagem removida. Salve para confirmar.");
+  });
+  dialog.querySelector("#btn-ajustar-imagem")?.addEventListener("click", () => {
+    abrirAjusteEnquadramento(imagemAtualUrl, (novaUrl) => {
+      imagemAtualUrl = novaUrl;
+      const preview = dialog.querySelector("#imagem-categoria-preview");
+      const { src, pos } = imgPos(novaUrl);
+      preview.src = src;
+      preview.style.objectPosition = pos;
+    });
   });
 
   dialog.querySelector("#form-categoria").addEventListener("submit", async (e) => {
@@ -865,7 +876,7 @@ async function abrirFormularioCategoria(container, categoria = null) {
     } else if (imagemRemovida) {
       dados.imagem = "";
     } else if (categoria?.imagem) {
-      dados.imagem = categoria.imagem;
+      dados.imagem = imagemAtualUrl;
     }
 
     if (categoria) {
@@ -901,6 +912,9 @@ async function carregarAbaMarcas(container) {
         <li data-id="${m.id}">
           <img class="thumb" src="${m.logo || "/assets/images/placeholder.svg"}" alt="${escHtml(m.nome)}">
           <span class="chip-list__nome">${escHtml(m.nome)}</span>
+          <label class="chip-list__visivel" title="Exibir a logo dessa marca na faixa de marcas parceiras do site">
+            <input type="checkbox" data-toggle-visivel="${m.id}" ${m.visivel ? "checked" : ""}> Exibir no site
+          </label>
           <button data-action="editar" title="Editar">${icon("pencil")}</button>
           <button data-action="excluir" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma marca cadastrada.</li>`}
@@ -908,6 +922,15 @@ async function carregarAbaMarcas(container) {
     <dialog id="dialog-marca" class="dialog-form"></dialog>`;
 
   container.querySelector("#btn-nova-marca").addEventListener("click", () => abrirFormularioMarca(container));
+
+  container.querySelectorAll("[data-toggle-visivel]").forEach(chk => {
+    chk.addEventListener("change", async () => {
+      await atualizarMarca(chk.dataset.toggleVisivel, { visivel: chk.checked });
+      const m = cacheMarcas.find(x => x.id === chk.dataset.toggleVisivel);
+      if (m) m.visivel = chk.checked;
+      toast(chk.checked ? "Marca visível no site." : "Marca ocultada do site.");
+    });
+  });
 
   container.querySelectorAll(".chip-list--marcas li[data-id]").forEach(li => {
     const id = li.dataset.id;
@@ -957,7 +980,7 @@ async function abrirFormularioMarca(container, marca = null) {
     e.preventDefault();
     const form = e.target;
     const btnSalvar = form.querySelector('button[type="submit"]');
-    const dados = { nome: form.nome.value.trim() };
+    const dados = { nome: form.nome.value.trim(), visivel: marca ? marca.visivel !== false : true };
 
     const arquivoLogo = form.logo.files[0];
     if (arquivoLogo) {
