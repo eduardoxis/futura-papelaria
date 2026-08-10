@@ -217,8 +217,9 @@ function normalizarProdutoImportado(item, categoriasValidas) {
     dados: {
       nome,
       marca: String(item.marca || "").trim(),
-      cor: String(item.cor || "").trim(),
-      corHex: String(item.corHex || "").trim(),
+      cores: Array.isArray(item.cores)
+        ? item.cores.map(c => ({ nome: String(c?.nome || "").trim(), hex: String(c?.hex || "#cccccc").trim() })).filter(c => c.nome)
+        : [],
       preco,
       quantidade: Number.isFinite(Number(item.quantidade)) ? parseInt(item.quantidade, 10) : 0,
       categoria,
@@ -345,14 +346,17 @@ async function abrirFormularioProduto(container, produto = null) {
   let galeria = iniciais.map(url => ({ id: crypto.randomUUID(), url, file: null, previewUrl: null }));
   let arrastando = null;
 
+  // estado das variações de cor: cada item é { id, nome, hex }
+  let cores = Array.isArray(produto?.cores)
+    ? produto.cores.map(c => ({ id: crypto.randomUUID(), nome: c.nome || "", hex: c.hex || "#cccccc" }))
+    : [];
+
   dialog.innerHTML = `
     <form id="form-produto" class="product-form">
       <h3>${produto ? "Editar produto" : "Novo produto"}</h3>
       <div class="form-grid">
         <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(produto?.nome || "")}"></label>
         <label>Marca<input name="marca" autocomplete="off" value="${escHtml(produto?.marca || "")}"></label>
-        <label>Cor<input name="cor" autocomplete="off" placeholder="Ex: Azul, Vermelho..." value="${escHtml(produto?.cor || "")}"></label>
-        <label>Cor (bolinha)<input name="corHex" type="color" value="${produto?.corHex || "#cccccc"}" style="height:42px;padding:0.25rem"></label>
         <label>Preço (R$)<input name="preco" type="number" step="0.01" required value="${produto?.preco ?? ""}"></label>
         <label>Quantidade<input name="quantidade" type="number" required value="${produto?.quantidade ?? 0}"></label>
         <label>Categoria<select name="categoria"><option value="">Selecione</option>${opcoesCategoria}</select></label>
@@ -365,9 +369,17 @@ async function abrirFormularioProduto(container, produto = null) {
         </label>
         <label>Código<input name="codigo" autocomplete="off" value="${escHtml(produto?.codigo || generateCode())}"></label>
       </div>
-      <p style="font-size:0.82rem;color:var(--cinza-500);margin:-0.5rem 0 0.5rem">
-        Dica: para um produto com variações de cor (ex: mesmo caderno em azul e vermelho), cadastre um produto separado para cada cor usando o <strong>mesmo Nome e Marca</strong> — elas aparecerão conectadas na página do produto, com um seletor de cor. Escolha a bolinha na cor real do produto (é só visual, não precisa ser exata).
-      </p>
+
+      <div class="cores-produto">
+        <h4>Variações de cor (opcional)</h4>
+        <p class="galeria-produto__ajuda">Cadastre as cores disponíveis para este produto. O cliente escolherá a cor na página do produto antes de adicionar ao carrinho. Deixe vazio se o produto não tiver variação de cor.</p>
+        <div class="cores-produto__lista" id="cores-lista"></div>
+        <div class="cores-produto__add">
+          <input type="text" id="input-cor-nome" placeholder="Nome da cor (ex: Azul)" autocomplete="off">
+          <input type="color" id="input-cor-hex" value="#2e6cf6">
+          <button type="button" id="btn-add-cor" class="btn-secondary">${icon("plus")}Adicionar cor</button>
+        </div>
+      </div>
 
       <div class="galeria-produto">
         <h4>Galeria de imagens do produto</h4>
@@ -432,6 +444,53 @@ async function abrirFormularioProduto(container, produto = null) {
   }
   renderizarGaleria();
 
+  const coresLista = dialog.querySelector("#cores-lista");
+  const inputCorNome = dialog.querySelector("#input-cor-nome");
+  const inputCorHex = dialog.querySelector("#input-cor-hex");
+
+  function renderizarCores() {
+    coresLista.innerHTML = cores.map(c => `
+      <span class="cor-chip" data-id="${c.id}">
+        <span class="cor-chip__bolinha" style="background:${escHtml(c.hex)}"></span>
+        <input type="text" class="cor-chip__nome" data-editar-nome="${c.id}" value="${escHtml(c.nome)}" placeholder="Nome da cor">
+        <input type="color" class="cor-chip__hex" data-editar-hex="${c.id}" value="${c.hex}">
+        <button type="button" class="cor-chip__remover" data-remover-cor="${c.id}" aria-label="Remover cor">${icon("close")}</button>
+      </span>`).join("") || `<em style="font-size:0.85rem;color:var(--cinza-500)">Nenhuma cor cadastrada.</em>`;
+
+    coresLista.querySelectorAll("[data-editar-nome]").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const c = cores.find(x => x.id === inp.dataset.editarNome);
+        if (c) c.nome = inp.value;
+      });
+    });
+    coresLista.querySelectorAll("[data-editar-hex]").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const c = cores.find(x => x.id === inp.dataset.editarHex);
+        if (c) c.hex = inp.value;
+        const bolinha = inp.closest(".cor-chip")?.querySelector(".cor-chip__bolinha");
+        if (bolinha) bolinha.style.background = inp.value;
+      });
+    });
+    coresLista.querySelectorAll("[data-remover-cor]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const ok = await confirmarAcao("Remover esta cor do produto?", { titulo: "Remover cor" });
+        if (!ok) return;
+        cores = cores.filter(c => c.id !== btn.dataset.removerCor);
+        renderizarCores();
+      });
+    });
+  }
+  renderizarCores();
+
+  dialog.querySelector("#btn-add-cor").addEventListener("click", () => {
+    const nome = inputCorNome.value.trim();
+    if (!nome) { inputCorNome.focus(); return; }
+    cores.push({ id: crypto.randomUUID(), nome, hex: inputCorHex.value || "#cccccc" });
+    inputCorNome.value = "";
+    inputCorHex.value = "#2e6cf6";
+    renderizarCores();
+  });
+
   dialog.querySelector("#input-galeria").addEventListener("change", (e) => {
     [...e.target.files].forEach(file => {
       galeria.push({ id: crypto.randomUUID(), url: null, file, previewUrl: URL.createObjectURL(file) });
@@ -463,8 +522,6 @@ async function abrirFormularioProduto(container, produto = null) {
     const dados = {
       nome: nomeProduto,
       marca: form.marca.value.trim(),
-      cor: form.cor.value.trim(),
-      corHex: form.cor.value.trim() ? form.corHex.value : "",
       preco: parseFloat(form.preco.value),
       quantidade: parseInt(form.quantidade.value, 10),
       categoria: form.categoria.value,
@@ -473,7 +530,8 @@ async function abrirFormularioProduto(container, produto = null) {
       descricao: form.descricao.value.trim(),
       destaques: form.destaques.value.split("\n").map(l => l.trim()).filter(Boolean),
       etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value),
-      imagens: galeria.map(g => g.url).filter(Boolean)
+      imagens: galeria.map(g => g.url).filter(Boolean),
+      cores: cores.map(c => ({ nome: c.nome.trim(), hex: c.hex })).filter(c => c.nome)
     };
     dados.imagem = dados.imagens[0] || "";
 
