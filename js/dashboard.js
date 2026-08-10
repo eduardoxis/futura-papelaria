@@ -7,7 +7,7 @@ import {
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios
 } from "./firestore.js";
-import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, toast, confirmarAcao } from "./utils.js";
+import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, toast, confirmarAcao, imgPos } from "./utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
 import { carregarPainelLeads } from "./leads.js";
 import { ICONS, icon } from "./icons.js";
@@ -292,7 +292,7 @@ function renderizarTabelaProdutos(container, produtos) {
 
   tbody.innerHTML = produtos.map(p => `
     <tr data-id="${p.id}">
-      <td><img class="thumb" src="${p.imagem || "/assets/images/placeholder.svg"}" alt=""></td>
+      <td><img class="thumb" src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(p.imagem).pos}" alt=""></td>
       <td>${escHtml(p.nome)}</td>
       <td>${escHtml(p.categoria || "-")}</td>
       <td>${formatBRL(p.preco)}</td>
@@ -330,6 +330,72 @@ function renderizarTabelaProdutos(container, produtos) {
         carregarAbaProdutos(container);
       }
     });
+  });
+}
+
+// Abre um mini-editor para o admin arrastar a imagem dentro de um quadro (proporção 1:1,
+// igual à moldura usada nos cards de produto) e escolher qual parte fica visível/centralizada.
+// A posição escolhida é gravada como fragmento na própria URL (#pos=x,y), sem mexer no arquivo.
+function abrirAjusteEnquadramento(url, onSalvar) {
+  const { src, pos: posAtual } = imgPos(url);
+  const [xIni, yIni] = posAtual.replace(/%/g, "").split(" ").map(Number);
+
+  const dialog = document.createElement("dialog");
+  dialog.className = "modal-dialog modal-ajuste-imagem";
+  dialog.innerHTML = `
+    <form method="dialog" class="form-cadastro">
+      <h3>Ajustar enquadramento</h3>
+      <p class="galeria-produto__ajuda">Arraste a imagem para centralizar o que importa. Isso só muda como ela aparece no site, o arquivo continua o mesmo.</p>
+      <div class="ajuste-imagem__quadro" id="ajuste-quadro">
+        <img id="ajuste-img" src="${src}" style="object-position:${xIni}% ${yIni}%" alt="">
+      </div>
+      <div class="form-actions">
+        <button type="button" data-modal-close-dialog>Cancelar</button>
+        <button type="button" class="btn-secondary" id="ajuste-centralizar">Centralizar</button>
+        <button type="submit" class="btn-primary">Salvar posição</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dialog);
+  dialog.showModal();
+  dialog.addEventListener("close", () => dialog.remove());
+  dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
+
+  let x = xIni, y = yIni;
+  const quadro = dialog.querySelector("#ajuste-quadro");
+  const img = dialog.querySelector("#ajuste-img");
+
+  function aplicar() {
+    x = Math.min(100, Math.max(0, x));
+    y = Math.min(100, Math.max(0, y));
+    img.style.objectPosition = `${x}% ${y}%`;
+  }
+
+  let arrastando = false, ultimoX = 0, ultimoY = 0;
+  function iniciar(clientX, clientY) { arrastando = true; ultimoX = clientX; ultimoY = clientY; }
+  function mover(clientX, clientY) {
+    if (!arrastando) return;
+    const rect = quadro.getBoundingClientRect();
+    // arrastar o mouse para a direita "empurra" o enquadramento pra esquerda (sensação natural de arrastar a foto)
+    x -= ((clientX - ultimoX) / rect.width) * 100;
+    y -= ((clientY - ultimoY) / rect.height) * 100;
+    ultimoX = clientX; ultimoY = clientY;
+    aplicar();
+  }
+  function parar() { arrastando = false; }
+
+  quadro.addEventListener("mousedown", (e) => { iniciar(e.clientX, e.clientY); e.preventDefault(); });
+  window.addEventListener("mousemove", (e) => mover(e.clientX, e.clientY));
+  window.addEventListener("mouseup", parar);
+  quadro.addEventListener("touchstart", (e) => { const t = e.touches[0]; iniciar(t.clientX, t.clientY); }, { passive: true });
+  quadro.addEventListener("touchmove", (e) => { const t = e.touches[0]; mover(t.clientX, t.clientY); }, { passive: true });
+  quadro.addEventListener("touchend", parar);
+
+  dialog.querySelector("#ajuste-centralizar").addEventListener("click", () => { x = 50; y = 50; aplicar(); });
+
+  dialog.querySelector("form").addEventListener("submit", () => {
+    const base = src.replace(/#pos=[\d.]+,[\d.]+$/, "");
+    onSalvar(`${base}#pos=${x.toFixed(1)},${y.toFixed(1)}`);
+    dialog.close();
   });
 }
 
@@ -420,12 +486,27 @@ async function abrirFormularioProduto(container, produto = null) {
   const grid = dialog.querySelector("#galeria-grid");
 
   function renderizarGaleria() {
-    grid.innerHTML = galeria.map((item, i) => `
+    grid.innerHTML = galeria.map((item, i) => {
+      const { src, pos } = imgPos(item.previewUrl || item.url);
+      return `
       <div class="galeria-item" draggable="true" data-id="${item.id}">
-        <img src="${item.previewUrl || item.url}" alt="">
+        <img src="${src}" style="object-position:${pos}" alt="">
+        <button type="button" class="galeria-item__ajustar" data-ajustar="${item.id}" aria-label="Ajustar posição da imagem" title="Ajustar enquadramento">⤡</button>
         <button type="button" class="galeria-item__remover" data-remover="${item.id}" aria-label="Remover imagem">${icon("close")}</button>
         ${i === 0 ? `<span class="galeria-item__principal">Principal</span>` : ""}
-      </div>`).join("");
+      </div>`;
+    }).join("");
+
+    grid.querySelectorAll("[data-ajustar]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const item = galeria.find(g => g.id === btn.dataset.ajustar);
+        if (!item) return;
+        abrirAjusteEnquadramento(item.previewUrl || item.url, (novaUrl) => {
+          if (item.previewUrl) item.previewUrl = novaUrl; else item.url = novaUrl;
+          renderizarGaleria();
+        });
+      });
+    });
 
     grid.querySelectorAll("[data-remover]").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -472,12 +553,29 @@ async function abrirFormularioProduto(container, produto = null) {
         ${icon("plus")}Escolher arquivos
         <input type="file" accept="image/*" multiple hidden data-foto-input="${c.id}">
       </label>
-      ${c.imagens.map((img, i) => `
+      ${c.imagens.map((img, i) => {
+        const { src, pos } = imgPos(img.previewUrl || img.url);
+        return `
       <div class="galeria-item galeria-item--mini" draggable="true" data-img-id="${img.id}">
-        <img src="${img.previewUrl || img.url}" alt="">
+        <img src="${src}" style="object-position:${pos}" alt="">
+        <button type="button" class="galeria-item__ajustar" data-ajustar-img-cor="${c.id}:${img.id}" aria-label="Ajustar posição da imagem" title="Ajustar enquadramento">⤡</button>
         <button type="button" class="galeria-item__remover" data-remover-img-cor="${c.id}:${img.id}" aria-label="Remover imagem">${icon("close")}</button>
         ${i === 0 ? `<span class="galeria-item__principal">Capa</span>` : ""}
-      </div>`).join("")}`;
+      </div>`;
+      }).join("")}`;
+
+    grid.querySelectorAll("[data-ajustar-img-cor]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const [corId, imgId] = btn.dataset.ajustarImgCor.split(":");
+        const cor = cores.find(cc => cc.id === corId);
+        const img = cor?.imagens.find(ii => ii.id === imgId);
+        if (!img) return;
+        abrirAjusteEnquadramento(img.previewUrl || img.url, (novaUrl) => {
+          if (img.previewUrl) img.previewUrl = novaUrl; else img.url = novaUrl;
+          renderizarImagensCor(cor);
+        });
+      });
+    });
 
     grid.querySelector("[data-foto-input]").addEventListener("change", (e) => {
       [...e.target.files].forEach(file => {
@@ -614,7 +712,8 @@ async function abrirFormularioProduto(container, produto = null) {
         btnSalvar.textContent = `Enviando imagem ${i + 1}/${pendentes.length}...`;
         const url = await enviarImagem(pendentes[i].file, `${nomeProduto}-${i + 1}`);
         if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
-        pendentes[i].url = url;
+        const posSalva = imgPos(pendentes[i].previewUrl || "").pos;
+        pendentes[i].url = posSalva !== "50% 50%" ? `${url}#pos=${posSalva.replace(/%/g, "").replace(" ", ",")}` : url;
         if (pendentes[i].previewUrl) URL.revokeObjectURL(pendentes[i].previewUrl);
       }
       btnSalvar.disabled = false;
@@ -629,7 +728,8 @@ async function abrirFormularioProduto(container, produto = null) {
         btnSalvar.textContent = `Enviando foto ${i + 1}/${imagensPendentesCores.length}...`;
         const url = await enviarImagem(img.file, `${nomeProduto}-${corNome || "cor"}-${i + 1}`);
         if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
-        img.url = url;
+        const posSalva = imgPos(img.previewUrl || "").pos;
+        img.url = posSalva !== "50% 50%" ? `${url}#pos=${posSalva.replace(/%/g, "").replace(" ", ",")}` : url;
         if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
       }
       btnSalvar.disabled = false;
