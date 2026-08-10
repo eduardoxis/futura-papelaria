@@ -397,3 +397,33 @@ dialog.dialog-form::backdrop { background: rgba(11, 33, 73, 0.45); backdrop-filt
 .import-result__errors li { margin-bottom: 0.3rem; }
 .form-actions button[type="submit"] { padding: 0.55rem 1.2rem; }
 .form-actions button[type="button"] { padding: 0.55rem 1rem; border-radius: var(--raio-sm); background: var(--cinza-100); }
+
+/* ---- variações de cor do produto (admin) ---- */
+.cores-produto { display: grid; gap: 0.5rem; }
+.cores-produto h4 { margin: 0; font-size: 0.95rem; color: var(--azul-900); }
+.cores-produto__lista { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.cor-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem;
+  border: 1px solid var(--cinza-300); border-radius: 999px; background: var(--branco);
+}
+.cor-chip__bolinha {
+  width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--cinza-300); flex-shrink: 0;
+}
+.cor-chip__nome {
+  border: none; outline: none; font-size: 0.82rem; width: 90px; padding: 0.1rem 0;
+}
+.cor-chip__hex { width: 26px; height: 26px; padding: 0; border: none; background: none; cursor: pointer; }
+.cor-chip__remover {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--cinza-100); display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.cor-chip__remover .icon { width: 10px; height: 10px; }
+.cor-chip__remover:hover { background: #f4c7c3; }
+.cores-produto__add { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.cores-produto__add input[type="text"] {
+  flex: 1; min-width: 160px; padding: 0.55rem 0.75rem; border: 1px solid var(--cinza-300);
+  border-radius: var(--raio-sm); font-size: 0.85rem;
+}
+.cores-produto__add input[type="color"] { width: 42px; height: 42px; padding: 0; border: none; cursor: pointer; }
+.cores-produto__add .btn-secondary { display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+.cores-produto__add .btn-secondary .icon { width: 14px; height: 14px; }
