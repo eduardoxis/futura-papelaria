@@ -218,7 +218,10 @@ function normalizarProdutoImportado(item, categoriasValidas) {
       nome,
       marca: String(item.marca || "").trim(),
       cores: Array.isArray(item.cores)
-        ? item.cores.map(c => ({ nome: String(c?.nome || "").trim(), hex: String(c?.hex || "#cccccc").trim(), imagem: String(c?.imagem || "").trim() })).filter(c => c.nome)
+        ? item.cores.map(c => {
+            const imgs = Array.isArray(c?.imagens) ? c.imagens.filter(Boolean) : (c?.imagem ? [String(c.imagem)] : []);
+            return { nome: String(c?.nome || "").trim(), hex: String(c?.hex || "#cccccc").trim(), padrao: !!c?.padrao, imagens: imgs, imagem: imgs[0] || "" };
+          }).filter(c => c.nome)
         : [],
       preco,
       quantidade: Number.isFinite(Number(item.quantidade)) ? parseInt(item.quantidade, 10) : 0,
@@ -346,10 +349,18 @@ async function abrirFormularioProduto(container, produto = null) {
   let galeria = iniciais.map(url => ({ id: crypto.randomUUID(), url, file: null, previewUrl: null }));
   let arrastando = null;
 
-  // estado das variações de cor: cada item é { id, nome, hex, imagem (url existente), file, previewUrl }
+  // estado das variações de cor: cada item é { id, nome, hex, padrao, imagens: [{id, url, file, previewUrl}] }
   let cores = Array.isArray(produto?.cores)
-    ? produto.cores.map(c => ({ id: crypto.randomUUID(), nome: c.nome || "", hex: c.hex || "#cccccc", imagem: c.imagem || "", file: null, previewUrl: null }))
+    ? produto.cores.map(c => ({
+        id: crypto.randomUUID(),
+        nome: c.nome || "",
+        hex: c.hex || "#cccccc",
+        padrao: !!c.padrao,
+        imagens: (Array.isArray(c.imagens) && c.imagens.length ? c.imagens : (c.imagem ? [c.imagem] : []))
+          .filter(Boolean).map(url => ({ id: crypto.randomUUID(), url, file: null, previewUrl: null }))
+      }))
     : [];
+  if (cores.length && !cores.some(c => c.padrao)) cores[0].padrao = true;
 
   dialog.innerHTML = `
     <form id="form-produto" class="product-form">
@@ -372,7 +383,7 @@ async function abrirFormularioProduto(container, produto = null) {
 
       <div class="cores-produto">
         <h4>Variações de cor (opcional)</h4>
-        <p class="galeria-produto__ajuda">Cadastre as cores disponíveis para este produto. O cliente escolherá a cor na página do produto antes de adicionar ao carrinho. Deixe vazio se o produto não tiver variação de cor.</p>
+        <p class="galeria-produto__ajuda">Cadastre as cores disponíveis para este produto e as fotos de cada uma. O cliente escolherá a cor na página do produto antes de adicionar ao carrinho. Deixe vazio se o produto não tiver variação de cor — nesse caso, use a galeria de imagens abaixo.</p>
         <div class="cores-produto__lista" id="cores-lista"></div>
         <div class="cores-produto__add">
           <input type="text" id="input-cor-nome" placeholder="Nome da cor (ex: Azul)" autocomplete="off">
@@ -381,9 +392,9 @@ async function abrirFormularioProduto(container, produto = null) {
         </div>
       </div>
 
-      <div class="galeria-produto">
+      <div class="galeria-produto" id="galeria-produto-wrap">
         <h4>Galeria de imagens do produto</h4>
-        <p class="galeria-produto__ajuda">A primeira imagem da lista é usada como capa no catálogo. Arraste as miniaturas para reordenar.</p>
+        <p class="galeria-produto__ajuda">A primeira imagem da lista é usada como capa no catálogo. Arraste as miniaturas para reordenar. Só é usada quando o produto não tem variações de cor cadastradas.</p>
         <div class="galeria-produto__grid" id="galeria-grid"></div>
         <label class="galeria-produto__upload">
           ${icon("plus")}Escolher arquivos
@@ -444,27 +455,89 @@ async function abrirFormularioProduto(container, produto = null) {
   }
   renderizarGaleria();
 
+  const galeriaWrap = dialog.querySelector("#galeria-produto-wrap");
+  function atualizarVisibilidadeGaleriaGeral() {
+    galeriaWrap.hidden = cores.length > 0;
+  }
+
   const coresLista = dialog.querySelector("#cores-lista");
   const inputCorNome = dialog.querySelector("#input-cor-nome");
   const inputCorHex = dialog.querySelector("#input-cor-hex");
 
-  function renderizarCores() {
-    coresLista.innerHTML = cores.map(c => {
-      const preview = c.previewUrl || c.imagem;
-      return `
-      <span class="cor-chip" data-id="${c.id}">
-        <span class="cor-chip__bolinha" style="background:${escHtml(c.hex)}"></span>
-        <input type="text" class="cor-chip__nome" data-editar-nome="${c.id}" value="${escHtml(c.nome)}" placeholder="Nome da cor">
-        <input type="color" class="cor-chip__hex" data-editar-hex="${c.id}" value="${c.hex}">
-        <label class="cor-chip__foto" data-foto-label="${c.id}" title="${preview ? "Trocar foto desta cor" : "Adicionar foto desta cor"}">
-          ${preview ? `<img src="${preview}" alt="">` : icon("plus")}
-          <input type="file" accept="image/*" hidden data-foto-input="${c.id}">
-        </label>
-        ${preview ? `<button type="button" class="cor-chip__remover-foto" data-remover-foto="${c.id}" aria-label="Remover foto da cor">${icon("close")}</button>` : ""}
-        <button type="button" class="cor-chip__remover" data-remover-cor="${c.id}" aria-label="Remover cor">${icon("close")}</button>
-      </span>`;
-    }).join("") || `<em style="font-size:0.85rem;color:var(--cinza-500)">Nenhuma cor cadastrada.</em>`;
+  function renderizarImagensCor(c) {
+    const grid = coresLista.querySelector(`[data-cor-imagens="${c.id}"]`);
+    if (!grid) return;
+    grid.innerHTML = `
+      <label class="cor-row__upload">
+        ${icon("plus")}Escolher arquivos
+        <input type="file" accept="image/*" multiple hidden data-foto-input="${c.id}">
+      </label>
+      ${c.imagens.map((img, i) => `
+      <div class="galeria-item galeria-item--mini" draggable="true" data-img-id="${img.id}">
+        <img src="${img.previewUrl || img.url}" alt="">
+        <button type="button" class="galeria-item__remover" data-remover-img-cor="${c.id}:${img.id}" aria-label="Remover imagem">${icon("close")}</button>
+        ${i === 0 ? `<span class="galeria-item__principal">Capa</span>` : ""}
+      </div>`).join("")}`;
 
+    grid.querySelector("[data-foto-input]").addEventListener("change", (e) => {
+      [...e.target.files].forEach(file => {
+        c.imagens.push({ id: crypto.randomUUID(), url: null, file, previewUrl: URL.createObjectURL(file) });
+      });
+      e.target.value = "";
+      renderizarImagensCor(c);
+    });
+
+    grid.querySelectorAll("[data-remover-img-cor]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const ok = await confirmarAcao("Remover esta imagem da cor?", { titulo: "Remover imagem" });
+        if (!ok) return;
+        const [, imgId] = btn.dataset.removerImgCor.split(":");
+        const img = c.imagens.find(i => i.id === imgId);
+        if (img?.previewUrl) URL.revokeObjectURL(img.previewUrl);
+        c.imagens = c.imagens.filter(i => i.id !== imgId);
+        renderizarImagensCor(c);
+      });
+    });
+
+    let arrastandoImg = null;
+    grid.querySelectorAll(".galeria-item--mini").forEach(el => {
+      el.addEventListener("dragstart", () => { arrastandoImg = el.dataset.imgId; el.classList.add("is-dragging"); });
+      el.addEventListener("dragend", () => el.classList.remove("is-dragging"));
+      el.addEventListener("dragover", (e) => e.preventDefault());
+      el.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (!arrastandoImg || arrastandoImg === el.dataset.imgId) return;
+        const de = c.imagens.findIndex(i => i.id === arrastandoImg);
+        const ate = c.imagens.findIndex(i => i.id === el.dataset.imgId);
+        const [movido] = c.imagens.splice(de, 1);
+        c.imagens.splice(ate, 0, movido);
+        renderizarImagensCor(c);
+      });
+    });
+  }
+
+  function renderizarCores() {
+    coresLista.innerHTML = cores.map(c => `
+      <div class="cor-row" data-id="${c.id}">
+        <input type="radio" name="cor-padrao" class="cor-row__radio" data-padrao="${c.id}" ${c.padrao ? "checked" : ""} title="Usar como cor padrão do produto">
+        <span class="cor-row__bolinha" style="background:${escHtml(c.hex)}"></span>
+        <input type="text" class="cor-row__nome" data-editar-nome="${c.id}" value="${escHtml(c.nome)}" placeholder="Nome da cor">
+        <input type="text" class="cor-row__hex-texto" data-editar-hex-texto="${c.id}" value="${escHtml(c.hex).toUpperCase()}" placeholder="#RRGGBB">
+        <input type="color" class="cor-row__hex" data-editar-hex="${c.id}" value="${c.hex}">
+        <div class="cor-row__galeria">
+          <span class="cor-row__galeria-label">Galeria da cor</span>
+          <div class="cor-row__galeria-grid" data-cor-imagens="${c.id}"></div>
+        </div>
+        <button type="button" class="cor-chip__remover" data-remover-cor="${c.id}" aria-label="Remover cor">${icon("close")}</button>
+      </div>`).join("") || `<em style="font-size:0.85rem;color:var(--cinza-500)">Nenhuma cor cadastrada.</em>`;
+
+    cores.forEach(c => renderizarImagensCor(c));
+
+    coresLista.querySelectorAll("[data-padrao]").forEach(radio => {
+      radio.addEventListener("change", () => {
+        cores.forEach(c => { c.padrao = c.id === radio.dataset.padrao; });
+      });
+    });
     coresLista.querySelectorAll("[data-editar-nome]").forEach(inp => {
       inp.addEventListener("input", () => {
         const c = cores.find(x => x.id === inp.dataset.editarNome);
@@ -475,30 +548,22 @@ async function abrirFormularioProduto(container, produto = null) {
       inp.addEventListener("input", () => {
         const c = cores.find(x => x.id === inp.dataset.editarHex);
         if (c) c.hex = inp.value;
-        const bolinha = inp.closest(".cor-chip")?.querySelector(".cor-chip__bolinha");
-        if (bolinha) bolinha.style.background = inp.value;
+        const linha = inp.closest(".cor-row");
+        linha.querySelector(".cor-row__bolinha").style.background = inp.value;
+        const texto = linha.querySelector("[data-editar-hex-texto]");
+        if (texto) texto.value = inp.value.toUpperCase();
       });
     });
-    coresLista.querySelectorAll("[data-foto-input]").forEach(inp => {
-      inp.addEventListener("change", () => {
-        const c = cores.find(x => x.id === inp.dataset.fotoInput);
-        const file = inp.files?.[0];
-        if (!c || !file) return;
-        if (c.previewUrl) URL.revokeObjectURL(c.previewUrl);
-        c.file = file;
-        c.previewUrl = URL.createObjectURL(file);
-        renderizarCores();
-      });
-    });
-    coresLista.querySelectorAll("[data-remover-foto]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const c = cores.find(x => x.id === btn.dataset.removerFoto);
-        if (!c) return;
-        if (c.previewUrl) URL.revokeObjectURL(c.previewUrl);
-        c.file = null;
-        c.previewUrl = null;
-        c.imagem = "";
-        renderizarCores();
+    coresLista.querySelectorAll("[data-editar-hex-texto]").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const valor = inp.value.trim();
+        if (!/^#[0-9a-fA-F]{6}$/.test(valor)) return;
+        const c = cores.find(x => x.id === inp.dataset.editarHexTexto);
+        if (c) c.hex = valor;
+        const linha = inp.closest(".cor-row");
+        linha.querySelector(".cor-row__bolinha").style.background = valor;
+        const picker = linha.querySelector("[data-editar-hex]");
+        if (picker) picker.value = valor;
       });
     });
     coresLista.querySelectorAll("[data-remover-cor]").forEach(btn => {
@@ -506,21 +571,26 @@ async function abrirFormularioProduto(container, produto = null) {
         const ok = await confirmarAcao("Remover esta cor do produto?", { titulo: "Remover cor" });
         if (!ok) return;
         const c = cores.find(x => x.id === btn.dataset.removerCor);
-        if (c?.previewUrl) URL.revokeObjectURL(c.previewUrl);
+        const eraPadrao = c?.padrao;
+        c?.imagens.forEach(img => { if (img.previewUrl) URL.revokeObjectURL(img.previewUrl); });
         cores = cores.filter(c => c.id !== btn.dataset.removerCor);
+        if (eraPadrao && cores.length) cores[0].padrao = true;
         renderizarCores();
+        atualizarVisibilidadeGaleriaGeral();
       });
     });
   }
   renderizarCores();
+  atualizarVisibilidadeGaleriaGeral();
 
   dialog.querySelector("#btn-add-cor").addEventListener("click", () => {
     const nome = inputCorNome.value.trim();
     if (!nome) { inputCorNome.focus(); return; }
-    cores.push({ id: crypto.randomUUID(), nome, hex: inputCorHex.value || "#cccccc" });
+    cores.push({ id: crypto.randomUUID(), nome, hex: inputCorHex.value || "#cccccc", padrao: cores.length === 0, imagens: [] });
     inputCorNome.value = "";
     inputCorHex.value = "#2e6cf6";
     renderizarCores();
+    atualizarVisibilidadeGaleriaGeral();
   });
 
   dialog.querySelector("#input-galeria").addEventListener("change", (e) => {
@@ -537,7 +607,7 @@ async function abrirFormularioProduto(container, produto = null) {
     const btnSalvar = form.querySelector('button[type="submit"]');
     const nomeProduto = form.nome.value.trim() || "produto";
 
-    const pendentes = galeria.filter(g => g.file);
+    const pendentes = cores.length === 0 ? galeria.filter(g => g.file) : [];
     if (pendentes.length) {
       btnSalvar.disabled = true;
       for (let i = 0; i < pendentes.length; i++) {
@@ -551,15 +621,16 @@ async function abrirFormularioProduto(container, produto = null) {
       btnSalvar.textContent = "Salvar";
     }
 
-    const coresPendentes = cores.filter(c => c.file);
-    if (coresPendentes.length) {
+    const imagensPendentesCores = cores.flatMap(c => c.imagens.filter(img => img.file).map(img => ({ img, corNome: c.nome })));
+    if (imagensPendentesCores.length) {
       btnSalvar.disabled = true;
-      for (let i = 0; i < coresPendentes.length; i++) {
-        btnSalvar.textContent = `Enviando foto da cor ${i + 1}/${coresPendentes.length}...`;
-        const url = await enviarImagem(coresPendentes[i].file, `${nomeProduto}-${coresPendentes[i].nome || "cor"}`);
+      for (let i = 0; i < imagensPendentesCores.length; i++) {
+        const { img, corNome } = imagensPendentesCores[i];
+        btnSalvar.textContent = `Enviando foto ${i + 1}/${imagensPendentesCores.length}...`;
+        const url = await enviarImagem(img.file, `${nomeProduto}-${corNome || "cor"}-${i + 1}`);
         if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
-        coresPendentes[i].imagem = url;
-        if (coresPendentes[i].previewUrl) URL.revokeObjectURL(coresPendentes[i].previewUrl);
+        img.url = url;
+        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
       }
       btnSalvar.disabled = false;
       btnSalvar.textContent = "Salvar";
@@ -576,10 +647,14 @@ async function abrirFormularioProduto(container, produto = null) {
       descricao: form.descricao.value.trim(),
       destaques: form.destaques.value.split("\n").map(l => l.trim()).filter(Boolean),
       etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value),
-      imagens: galeria.map(g => g.url).filter(Boolean),
-      cores: cores.map(c => ({ nome: c.nome.trim(), hex: c.hex, imagem: c.imagem || "" })).filter(c => c.nome)
+      imagens: cores.length === 0 ? galeria.map(g => g.url).filter(Boolean) : [],
+      cores: cores.map(c => {
+        const urls = c.imagens.map(img => img.url).filter(Boolean);
+        return { nome: c.nome.trim(), hex: c.hex, padrao: !!c.padrao, imagens: urls, imagem: urls[0] || "" };
+      }).filter(c => c.nome)
     };
-    dados.imagem = dados.imagens[0] || "";
+    const corPadrao = dados.cores.find(c => c.padrao) || dados.cores[0];
+    dados.imagem = dados.imagens[0] || corPadrao?.imagem || "";
 
     if (produto) {
       await atualizarProduto(produto.id, dados);
