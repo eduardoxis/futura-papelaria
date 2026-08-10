@@ -20,37 +20,50 @@ function salvarCarrinho(carrinho) {
   leadSalvo = false; // qualquer mudança reabre a possibilidade de novo lead
 }
 
-export function adicionarAoCarrinho(produto, quantidade = 1) {
+/**
+ * Gera a chave única do item no carrinho. Produtos com cor selecionada
+ * geram uma chave diferente por cor (ex.: "abc123|Azul"); produtos sem
+ * cor mantêm a chave igual ao próprio id, preservando compatibilidade
+ * com carrinhos já salvos antes da funcionalidade de cores.
+ */
+export function chaveItemCarrinho(id, cor = "") {
+  return cor ? `${id}|${cor}` : id;
+}
+
+export function adicionarAoCarrinho(produto, quantidade = 1, cor = "") {
   const carrinho = obterCarrinho();
-  const existente = carrinho.find(i => i.id === produto.id);
+  const chave = chaveItemCarrinho(produto.id, cor);
+  const existente = carrinho.find(i => (i.chave || i.id) === chave);
   if (existente) {
     existente.quantidade += quantidade;
   } else {
     carrinho.push({
+      chave,
       id: produto.id,
       nome: produto.nome,
       marca: produto.marca || "",
       preco: produto.preco,
       imagem: produto.imagem || "",
+      cor: cor || "",
       quantidade
     });
   }
   salvarCarrinho(carrinho);
 }
 
-export function atualizarQuantidade(id, quantidade) {
+export function atualizarQuantidade(chave, quantidade) {
   let carrinho = obterCarrinho();
   if (quantidade <= 0) {
-    carrinho = carrinho.filter(i => i.id !== id);
+    carrinho = carrinho.filter(i => (i.chave || i.id) !== chave);
   } else {
-    const item = carrinho.find(i => i.id === id);
+    const item = carrinho.find(i => (i.chave || i.id) === chave);
     if (item) item.quantidade = quantidade;
   }
   salvarCarrinho(carrinho);
 }
 
-export function removerDoCarrinho(id) {
-  const carrinho = obterCarrinho().filter(i => i.id !== id);
+export function removerDoCarrinho(chave) {
+  const carrinho = obterCarrinho().filter(i => (i.chave || i.id) !== chave);
   salvarCarrinho(carrinho);
 }
 
@@ -79,7 +92,8 @@ export function montarMensagemWhatsApp(nomeCliente = "") {
   const { total } = calcularTotais();
   let msg = "Olá!\nTenho interesse nestes produtos:\n\n";
   carrinho.forEach(item => {
-    msg += `${item.nome}\nQuantidade: ${item.quantidade}\nValor: ${formatBRL(item.preco * item.quantidade)}\n\n`;
+    const corStr = item.cor ? ` (Cor: ${item.cor})` : "";
+    msg += `${item.nome}${corStr}\nQuantidade: ${item.quantidade}\nValor: ${formatBRL(item.preco * item.quantidade)}\n\n`;
   });
   msg += `------------------\nTotal: ${formatBRL(total)}\n\n`;
   if (nomeCliente) msg += `Meu nome é: ${nomeCliente}\n\n`;
