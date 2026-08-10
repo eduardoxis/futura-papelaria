@@ -76,6 +76,7 @@
 
   /* ---- catálogo/busca: filtros viram painel recolhível ---- */
   .search-page__btn-filtros { display: flex; }
+  .products-grid { grid-template-columns: repeat(2, 1fr); }
   .search-page__filters {
     display: none;
     margin-bottom: 1.25rem;
