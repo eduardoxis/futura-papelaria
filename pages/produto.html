@@ -207,19 +207,36 @@ function normalizar(txt = "") {
 
 let corSelecionada = "";
 
+function renderizarGaleriaHtml(imgs, nomeProduto) {
+  return `
+    ${imgs.length > 1 ? `
+    <div class="product-detail__thumbs" id="galeria-thumbs">
+      ${imgs.map((img, i) => `
+        <button type="button" class="product-detail__thumb ${i === 0 ? "is-active" : ""}" data-thumb="${i}">
+          <img src="${img}" alt="${escHtml(nomeProduto)} - imagem ${i + 1}">
+        </button>`).join("")}
+    </div>` : ""}
+    <div class="product-detail__image">
+      <img id="imagem-principal" src="${imgs[0] || "/assets/images/placeholder.svg"}" alt="${escHtml(nomeProduto)}">
+    </div>`;
+}
+
 function renderizarSeletorCores(produto) {
   const cores = Array.isArray(produto.cores) ? produto.cores.filter(c => c && c.nome) : [];
   if (!cores.length) return "";
-  if (!corSelecionada) corSelecionada = cores[0].nome;
+  if (!corSelecionada) corSelecionada = (cores.find(c => c.padrao) || cores[0]).nome;
   return `
     <div class="color-variants">
       <span class="color-variants__label" id="label-cor-selecionada">Cor: ${escHtml(corSelecionada)}</span>
       <div class="color-variants__row" id="seletor-cores">
-        ${cores.map(c => `
+        ${cores.map(c => {
+          const imgsCor = Array.isArray(c.imagens) ? c.imagens.filter(Boolean) : (c.imagem ? [c.imagem] : []);
+          return `
           <button type="button" class="color-variants__item ${c.nome === corSelecionada ? "is-active" : ""}"
              style="background:${escHtml(c.hex || "#cccccc")}"
-             data-cor="${escHtml(c.nome)}" data-cor-imagem="${escHtml(c.imagem || "")}"
-             title="${escHtml(c.nome)}" aria-label="Cor: ${escHtml(c.nome)}"></button>`).join("")}
+             data-cor="${escHtml(c.nome)}" data-cor-imagens='${escHtml(JSON.stringify(imgsCor))}'
+             title="${escHtml(c.nome)}" aria-label="Cor: ${escHtml(c.nome)}"></button>`;
+        }).join("")}
       </div>
     </div>`;
 }
@@ -262,24 +279,18 @@ async function iniciarProduto() {
   document.querySelector("#meta-descricao").setAttribute("content", (produto.descricao || produto.nome).slice(0, 155));
   document.querySelector("#breadcrumb-produto").textContent = produto.nome;
 
-  const imagens = (Array.isArray(produto.imagens) && produto.imagens.length ? produto.imagens : [produto.imagem]).filter(Boolean);
+  const imagensGerais = (Array.isArray(produto.imagens) && produto.imagens.length ? produto.imagens : [produto.imagem]).filter(Boolean);
+  const corInicial = Array.isArray(produto.cores) ? (produto.cores.find(c => c && c.nome && c.padrao) || produto.cores.find(c => c && c.nome)) : null;
+  const imagensCorInicial = corInicial && Array.isArray(corInicial.imagens) ? corInicial.imagens.filter(Boolean) : [];
+  let imagens = imagensCorInicial.length ? imagensCorInicial : imagensGerais;
   const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
   const favoritado = obterFavoritos().includes(produto.id);
   const destaques = Array.isArray(produto.destaques) ? produto.destaques.filter(Boolean) : [];
 
   container.innerHTML = `
     <div class="product-detail">
-      <div class="product-detail__gallery">
-        ${imagens.length > 1 ? `
-        <div class="product-detail__thumbs" id="galeria-thumbs">
-          ${imagens.map((img, i) => `
-            <button type="button" class="product-detail__thumb ${i === 0 ? "is-active" : ""}" data-thumb="${i}">
-              <img src="${img}" alt="${escHtml(produto.nome)} - imagem ${i + 1}">
-            </button>`).join("")}
-        </div>` : ""}
-        <div class="product-detail__image">
-          <img id="imagem-principal" src="${imagens[0] || "/assets/images/placeholder.svg"}" alt="${escHtml(produto.nome)}">
-        </div>
+      <div class="product-detail__gallery" id="product-gallery">
+        ${renderizarGaleriaHtml(imagens, produto.nome)}
       </div>
 
       <div class="product-detail__info">
@@ -367,16 +378,17 @@ async function iniciarProduto() {
     });
   });
 
-  const thumbs = document.querySelector("#galeria-thumbs");
-  if (thumbs) {
-    thumbs.querySelectorAll("[data-thumb]").forEach(btn => {
+  function bindGaleriaThumbs() {
+    const thumbsEl = document.querySelector("#galeria-thumbs");
+    thumbsEl?.querySelectorAll("[data-thumb]").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelector("#imagem-principal").src = imagens[Number(btn.dataset.thumb)];
-        thumbs.querySelectorAll("[data-thumb]").forEach(b => b.classList.remove("is-active"));
+        thumbsEl.querySelectorAll("[data-thumb]").forEach(b => b.classList.remove("is-active"));
         btn.classList.add("is-active");
       });
     });
   }
+  bindGaleriaThumbs();
 
   document.querySelector("#seletor-cores")?.querySelectorAll("[data-cor]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -385,11 +397,15 @@ async function iniciarProduto() {
       const label = document.querySelector("#label-cor-selecionada");
       if (label) label.textContent = `Cor: ${corSelecionada}`;
 
-      const imagemCor = btn.dataset.corImagem;
-      if (imagemCor) {
-        const principal = document.querySelector("#imagem-principal");
-        if (principal) principal.src = imagemCor;
-        thumbs?.querySelectorAll("[data-thumb]").forEach(t => t.classList.remove("is-active"));
+      let imagensCor = [];
+      try { imagensCor = JSON.parse(btn.dataset.corImagens || "[]"); } catch { imagensCor = []; }
+      if (imagensCor.length) {
+        imagens = imagensCor;
+        const galeriaEl = document.querySelector("#product-gallery");
+        if (galeriaEl) {
+          galeriaEl.innerHTML = renderizarGaleriaHtml(imagens, produto.nome);
+          bindGaleriaThumbs();
+        }
       }
     });
   });
