@@ -218,7 +218,8 @@ function renderizarSeletorCores(produto) {
         ${cores.map(c => `
           <button type="button" class="color-variants__item ${c.nome === corSelecionada ? "is-active" : ""}"
              style="background:${escHtml(c.hex || "#cccccc")}"
-             data-cor="${escHtml(c.nome)}" title="${escHtml(c.nome)}" aria-label="Cor: ${escHtml(c.nome)}"></button>`).join("")}
+             data-cor="${escHtml(c.nome)}" data-cor-imagem="${escHtml(c.imagem || "")}"
+             title="${escHtml(c.nome)}" aria-label="Cor: ${escHtml(c.nome)}"></button>`).join("")}
       </div>
     </div>`;
 }
@@ -383,6 +384,13 @@ async function iniciarProduto() {
       document.querySelectorAll("#seletor-cores [data-cor]").forEach(b => b.classList.toggle("is-active", b.dataset.cor === corSelecionada));
       const label = document.querySelector("#label-cor-selecionada");
       if (label) label.textContent = `Cor: ${corSelecionada}`;
+
+      const imagemCor = btn.dataset.corImagem;
+      if (imagemCor) {
+        const principal = document.querySelector("#imagem-principal");
+        if (principal) principal.src = imagemCor;
+        thumbs?.querySelectorAll("[data-thumb]").forEach(t => t.classList.remove("is-active"));
+      }
     });
   });
 
