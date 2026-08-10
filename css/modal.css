@@ -192,6 +192,11 @@
 .chip-list--marcas .thumb { object-fit: contain; padding: 2px; }
 .chip-list--marcas button[data-action="editar"] { background: transparent; color: var(--cinza-700); }
 .chip-list--marcas button[data-action="editar"]:hover { background: var(--cinza-100); }
+.chip-list__visivel {
+  display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--cinza-700);
+  white-space: nowrap; cursor: pointer; margin-left: 0.3rem;
+}
+.chip-list__visivel input { accent-color: var(--azul-700); cursor: pointer; width: 15px; height: 15px; }
 
 .logo-atual { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
 
