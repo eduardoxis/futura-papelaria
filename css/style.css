@@ -354,7 +354,7 @@ button {
 .product-card__fav.is-active { color: #e11d48; }
 .product-card__fav.is-active svg { fill: currentColor; }
 
-.product-card__image { position: relative; aspect-ratio: 1 / 1; background: var(--branco); }
+.product-card__image { position: relative; aspect-ratio: 411 / 732; background: var(--branco); }
 .product-card__image img { width: 100%; height: 100%; object-fit: contain; padding: 0.9rem; box-sizing: border-box; }
 .product-card__tags { position: absolute; top: 0.5rem; left: 0.5rem; display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .tag-badge {
