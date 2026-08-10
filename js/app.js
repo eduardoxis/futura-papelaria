@@ -82,7 +82,10 @@ function corTextoParaCategoria(nome = "") {
 }
 
 function conteudoIconeCategoria(c) {
-  if (c.imagem) return `<img class="category-card__img" src="${c.imagem}" alt="" loading="lazy">`;
+  if (c.imagem) {
+    const { src, pos } = imgPos(c.imagem);
+    return `<img class="category-card__img" src="${src}" style="object-position:${pos}" alt="" loading="lazy">`;
+  }
   const custom = (c.emoji || "").trim();
   if (!custom) return icon(iconeParaCategoria(c.nome));
   if (custom.startsWith("<svg")) return custom;
@@ -306,7 +309,7 @@ function configurarLinksEstaticos() {
   const marcasEl = document.querySelector("#marcas-parceiras");
   if (marcasEl) {
     escutarMarcas((marcas) => {
-      const lista = [...marcas].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      const lista = [...marcas].filter(m => m.visivel !== false).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
       marcasEl.innerHTML = lista
         .map(m => `<span class="brands__badge"><img src="${m.logo || "/assets/images/placeholder.svg"}" alt="${escHtml(m.nome)}" loading="lazy"></span>`)
         .join("") || "";
