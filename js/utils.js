@@ -162,6 +162,47 @@ export function converterParaPNG(file, maxWidth = 500) {
   return converterParaFormato(file, "image/png", maxWidth, 1);
 }
 
+/**
+ * Padroniza qualquer foto de produto para a proporção fixa 411x732 (retrato),
+ * "encaixando" a imagem inteira (sem cortar nada) centralizada num fundo
+ * branco. Assim, seja a foto quadrada, paisagem ou já retrato, o arquivo
+ * final sempre sai com as mesmas proporções — os cards do site nunca ficam
+ * com tamanhos diferentes por causa da imagem original.
+ */
+export function converterParaProporcaoPadrao(file, mime = "image/webp", qualidade = 0.85) {
+  const RAZAO_W = 411, RAZAO_H = 732;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // canvas final em resolução 2x pra ficar nítido em telas retina
+        const canvas = document.createElement("canvas");
+        canvas.width = RAZAO_W * 2;
+        canvas.height = RAZAO_H * 2;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const escala = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const w = img.width * escala, h = img.height * escala;
+        const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
+
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error(`Falha ao gerar ${mime}`))),
+          mime,
+          qualidade
+        );
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function converterParaFormato(file, mime, maxWidth, qualidade) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
