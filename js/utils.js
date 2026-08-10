@@ -8,6 +8,15 @@ export function escHtml(str = "") {
     .replace(/'/g, "&#039;");
 }
 
+// Extrai a posição de enquadramento salva na própria URL da imagem (ex: "...jpg#pos=30,70").
+// Guardamos isso no fragmento (#) da URL porque o fragmento nunca é enviado ao servidor,
+// então não interfere no carregamento da imagem nem exige mudar o formato salvo no Firestore.
+export function imgPos(url = "") {
+  const src = String(url || "");
+  const m = src.match(/#pos=([\d.]+),([\d.]+)$/);
+  return { src, pos: m ? `${m[1]}% ${m[2]}%` : "50% 50%" };
+}
+
 export function formatBRL(value = 0) {
   return Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
