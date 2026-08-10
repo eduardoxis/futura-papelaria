@@ -617,16 +617,24 @@ async function abrirFormularioProduto(container, produto = null) {
   function renderizarCores() {
     coresLista.innerHTML = cores.map(c => `
       <div class="cor-row" data-id="${c.id}">
-        <input type="radio" name="cor-padrao" class="cor-row__radio" data-padrao="${c.id}" ${c.padrao ? "checked" : ""} title="Usar como cor padrão do produto">
-        <span class="cor-row__bolinha" style="background:${escHtml(c.hex)}"></span>
-        <input type="text" class="cor-row__nome" data-editar-nome="${c.id}" value="${escHtml(c.nome)}" placeholder="Nome da cor">
-        <input type="text" class="cor-row__hex-texto" data-editar-hex-texto="${c.id}" value="${escHtml(c.hex).toUpperCase()}" placeholder="#RRGGBB">
-        <input type="color" class="cor-row__hex" data-editar-hex="${c.id}" value="${c.hex}">
+        <div class="cor-row__topo">
+          <input type="radio" name="cor-padrao" class="cor-row__radio" data-padrao="${c.id}" ${c.padrao ? "checked" : ""} title="Usar como cor padrão do produto">
+          <span class="cor-row__bolinha" style="background:${escHtml(c.hex)}"></span>
+          <button type="button" class="cor-chip__remover" data-remover-cor="${c.id}" aria-label="Remover cor">${icon("close")}</button>
+        </div>
+        <label class="cor-row__campo">Nome da cor
+          <input type="text" class="cor-row__nome" data-editar-nome="${c.id}" value="${escHtml(c.nome)}" placeholder="Nome da cor">
+        </label>
+        <label class="cor-row__campo">Código HEX
+          <div class="cor-row__hex-wrap">
+            <input type="text" class="cor-row__hex-texto" data-editar-hex-texto="${c.id}" value="${escHtml(c.hex).toUpperCase()}" placeholder="#RRGGBB">
+            <input type="color" class="cor-row__hex" data-editar-hex="${c.id}" value="${c.hex}">
+          </div>
+        </label>
         <div class="cor-row__galeria">
           <span class="cor-row__galeria-label">Galeria da cor</span>
           <div class="cor-row__galeria-grid" data-cor-imagens="${c.id}"></div>
         </div>
-        <button type="button" class="cor-chip__remover" data-remover-cor="${c.id}" aria-label="Remover cor">${icon("close")}</button>
       </div>`).join("") || `<em style="font-size:0.85rem;color:var(--cinza-500)">Nenhuma cor cadastrada.</em>`;
 
     cores.forEach(c => renderizarImagensCor(c));
