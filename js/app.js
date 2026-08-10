@@ -326,11 +326,11 @@ function configurarCarrinhoUI() {
     const lista = document.querySelector("#itens-carrinho");
     const { subtotal, total } = calcularTotais();
     lista.innerHTML = carrinho.map(item => `
-      <div class="cart-item" data-id="${item.id}">
+      <div class="cart-item" data-chave="${escHtml(item.chave || item.id)}">
         <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
         <div>
           <div class="cart-item__name">${escHtml(item.nome)}</div>
-          <div class="cart-item__brand">${escHtml(item.marca)}</div>
+          <div class="cart-item__brand">${escHtml(item.marca)}${item.cor ? ` • Cor: ${escHtml(item.cor)}` : ""}</div>
           <div class="qty-stepper">
             <button data-diminuir>-</button>
             <input type="number" value="${item.quantidade}" min="1" data-qtd>
@@ -344,18 +344,18 @@ function configurarCarrinhoUI() {
     document.querySelector("#total-carrinho").textContent = formatBRL(total);
 
     lista.querySelectorAll(".cart-item").forEach(el => {
-      const id = el.dataset.id;
+      const chave = el.dataset.chave;
       const input = el.querySelector("[data-qtd]");
       el.querySelector("[data-aumentar]").addEventListener("click", () => {
-        atualizarQuantidade(id, parseInt(input.value, 10) + 1);
+        atualizarQuantidade(chave, parseInt(input.value, 10) + 1);
         renderCarrinho();
       });
       el.querySelector("[data-diminuir]").addEventListener("click", () => {
-        atualizarQuantidade(id, parseInt(input.value, 10) - 1);
+        atualizarQuantidade(chave, parseInt(input.value, 10) - 1);
         renderCarrinho();
       });
       input.addEventListener("change", () => {
-        atualizarQuantidade(id, parseInt(input.value, 10) || 0);
+        atualizarQuantidade(chave, parseInt(input.value, 10) || 0);
         renderCarrinho();
       });
     });
@@ -395,7 +395,7 @@ function configurarCarrinhoUI() {
       criarPedido({
         usuarioId: usuarioAtual.uid,
         nomeCliente: nomeParaPedido,
-        itens: carrinho.map(i => ({ id: i.id, nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
+        itens: carrinho.map(i => ({ id: i.id, nome: i.nome, quantidade: i.quantidade, preco: i.preco, cor: i.cor || "" })),
         total
       }).catch(() => {});
     }
