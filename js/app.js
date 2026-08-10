@@ -313,23 +313,6 @@ function configurarLinksEstaticos() {
     });
   }
 
-  const depoimentos = document.querySelector("#depoimentos");
-  if (depoimentos) {
-    const lista = [
-      { nome: "João Silva", texto: "Entrega super rápida e produtos de excelente qualidade. Recomendo!" },
-      { nome: "Maria Fernanda", texto: "Ótimo atendimento no WhatsApp e preços muito justos." },
-      { nome: "Carlos Eduardo", texto: "Minha papelaria preferida! Sempre encontro tudo o que preciso." }
-    ];
-    depoimentos.innerHTML = lista.map(d => `
-      <div class="testimonial-card">
-        <div class="testimonial-card__stars">${icon("star")}${icon("star")}${icon("star")}${icon("star")}${icon("star")}</div>
-        <p>"${escHtml(d.texto)}"</p>
-        <div class="testimonial-card__author">
-          <span class="testimonial-card__avatar">${escHtml(d.nome.split(" ").map(p => p[0]).slice(0, 2).join(""))}</span>
-          <strong>${escHtml(d.nome)}</strong>
-        </div>
-      </div>`).join("");
-  }
 }
 
 function configurarCarrinhoUI() {
