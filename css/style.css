@@ -366,7 +366,7 @@ button {
   background: var(--cinza-900); color: var(--branco);
   font-size: 0.65rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 999px;
 }
-.product-card__body { padding: 0.9rem; display: grid; gap: 0.15rem; }
+.product-card__body { padding: 0.9rem; display: grid; gap: 0.15rem; flex: 1; align-content: start; }
 .product-card__brand { font-size: 0.72rem; color: var(--cinza-500); text-transform: uppercase; letter-spacing: 0.04em; }
 .product-card__name { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
 .product-card__price { font-family: var(--fonte-display); font-weight: 700; color: var(--azul-700); margin-top: 0.3rem; }
