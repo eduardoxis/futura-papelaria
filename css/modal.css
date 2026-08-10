@@ -419,6 +419,19 @@ dialog.dialog-form::backdrop { background: rgba(11, 33, 73, 0.45); backdrop-filt
 }
 .cor-chip__remover .icon { width: 10px; height: 10px; }
 .cor-chip__remover:hover { background: #f4c7c3; }
+.cor-chip__foto {
+  width: 24px; height: 24px; border-radius: 50%; border: 1px dashed var(--cinza-300);
+  display: grid; place-items: center; flex-shrink: 0; cursor: pointer; overflow: hidden;
+  background: var(--cinza-100);
+}
+.cor-chip__foto .icon { width: 11px; height: 11px; }
+.cor-chip__foto img { width: 100%; height: 100%; object-fit: cover; }
+.cor-chip__remover-foto {
+  width: 16px; height: 16px; border-radius: 50%; background: var(--cinza-100); display: grid; place-items: center;
+  flex-shrink: 0; margin-left: -0.55rem; margin-top: -0.9rem; border: 1px solid var(--branco);
+}
+.cor-chip__remover-foto .icon { width: 8px; height: 8px; }
+.cor-chip__remover-foto:hover { background: #f4c7c3; }
 .cores-produto__add { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .cores-produto__add input[type="text"] {
   flex: 1; min-width: 160px; padding: 0.55rem 0.75rem; border: 1px solid var(--cinza-300);
