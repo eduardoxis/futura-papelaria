@@ -218,7 +218,7 @@ function normalizarProdutoImportado(item, categoriasValidas) {
       nome,
       marca: String(item.marca || "").trim(),
       cores: Array.isArray(item.cores)
-        ? item.cores.map(c => ({ nome: String(c?.nome || "").trim(), hex: String(c?.hex || "#cccccc").trim() })).filter(c => c.nome)
+        ? item.cores.map(c => ({ nome: String(c?.nome || "").trim(), hex: String(c?.hex || "#cccccc").trim(), imagem: String(c?.imagem || "").trim() })).filter(c => c.nome)
         : [],
       preco,
       quantidade: Number.isFinite(Number(item.quantidade)) ? parseInt(item.quantidade, 10) : 0,
@@ -346,9 +346,9 @@ async function abrirFormularioProduto(container, produto = null) {
   let galeria = iniciais.map(url => ({ id: crypto.randomUUID(), url, file: null, previewUrl: null }));
   let arrastando = null;
 
-  // estado das variações de cor: cada item é { id, nome, hex }
+  // estado das variações de cor: cada item é { id, nome, hex, imagem (url existente), file, previewUrl }
   let cores = Array.isArray(produto?.cores)
-    ? produto.cores.map(c => ({ id: crypto.randomUUID(), nome: c.nome || "", hex: c.hex || "#cccccc" }))
+    ? produto.cores.map(c => ({ id: crypto.randomUUID(), nome: c.nome || "", hex: c.hex || "#cccccc", imagem: c.imagem || "", file: null, previewUrl: null }))
     : [];
 
   dialog.innerHTML = `
@@ -449,13 +449,21 @@ async function abrirFormularioProduto(container, produto = null) {
   const inputCorHex = dialog.querySelector("#input-cor-hex");
 
   function renderizarCores() {
-    coresLista.innerHTML = cores.map(c => `
+    coresLista.innerHTML = cores.map(c => {
+      const preview = c.previewUrl || c.imagem;
+      return `
       <span class="cor-chip" data-id="${c.id}">
         <span class="cor-chip__bolinha" style="background:${escHtml(c.hex)}"></span>
         <input type="text" class="cor-chip__nome" data-editar-nome="${c.id}" value="${escHtml(c.nome)}" placeholder="Nome da cor">
         <input type="color" class="cor-chip__hex" data-editar-hex="${c.id}" value="${c.hex}">
+        <label class="cor-chip__foto" data-foto-label="${c.id}" title="${preview ? "Trocar foto desta cor" : "Adicionar foto desta cor"}">
+          ${preview ? `<img src="${preview}" alt="">` : icon("plus")}
+          <input type="file" accept="image/*" hidden data-foto-input="${c.id}">
+        </label>
+        ${preview ? `<button type="button" class="cor-chip__remover-foto" data-remover-foto="${c.id}" aria-label="Remover foto da cor">${icon("close")}</button>` : ""}
         <button type="button" class="cor-chip__remover" data-remover-cor="${c.id}" aria-label="Remover cor">${icon("close")}</button>
-      </span>`).join("") || `<em style="font-size:0.85rem;color:var(--cinza-500)">Nenhuma cor cadastrada.</em>`;
+      </span>`;
+    }).join("") || `<em style="font-size:0.85rem;color:var(--cinza-500)">Nenhuma cor cadastrada.</em>`;
 
     coresLista.querySelectorAll("[data-editar-nome]").forEach(inp => {
       inp.addEventListener("input", () => {
@@ -471,10 +479,34 @@ async function abrirFormularioProduto(container, produto = null) {
         if (bolinha) bolinha.style.background = inp.value;
       });
     });
+    coresLista.querySelectorAll("[data-foto-input]").forEach(inp => {
+      inp.addEventListener("change", () => {
+        const c = cores.find(x => x.id === inp.dataset.fotoInput);
+        const file = inp.files?.[0];
+        if (!c || !file) return;
+        if (c.previewUrl) URL.revokeObjectURL(c.previewUrl);
+        c.file = file;
+        c.previewUrl = URL.createObjectURL(file);
+        renderizarCores();
+      });
+    });
+    coresLista.querySelectorAll("[data-remover-foto]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const c = cores.find(x => x.id === btn.dataset.removerFoto);
+        if (!c) return;
+        if (c.previewUrl) URL.revokeObjectURL(c.previewUrl);
+        c.file = null;
+        c.previewUrl = null;
+        c.imagem = "";
+        renderizarCores();
+      });
+    });
     coresLista.querySelectorAll("[data-remover-cor]").forEach(btn => {
       btn.addEventListener("click", async () => {
         const ok = await confirmarAcao("Remover esta cor do produto?", { titulo: "Remover cor" });
         if (!ok) return;
+        const c = cores.find(x => x.id === btn.dataset.removerCor);
+        if (c?.previewUrl) URL.revokeObjectURL(c.previewUrl);
         cores = cores.filter(c => c.id !== btn.dataset.removerCor);
         renderizarCores();
       });
@@ -519,6 +551,20 @@ async function abrirFormularioProduto(container, produto = null) {
       btnSalvar.textContent = "Salvar";
     }
 
+    const coresPendentes = cores.filter(c => c.file);
+    if (coresPendentes.length) {
+      btnSalvar.disabled = true;
+      for (let i = 0; i < coresPendentes.length; i++) {
+        btnSalvar.textContent = `Enviando foto da cor ${i + 1}/${coresPendentes.length}...`;
+        const url = await enviarImagem(coresPendentes[i].file, `${nomeProduto}-${coresPendentes[i].nome || "cor"}`);
+        if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
+        coresPendentes[i].imagem = url;
+        if (coresPendentes[i].previewUrl) URL.revokeObjectURL(coresPendentes[i].previewUrl);
+      }
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = "Salvar";
+    }
+
     const dados = {
       nome: nomeProduto,
       marca: form.marca.value.trim(),
@@ -531,7 +577,7 @@ async function abrirFormularioProduto(container, produto = null) {
       destaques: form.destaques.value.split("\n").map(l => l.trim()).filter(Boolean),
       etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value),
       imagens: galeria.map(g => g.url).filter(Boolean),
-      cores: cores.map(c => ({ nome: c.nome.trim(), hex: c.hex })).filter(c => c.nome)
+      cores: cores.map(c => ({ nome: c.nome.trim(), hex: c.hex, imagem: c.imagem || "" })).filter(c => c.nome)
     };
     dados.imagem = dados.imagens[0] || "";
 
