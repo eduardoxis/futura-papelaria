@@ -700,7 +700,7 @@ async function renderizarFavoritos() {
   const produtos = TODOS_PRODUTOS.filter(p => ids.includes(p.id));
   container.innerHTML = produtos.length ? produtos.map(p => `
     <div class="favorito-card" data-id="${p.id}">
-      <img src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(p.imagem).pos}" alt="${escHtml(p.nome)}" loading="lazy">
+      <img src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(p.nome)}" loading="lazy">
       <div class="favorito-card__info">
         <strong>${escHtml(p.nome)}</strong>
         <span>${formatBRL(p.preco)}</span>
