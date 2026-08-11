@@ -35,7 +35,7 @@ export function cartaoProduto(produto) {
       <button class="product-card__fav ${favoritado ? "is-active" : ""}" data-fav-id="${produto.id}" aria-label="Favoritar produto" aria-pressed="${favoritado}">${icon("heart")}</button>
       <a class="product-card__link" href="/pages/produto.html?id=${produto.id}">
         <div class="product-card__image">
-          <img src="${imgPos(produto.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(produto.imagem).pos}" alt="${escHtml(produto.nome)}" loading="lazy">
+          <img src="${imgPos(produto.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(produto.nome)}" loading="lazy">
           ${etiquetasHtml ? `<div class="product-card__tags">${etiquetasHtml}</div>` : ""}
           ${semEstoque ? `<span class="badge-outofstock">Sem estoque</span>` : ""}
         </div>
