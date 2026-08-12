@@ -86,7 +86,7 @@ export async function migrarImagensAntigas(onProgresso) {
       await alvo.atualizar(alvo.id, { [alvo.campo]: url });
     } catch (erro) {
       erros++;
-      console.error(`Falha ao migrar ${alvo.tipo} "${alvo.nome}":`, erro);
+      console.error(`Falha ao migrar ${alvo.tipo} "${alvo.nome}": ${erro?.message || erro}`);
     }
     feitos++;
     onProgresso?.(feitos, alvos.length);
