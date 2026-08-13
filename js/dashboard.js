@@ -11,6 +11,7 @@ import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, 
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
 import { carregarPainelLeads } from "./leads.js";
 import { ICONS, icon } from "./icons.js";
+import { auth } from "../firebase/firebase-config.js";
 
 let cacheProdutos = [];
 let cacheCategorias = [];
@@ -107,6 +108,19 @@ async function carregarDashboard(container) {
       </p>
       <button class="btn-secondary" id="btn-migrar-filtros">${icon("archive")}Preparar produtos para o catálogo</button>
       <p id="status-migracao-filtros" style="margin-top:0.6rem;font-size:0.82rem;color:var(--cinza-500);"></p>
+    </div>
+    <div class="dash-list" id="bloco-relatorio-vendas">
+      <h4>Relatório de vendas</h4>
+      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
+        Calcula total vendido, ticket médio e produtos mais vendidos num período, direto no servidor.
+      </p>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:end;margin-bottom:0.75rem;">
+        <label style="font-size:0.8rem;color:var(--cinza-500);">De<br><input type="date" id="relatorio-inicio"></label>
+        <label style="font-size:0.8rem;color:var(--cinza-500);">Até<br><input type="date" id="relatorio-fim"></label>
+        <button class="btn-secondary" id="btn-gerar-relatorio">${icon("archive")}Gerar relatório</button>
+        <button class="btn-secondary" id="btn-baixar-relatorio-csv" style="display:none;">${icon("archive")}Baixar CSV</button>
+      </div>
+      <div id="resultado-relatorio"></div>
     </div>`;
 
   container.querySelector("#btn-migrar-filtros")?.addEventListener("click", async (e) => {
@@ -149,6 +163,61 @@ async function carregarDashboard(container) {
     } finally {
       btn.disabled = false;
     }
+  });
+
+  let ultimaQueryRelatorio = "";
+  container.querySelector("#btn-gerar-relatorio")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const resultado = container.querySelector("#resultado-relatorio");
+    const btnCsv = container.querySelector("#btn-baixar-relatorio-csv");
+    const inicio = container.querySelector("#relatorio-inicio")?.value;
+    const fim = container.querySelector("#relatorio-fim")?.value;
+    btn.disabled = true;
+    btnCsv.style.display = "none";
+    resultado.innerHTML = `<p style="color:var(--cinza-500);font-size:0.85rem;">Calculando...</p>`;
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const params = new URLSearchParams();
+      if (inicio) params.set("inicio", inicio);
+      if (fim) params.set("fim", fim);
+      ultimaQueryRelatorio = params.toString();
+      const resp = await fetch(`/api/relatorio-vendas?${ultimaQueryRelatorio}`, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      const dados = await resp.json();
+      if (!resp.ok) throw new Error(dados.erro || "Falha ao gerar relatório.");
+
+      resultado.innerHTML = `
+        <div class="dash-grid" style="margin-bottom:0.75rem;">
+          <div class="stat-card"><span>${formatBRL(dados.totalVendido)}</span><label>Total vendido</label></div>
+          <div class="stat-card"><span>${dados.quantidadePedidos}</span><label>Pedidos</label></div>
+          <div class="stat-card"><span>${formatBRL(dados.ticketMedio)}</span><label>Ticket médio</label></div>
+        </div>
+        <h4 style="margin:0.5rem 0;">Produtos mais vendidos</h4>
+        <ol>${dados.maisVendidos.map(p => `<li>${escHtml(p.nome || "—")} <span>${p.quantidade} un · ${formatBRL(p.receita)}</span></li>`).join("") || "<li>Sem vendas no período</li>"}</ol>`;
+      btnCsv.style.display = "";
+      toast("Relatório gerado.");
+    } catch (erro) {
+      resultado.innerHTML = `<p style="color:var(--erro,#c0392b);font-size:0.85rem;">${escHtml(erro.message || "Erro ao gerar relatório.")}</p>`;
+      toast("Falha ao gerar relatório.", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  container.querySelector("#btn-baixar-relatorio-csv")?.addEventListener("click", async () => {
+    const idToken = await auth.currentUser?.getIdToken();
+    const resp = await fetch(`/api/relatorio-vendas?${ultimaQueryRelatorio}&formato=csv`, {
+      headers: { Authorization: `Bearer ${idToken}` }
+    });
+    if (!resp.ok) { toast("Falha ao baixar CSV.", "error"); return; }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "relatorio-vendas.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   });
 }
 
