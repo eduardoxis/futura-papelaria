@@ -5,7 +5,7 @@ import {
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
   listarMarcas, criarMarca, atualizarMarca, excluirMarca,
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
-  ajustarEstoque, listarUsuarios
+  ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo
 } from "./firestore.js";
 import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "./utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "./cloudinary.js";
@@ -97,7 +97,38 @@ async function carregarDashboard(container) {
       </p>
       <button class="btn-secondary" id="btn-migrar-imagens">${icon("archive")}Migrar imagens antigas</button>
       <p id="status-migracao" style="margin-top:0.6rem;font-size:0.82rem;color:var(--cinza-500);"></p>
+    </div>
+    <div class="dash-list" id="bloco-migracao-filtros">
+      <h4>Filtros do catálogo (preço/disponibilidade)</h4>
+      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
+        Preenche os campos que o catálogo público usa pra filtrar por faixa de preço e
+        disponibilidade sem baixar o catálogo inteiro. Rode isto UMA VEZ depois de atualizar
+        o site — produtos novos e edições de preço/estoque já ficam corretos sozinhos depois disso.
+      </p>
+      <button class="btn-secondary" id="btn-migrar-filtros">${icon("archive")}Preparar produtos para o catálogo</button>
+      <p id="status-migracao-filtros" style="margin-top:0.6rem;font-size:0.82rem;color:var(--cinza-500);"></p>
     </div>`;
+
+  container.querySelector("#btn-migrar-filtros")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const status = container.querySelector("#status-migracao-filtros");
+    btn.disabled = true;
+    status.textContent = "Procurando produtos pendentes...";
+    try {
+      const resultado = await migrarCamposFiltroCatalogo((feitos, total) => {
+        status.textContent = `Atualizando ${feitos}/${total}...`;
+      });
+      status.textContent = resultado.total === 0
+        ? "Tudo certo — nenhum produto pendente."
+        : `Concluído: ${resultado.total} produtos preparados para os filtros do catálogo.`;
+      toast("Migração concluída.");
+    } catch (erro) {
+      status.textContent = "Erro na migração: " + (erro.message || "tente novamente.");
+      toast("Falha ao preparar produtos.", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   container.querySelector("#btn-migrar-imagens")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;
