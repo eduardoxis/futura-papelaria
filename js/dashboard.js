@@ -1,6 +1,6 @@
 // js/dashboard.js
 import {
-  listarProdutos, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
+  listarProdutos, listarProdutosPagina, buscarProdutosPorPrefixo, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
   listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
   listarMarcas, criarMarca, atualizarMarca, excluirMarca,
@@ -1205,16 +1205,12 @@ async function carregarAbaEtiquetas(container) {
 
 // ---------- ESTOQUE ----------
 const ESTOQUE_POR_PAGINA = [12, 24, 48];
-let estoqueState = { produtos: [], filtrados: [], busca: "", categoria: "", pagina: 1, porPagina: 12 };
+let estoqueState = { categoria: "", termo: "", porPagina: 12, cursor: null, cursoresAnteriores: [], produtosPagina: [], temMais: false, totalCarregado: 0 };
 
 async function carregarAbaEstoque(container) {
   if (!container) return;
-  const [produtos, categorias] = await Promise.all([
-    listarProdutos({ apenasAtivos: false }),
-    listarCategorias()
-  ]);
-  estoqueState.produtos = produtos;
-  estoqueState.pagina = 1;
+  const categorias = await listarCategorias();
+  estoqueState = { categoria: "", termo: "", porPagina: 12, cursor: null, cursoresAnteriores: [], produtosPagina: [], temMais: false, totalCarregado: 0 };
 
   container.innerHTML = `
     <div class="admin-panel-head admin-panel-head--row">
@@ -1223,18 +1219,19 @@ async function carregarAbaEstoque(container) {
         <p>Ajuste rapidamente a quantidade de produtos em estoque.</p>
       </div>
       <div class="admin-panel-head__actions">
-        <button class="btn-secondary" id="btn-exportar-estoque">${icon("download")}Exportar</button>
+        <button class="btn-secondary" id="btn-exportar-estoque">${icon("download")}Exportar página</button>
         <button class="btn-secondary" id="btn-atualizar-estoque">${icon("refresh")}Atualizar</button>
       </div>
     </div>
 
     <div class="estoque-filtros">
-      <div class="input-icon input-icon--full">${icon("search")}<input type="text" id="busca-estoque" placeholder="Buscar produto..." autocomplete="off"></div>
+      <div class="input-icon input-icon--full">${icon("search")}<input type="text" id="busca-estoque" placeholder="Buscar produto (começa com...)" autocomplete="off"></div>
       <div class="select-icon">${icon("filter")}<select id="filtro-categoria-estoque">
         <option value="">Todas as categorias</option>
         ${categorias.map(c => `<option value="${escHtml(c.nome)}">${escHtml(c.nome)}</option>`).join("")}
       </select></div>
     </div>
+    <p class="estoque-busca-nota" id="nota-busca-estoque" hidden>A busca traz produtos cujo nome <strong>começa</strong> com o termo digitado (não busca no meio do nome).</p>
 
     <div class="table-wrap"><table class="admin-table">
       <thead><tr><th>Produto</th><th>Qtd atual</th><th>Ajuste</th><th>Ações</th></tr></thead>
@@ -1251,52 +1248,64 @@ async function carregarAbaEstoque(container) {
       </div>
     </div>`;
 
-  aplicarFiltroEstoque(container);
-
+  let debounceBusca;
   container.querySelector("#busca-estoque").addEventListener("input", (e) => {
-    estoqueState.busca = e.target.value.toLowerCase();
-    estoqueState.pagina = 1;
-    aplicarFiltroEstoque(container);
+    clearTimeout(debounceBusca);
+    debounceBusca = setTimeout(() => {
+      estoqueState.termo = e.target.value.trim();
+      container.querySelector("#nota-busca-estoque").hidden = !estoqueState.termo;
+      resetarPaginacaoEstoque(container);
+    }, 300);
   });
 
   container.querySelector("#filtro-categoria-estoque").addEventListener("change", (e) => {
     estoqueState.categoria = e.target.value;
-    estoqueState.pagina = 1;
-    aplicarFiltroEstoque(container);
+    resetarPaginacaoEstoque(container);
   });
 
   container.querySelector("#por-pagina-estoque").addEventListener("change", (e) => {
     estoqueState.porPagina = Number(e.target.value);
-    estoqueState.pagina = 1;
-    aplicarFiltroEstoque(container);
+    resetarPaginacaoEstoque(container);
   });
 
-  container.querySelector("#btn-atualizar-estoque").addEventListener("click", () => carregarAbaEstoque(container));
+  container.querySelector("#btn-atualizar-estoque").addEventListener("click", () => resetarPaginacaoEstoque(container));
+  container.querySelector("#btn-exportar-estoque").addEventListener("click", () => exportarEstoqueCsv(estoqueState.produtosPagina));
 
-  container.querySelector("#btn-exportar-estoque").addEventListener("click", () => {
-    exportarEstoqueCsv(estoqueState.filtrados);
-  });
+  await buscarPaginaEstoque(container);
 }
 
-function aplicarFiltroEstoque(container) {
-  const { produtos, busca, categoria } = estoqueState;
-  estoqueState.filtrados = produtos.filter(p => {
-    const bateBusca = !busca || p.nome.toLowerCase().includes(busca);
-    const bateCategoria = !categoria || p.categoria === categoria;
-    return bateBusca && bateCategoria;
-  });
+function resetarPaginacaoEstoque(container) {
+  estoqueState.cursor = null;
+  estoqueState.cursoresAnteriores = [];
+  buscarPaginaEstoque(container);
+}
+
+async function buscarPaginaEstoque(container) {
+  const { categoria, termo, porPagina, cursor } = estoqueState;
+
+  let resultado;
+  if (termo) {
+    // A busca por prefixo do Firestore não combina com orderBy de outro
+    // campo nem com cursor de outra consulta — por isso, ao buscar por
+    // nome, ignoramos paginação por cursor e o filtro de categoria (uma
+    // limitação real do Firestore, não um bug).
+    resultado = await buscarProdutosPorPrefixo(termo, { tamanho: porPagina });
+  } else {
+    resultado = await listarProdutosPagina({ tamanho: porPagina, cursor, categoria, apenasAtivos: false });
+  }
+
+  estoqueState.produtosPagina = resultado.produtos;
+  estoqueState.temMais = resultado.temMais;
+  estoqueState.proximoCursor = resultado.cursor;
+
   renderizarTabelaEstoque(container);
 }
 
 function renderizarTabelaEstoque(container) {
-  const { filtrados, pagina, porPagina } = estoqueState;
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
-  estoqueState.pagina = Math.min(pagina, totalPaginas);
-  const inicio = (estoqueState.pagina - 1) * porPagina;
-  const pageItems = filtrados.slice(inicio, inicio + porPagina);
+  const { produtosPagina, cursoresAnteriores } = estoqueState;
 
   const tbody = container.querySelector("#tbody-estoque");
-  tbody.innerHTML = pageItems.map(p => `
+  tbody.innerHTML = produtosPagina.map(p => `
     <tr data-id="${p.id}">
       <td class="estoque-produto">
         <img class="thumb" src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(p.imagem).pos}" alt="">
@@ -1334,47 +1343,38 @@ function renderizarTabelaEstoque(container) {
       if (!delta) return;
       await ajustarEstoque(id, delta, delta > 0 ? "Entrada manual" : "Saída manual");
       toast("Estoque atualizado.");
-      carregarAbaEstoque(container);
+      buscarPaginaEstoque(container);
     });
   });
 
   const contagem = container.querySelector("#contagem-estoque");
   if (contagem) {
-    contagem.textContent = filtrados.length
-      ? `Mostrando ${inicio + 1} a ${Math.min(inicio + porPagina, filtrados.length)} de ${filtrados.length} produtos`
-      : "Nenhum produto";
+    const pagina = cursoresAnteriores.length + 1;
+    contagem.textContent = produtosPagina.length ? `Página ${pagina} · ${produtosPagina.length} produto(s)` : "Nenhum produto";
   }
 
-  renderizarPaginacaoEstoque(container, totalPaginas);
+  renderizarPaginacaoEstoque(container);
 }
 
-function renderizarPaginacaoEstoque(container, totalPaginas) {
+function renderizarPaginacaoEstoque(container) {
   const wrap = container.querySelector("#paginas-estoque");
   if (!wrap) return;
-  const atual = estoqueState.pagina;
+  const { cursoresAnteriores, temMais, termo } = estoqueState;
+  const pagina = cursoresAnteriores.length + 1;
 
-  const botoes = [];
-  botoes.push(`<button data-pagina="${atual - 1}" ${atual <= 1 ? "disabled" : ""} aria-label="Página anterior">${icon("chevronLeft")}</button>`);
+  wrap.innerHTML = `
+    <button data-dir="anterior" ${cursoresAnteriores.length === 0 || termo ? "disabled" : ""} aria-label="Página anterior">${icon("chevronLeft")}</button>
+    <span class="estoque-paginacao__atual">Página ${pagina}</span>
+    <button data-dir="proxima" ${!temMais || termo ? "disabled" : ""} aria-label="Próxima página">${icon("chevronRight")}</button>`;
 
-  const paginasParaMostrar = new Set([1, totalPaginas, atual, atual - 1, atual + 1]);
-  let anterior = 0;
-  for (let i = 1; i <= totalPaginas; i++) {
-    if (!paginasParaMostrar.has(i)) continue;
-    if (anterior && i - anterior > 1) botoes.push(`<span class="estoque-paginacao__ellipsis">...</span>`);
-    botoes.push(`<button data-pagina="${i}" class="${i === atual ? "is-active" : ""}">${i}</button>`);
-    anterior = i;
-  }
-
-  botoes.push(`<button data-pagina="${atual + 1}" ${atual >= totalPaginas ? "disabled" : ""} aria-label="Próxima página">${icon("chevronRight")}</button>`);
-  wrap.innerHTML = botoes.join("");
-
-  wrap.querySelectorAll("button[data-pagina]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const p = Number(btn.dataset.pagina);
-      if (p < 1 || p > totalPaginas) return;
-      estoqueState.pagina = p;
-      renderizarTabelaEstoque(container);
-    });
+  wrap.querySelector('[data-dir="proxima"]').addEventListener("click", () => {
+    estoqueState.cursoresAnteriores.push(estoqueState.cursor);
+    estoqueState.cursor = estoqueState.proximoCursor;
+    buscarPaginaEstoque(container);
+  });
+  wrap.querySelector('[data-dir="anterior"]').addEventListener("click", () => {
+    estoqueState.cursor = estoqueState.cursoresAnteriores.pop() || null;
+    buscarPaginaEstoque(container);
   });
 }
 
@@ -1389,7 +1389,7 @@ function exportarEstoqueCsv(produtos) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `estoque-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `estoque-pagina-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
