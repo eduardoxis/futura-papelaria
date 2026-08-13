@@ -1284,14 +1284,26 @@ async function buscarPaginaEstoque(container) {
   const { categoria, termo, porPagina, cursor } = estoqueState;
 
   let resultado;
-  if (termo) {
-    // A busca por prefixo do Firestore não combina com orderBy de outro
-    // campo nem com cursor de outra consulta — por isso, ao buscar por
-    // nome, ignoramos paginação por cursor e o filtro de categoria (uma
-    // limitação real do Firestore, não um bug).
-    resultado = await buscarProdutosPorPrefixo(termo, { tamanho: porPagina });
-  } else {
-    resultado = await listarProdutosPagina({ tamanho: porPagina, cursor, categoria, apenasAtivos: false });
+  try {
+    if (termo) {
+      // A busca por prefixo do Firestore não combina com orderBy de outro
+      // campo nem com cursor de outra consulta — por isso, ao buscar por
+      // nome, ignoramos paginação por cursor e o filtro de categoria (uma
+      // limitação real do Firestore, não um bug).
+      resultado = await buscarProdutosPorPrefixo(termo, { tamanho: porPagina });
+    } else {
+      resultado = await listarProdutosPagina({ tamanho: porPagina, cursor, categoria, apenasAtivos: false });
+    }
+  } catch (erro) {
+    console.error("Falha ao buscar produtos para o estoque:", erro);
+    const precisaIndice = erro?.message?.includes("requires an index");
+    toast(
+      precisaIndice
+        ? "O índice do Firestore para esse filtro ainda está sendo criado. Aguarde alguns minutos e tente de novo."
+        : "Não foi possível carregar os produtos. Tente novamente.",
+      "error"
+    );
+    return;
   }
 
   estoqueState.produtosPagina = resultado.produtos;
