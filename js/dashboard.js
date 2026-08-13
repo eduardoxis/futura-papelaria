@@ -1204,29 +1204,129 @@ async function carregarAbaEtiquetas(container) {
 }
 
 // ---------- ESTOQUE ----------
+const ESTOQUE_POR_PAGINA = [12, 24, 48];
+let estoqueState = { produtos: [], filtrados: [], busca: "", categoria: "", pagina: 1, porPagina: 12 };
+
 async function carregarAbaEstoque(container) {
   if (!container) return;
-  const produtos = await listarProdutos({ apenasAtivos: false });
-  container.innerHTML = `
-    <div class="admin-panel-head">
-      <h1>Estoque</h1>
-      <p>Consulte e ajuste as quantidades disponíveis.</p>
-    </div>
-    <div class="input-icon input-icon--full">${icon("search")}<input type="text" id="busca-estoque" placeholder="Buscar produto..." autocomplete="off"></div>
-    <div class="table-wrap"><table class="admin-table">
-      <thead><tr><th>Produto</th><th>Qtd atual</th><th>Ajuste</th><th></th></tr></thead>
-      <tbody>
-        ${produtos.map(p => `
-          <tr data-id="${p.id}">
-            <td>${escHtml(p.nome)}</td>
-            <td class="qtd-atual">${p.quantidade ?? 0}</td>
-            <td><input type="number" class="ajuste-input" placeholder="+ ou -" style="width:90px"></td>
-            <td><button class="btn-ajustar">Aplicar</button></td>
-          </tr>`).join("")}
-      </tbody>
-    </table></div>`;
+  const [produtos, categorias] = await Promise.all([
+    listarProdutos({ apenasAtivos: false }),
+    listarCategorias()
+  ]);
+  estoqueState.produtos = produtos;
+  estoqueState.pagina = 1;
 
-  container.querySelectorAll(".btn-ajustar").forEach(btn => {
+  container.innerHTML = `
+    <div class="admin-panel-head admin-panel-head--row">
+      <div>
+        <h1>Estoque</h1>
+        <p>Ajuste rapidamente a quantidade de produtos em estoque.</p>
+      </div>
+      <div class="admin-panel-head__actions">
+        <button class="btn-secondary" id="btn-exportar-estoque">${icon("download")}Exportar</button>
+        <button class="btn-secondary" id="btn-atualizar-estoque">${icon("refresh")}Atualizar</button>
+      </div>
+    </div>
+
+    <div class="estoque-filtros">
+      <div class="input-icon input-icon--full">${icon("search")}<input type="text" id="busca-estoque" placeholder="Buscar produto..." autocomplete="off"></div>
+      <div class="select-icon">${icon("filter")}<select id="filtro-categoria-estoque">
+        <option value="">Todas as categorias</option>
+        ${categorias.map(c => `<option value="${escHtml(c.nome)}">${escHtml(c.nome)}</option>`).join("")}
+      </select></div>
+    </div>
+
+    <div class="table-wrap"><table class="admin-table">
+      <thead><tr><th>Produto</th><th>Qtd atual</th><th>Ajuste</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-estoque"></tbody>
+    </table></div>
+
+    <div class="estoque-paginacao">
+      <span id="contagem-estoque"></span>
+      <div class="estoque-paginacao__paginas" id="paginas-estoque"></div>
+      <div class="select-icon select-icon--sm">
+        <select id="por-pagina-estoque">
+          ${ESTOQUE_POR_PAGINA.map(n => `<option value="${n}">${n} por página</option>`).join("")}
+        </select>
+      </div>
+    </div>`;
+
+  aplicarFiltroEstoque(container);
+
+  container.querySelector("#busca-estoque").addEventListener("input", (e) => {
+    estoqueState.busca = e.target.value.toLowerCase();
+    estoqueState.pagina = 1;
+    aplicarFiltroEstoque(container);
+  });
+
+  container.querySelector("#filtro-categoria-estoque").addEventListener("change", (e) => {
+    estoqueState.categoria = e.target.value;
+    estoqueState.pagina = 1;
+    aplicarFiltroEstoque(container);
+  });
+
+  container.querySelector("#por-pagina-estoque").addEventListener("change", (e) => {
+    estoqueState.porPagina = Number(e.target.value);
+    estoqueState.pagina = 1;
+    aplicarFiltroEstoque(container);
+  });
+
+  container.querySelector("#btn-atualizar-estoque").addEventListener("click", () => carregarAbaEstoque(container));
+
+  container.querySelector("#btn-exportar-estoque").addEventListener("click", () => {
+    exportarEstoqueCsv(estoqueState.filtrados);
+  });
+}
+
+function aplicarFiltroEstoque(container) {
+  const { produtos, busca, categoria } = estoqueState;
+  estoqueState.filtrados = produtos.filter(p => {
+    const bateBusca = !busca || p.nome.toLowerCase().includes(busca);
+    const bateCategoria = !categoria || p.categoria === categoria;
+    return bateBusca && bateCategoria;
+  });
+  renderizarTabelaEstoque(container);
+}
+
+function renderizarTabelaEstoque(container) {
+  const { filtrados, pagina, porPagina } = estoqueState;
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
+  estoqueState.pagina = Math.min(pagina, totalPaginas);
+  const inicio = (estoqueState.pagina - 1) * porPagina;
+  const pageItems = filtrados.slice(inicio, inicio + porPagina);
+
+  const tbody = container.querySelector("#tbody-estoque");
+  tbody.innerHTML = pageItems.map(p => `
+    <tr data-id="${p.id}">
+      <td class="estoque-produto">
+        <img class="thumb" src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(p.imagem).pos}" alt="">
+        <span>${escHtml(p.nome)}</span>
+      </td>
+      <td class="qtd-atual">${p.quantidade ?? 0}</td>
+      <td>
+        <div class="ajuste-stepper">
+          <button type="button" class="ajuste-stepper__btn" data-passo="-1" aria-label="Diminuir">${icon("minus")}</button>
+          <input type="number" class="ajuste-input" value="0" inputmode="numeric">
+          <button type="button" class="ajuste-stepper__btn" data-passo="1" aria-label="Aumentar">${icon("plus")}</button>
+        </div>
+      </td>
+      <td><button class="btn-primary btn-ajustar">Aplicar</button></td>
+    </tr>`).join("") || `<tr><td colspan="4">
+      <div class="empty-state">
+        ${icon("gridEmpty", "empty-state__icon")}
+        <strong>Nenhum produto encontrado</strong>
+        <p>Ajuste os filtros de busca ou categoria.</p>
+      </div>
+    </td></tr>`;
+
+  tbody.querySelectorAll(".ajuste-stepper__btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = btn.parentElement.querySelector(".ajuste-input");
+      input.value = (parseInt(input.value, 10) || 0) + Number(btn.dataset.passo);
+    });
+  });
+
+  tbody.querySelectorAll(".btn-ajustar").forEach(btn => {
     btn.addEventListener("click", async () => {
       const tr = btn.closest("tr");
       const id = tr.dataset.id;
@@ -1238,12 +1338,60 @@ async function carregarAbaEstoque(container) {
     });
   });
 
-  container.querySelector("#busca-estoque").addEventListener("input", (e) => {
-    const termo = e.target.value.toLowerCase();
-    container.querySelectorAll("tbody tr").forEach(tr => {
-      tr.style.display = tr.children[0].textContent.toLowerCase().includes(termo) ? "" : "none";
+  const contagem = container.querySelector("#contagem-estoque");
+  if (contagem) {
+    contagem.textContent = filtrados.length
+      ? `Mostrando ${inicio + 1} a ${Math.min(inicio + porPagina, filtrados.length)} de ${filtrados.length} produtos`
+      : "Nenhum produto";
+  }
+
+  renderizarPaginacaoEstoque(container, totalPaginas);
+}
+
+function renderizarPaginacaoEstoque(container, totalPaginas) {
+  const wrap = container.querySelector("#paginas-estoque");
+  if (!wrap) return;
+  const atual = estoqueState.pagina;
+
+  const botoes = [];
+  botoes.push(`<button data-pagina="${atual - 1}" ${atual <= 1 ? "disabled" : ""} aria-label="Página anterior">${icon("chevronLeft")}</button>`);
+
+  const paginasParaMostrar = new Set([1, totalPaginas, atual, atual - 1, atual + 1]);
+  let anterior = 0;
+  for (let i = 1; i <= totalPaginas; i++) {
+    if (!paginasParaMostrar.has(i)) continue;
+    if (anterior && i - anterior > 1) botoes.push(`<span class="estoque-paginacao__ellipsis">...</span>`);
+    botoes.push(`<button data-pagina="${i}" class="${i === atual ? "is-active" : ""}">${i}</button>`);
+    anterior = i;
+  }
+
+  botoes.push(`<button data-pagina="${atual + 1}" ${atual >= totalPaginas ? "disabled" : ""} aria-label="Próxima página">${icon("chevronRight")}</button>`);
+  wrap.innerHTML = botoes.join("");
+
+  wrap.querySelectorAll("button[data-pagina]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = Number(btn.dataset.pagina);
+      if (p < 1 || p > totalPaginas) return;
+      estoqueState.pagina = p;
+      renderizarTabelaEstoque(container);
     });
   });
+}
+
+function exportarEstoqueCsv(produtos) {
+  if (!produtos.length) { toast("Nada para exportar.", "error"); return; }
+  const linhas = [
+    ["Produto", "Categoria", "Quantidade"],
+    ...produtos.map(p => [p.nome, p.categoria || "-", p.quantidade ?? 0])
+  ];
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `estoque-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ---------- USUÁRIOS ----------
