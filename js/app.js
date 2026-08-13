@@ -1,10 +1,11 @@
 // js/app.js
 import {
-  listarEtiquetas, escutarProdutos, escutarCategorias, escutarMarcas,
+  listarEtiquetas, listarProdutosPagina, listarProdutosDestaque,
+  listarProdutosRecentes, listarProdutosPorCategoria, obterProduto, escutarCategorias, escutarMarcas,
   criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
   atualizarPerfilUsuario, obterPerfilUsuario
 } from "./firestore.js";
-import { renderizarGrade, aplicarFiltros, ordenarProdutos, obterFavoritos, alternarFavorito } from "./products.js";
+import { renderizarGrade, obterFavoritos, alternarFavorito } from "./products.js";
 import { buscarProdutos } from "./search.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
@@ -18,7 +19,6 @@ import { iniciarOrcamento } from "./orcamento.js";
 import { ICONS, icon } from "./icons.js";
 import { STORE_CONFIG } from "../firebase/firebase-config.js";
 
-let TODOS_PRODUTOS = [];
 let filtrosAtivos = {};
 
 function iconeParaCategoria(nome = "") {
@@ -112,15 +112,21 @@ async function iniciar() {
   aplicarIconesEstaticos();
   atualizarBadgeCarrinho();
 
-  escutarProdutos((produtos) => {
-    TODOS_PRODUTOS = produtos;
-    // Home mostra só uma prévia (5 colunas x 2 linhas); o catálogo completo
-    // fica na página dedicada /pages/catalogo.html.
-    renderizarGrade(document.querySelector("#grade-produtos"), TODOS_PRODUTOS.slice(0, 10));
-    aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
-    renderizarDestaques();
-    renderizarRecentes();
-  }, { apenasAtivos: true });
+  // Home mostra só prévias — cada seção busca só o que precisa direto do
+  // Firestore (nada de baixar o catálogo inteiro pra montar 3 vitrines de
+  // 8 a 10 itens). Não é mais "ao vivo" (onSnapshot); atualiza a cada
+  // carregamento de página, o que é suficiente para uma vitrine.
+  listarProdutosPagina({ tamanho: 10 }).then(({ produtos }) => {
+    renderizarGrade(document.querySelector("#grade-produtos"), produtos);
+  });
+  listarProdutosDestaque(8).then((destaques) => {
+    const container = document.querySelector("#grade-destaques");
+    if (container) renderizarGrade(container, destaques);
+  });
+  listarProdutosRecentes(8).then((recentes) => {
+    const container = document.querySelector("#grade-recentes");
+    if (container) renderizarGrade(container, recentes);
+  });
 
   escutarCategorias((categorias) => {
     renderizarFiltros(categorias);
@@ -202,7 +208,7 @@ async function iniciar() {
   });
 }
 
-function aplicarBuscaEFiltros(termo = "") {
+async function aplicarBuscaEFiltros(termo = "") {
   const termoLimpo = termo.trim();
   const secao = document.querySelector("#resultados-busca");
   const temFiltro = !!termoLimpo || !!filtrosAtivos.categoria;
@@ -212,8 +218,14 @@ function aplicarBuscaEFiltros(termo = "") {
     return;
   }
 
-  let lista = buscarProdutos(TODOS_PRODUTOS, termoLimpo);
-  lista = aplicarFiltros(lista, filtrosAtivos);
+  // Sem categoria selecionada não dá pra fazer uma busca textual eficiente
+  // sem baixar o catálogo inteiro — orientamos para o catálogo completo,
+  // que tem busca dedicada (ver pages/catalogo.html).
+  let lista = [];
+  if (filtrosAtivos.categoria) {
+    lista = await listarProdutosPorCategoria(filtrosAtivos.categoria);
+    if (termoLimpo) lista = buscarProdutos(lista, termoLimpo);
+  }
   renderizarGrade(document.querySelector("#grade-resultados"), lista);
 
   const titulo = document.querySelector("#resultados-busca-titulo");
@@ -221,23 +233,11 @@ function aplicarBuscaEFiltros(termo = "") {
     const partes = [];
     if (termoLimpo) partes.push(`"${termoLimpo}"`);
     if (filtrosAtivos.categoria) partes.push(filtrosAtivos.categoria);
-    titulo.textContent = `Resultados para ${partes.join(" em ")} (${lista.length})`;
+    titulo.textContent = filtrosAtivos.categoria
+      ? `Resultados para ${partes.join(" em ")} (${lista.length})`
+      : `Digite e aperte Enter para buscar em todo o catálogo`;
   }
   if (secao) secao.hidden = false;
-}
-
-function renderizarDestaques() {
-  const container = document.querySelector("#grade-destaques");
-  if (!container) return;
-  const destaques = TODOS_PRODUTOS.filter(p => (p.etiquetas || []).includes("Mais Vendido") || (p.etiquetas || []).includes("Promoção")).slice(0, 8);
-  renderizarGrade(container, destaques.length ? destaques : TODOS_PRODUTOS.slice(0, 8));
-}
-
-function renderizarRecentes() {
-  const container = document.querySelector("#grade-recentes");
-  if (!container) return;
-  const recentes = ordenarProdutos(TODOS_PRODUTOS, "recentes").slice(0, 8);
-  renderizarGrade(container, recentes);
 }
 
 function renderizarFiltros(categorias) {
@@ -697,7 +697,7 @@ async function renderizarFavoritos() {
   const container = document.querySelector("#lista-favoritos");
   if (!container) return;
   const ids = obterFavoritos();
-  const produtos = TODOS_PRODUTOS.filter(p => ids.includes(p.id));
+  const produtos = (await Promise.all(ids.map(id => obterProduto(id)))).filter(Boolean);
   container.innerHTML = produtos.length ? produtos.map(p => `
     <div class="favorito-card" data-id="${p.id}">
       <img src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(p.nome)}" loading="lazy">
@@ -718,8 +718,8 @@ async function renderizarFavoritos() {
     });
   });
   container.querySelectorAll("[data-add-favorito]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const produto = TODOS_PRODUTOS.find(p => p.id === btn.dataset.addFavorito);
+    btn.addEventListener("click", async () => {
+      const produto = await obterProduto(btn.dataset.addFavorito);
       if (produto) { adicionarAoCarrinho(produto, 1); toast("Produto adicionado ao carrinho."); }
     });
   });
