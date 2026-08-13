@@ -2,7 +2,7 @@
 import { db } from "../firebase/firebase-config.js";
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
-  query, where, orderBy, limit, serverTimestamp, increment, onSnapshot
+  query, where, orderBy, limit, startAfter, serverTimestamp, increment, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ---------- PRODUTOS ----------
@@ -12,6 +12,63 @@ export async function listarProdutos({ apenasAtivos = true } = {}) {
   let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
   return produtos;
+}
+
+/**
+ * Busca uma "página" de produtos direto do Firestore usando cursor
+ * (startAfter), em vez de baixar a coleção inteira. Use isto em vez de
+ * listarProdutos() sempre que a tela não precisar de 100% do catálogo
+ * de uma vez (home, catálogo público, telas administrativas com lista).
+ *
+ * @param {Object} opts
+ * @param {number} opts.tamanho - quantos produtos trazer nesta página
+ * @param {any} opts.cursor - o último doc da página anterior (snap.docs.at(-1)), ou null na primeira página
+ * @param {string} opts.categoria - filtro opcional exato de categoria
+ * @param {boolean} opts.apenasAtivos - exclui produtos com status "oculto"
+ * @returns {Promise<{produtos: object[], cursor: any, temMais: boolean}>}
+ */
+export async function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = "", apenasAtivos = true } = {}) {
+  const col = collection(db, "produtos");
+  const clausulas = [orderBy("nome")];
+  if (categoria) clausulas.unshift(where("categoria", "==", categoria));
+  // Buscamos 1 a mais do que o pedido só pra saber se existe próxima página,
+  // sem precisar de uma segunda consulta count().
+  clausulas.push(limit(tamanho + 1));
+  if (cursor) clausulas.push(startAfter(cursor));
+
+  const snap = await getDocs(query(col, ...clausulas));
+  let docs = snap.docs;
+  const temMais = docs.length > tamanho;
+  docs = docs.slice(0, tamanho);
+
+  let produtos = docs.map(d => ({ id: d.id, ...d.data() }));
+  if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
+
+  return { produtos, cursor: docs.at(-1) || cursor, temMais };
+}
+
+/**
+ * Busca por "começa com" usando range query nativa do Firestore
+ * (orderBy + where >= termo + where <= termo+\uf8ff). Não é busca por
+ * substring (não acha "Duplo" digitando "duplo" no meio do nome) —
+ * é o limite do que dá pra fazer sem um serviço de busca dedicado
+ * (Algolia/Typesense) mantendo custo de leitura baixo em catálogos grandes.
+ */
+export async function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
+  const termoNormalizado = termo.trim();
+  if (!termoNormalizado) return { produtos: [], cursor: null, temMais: false };
+
+  const col = collection(db, "produtos");
+  const fim = termoNormalizado + "\uf8ff";
+  const snap = await getDocs(query(
+    col,
+    orderBy("nome"),
+    where("nome", ">=", termoNormalizado),
+    where("nome", "<=", fim),
+    limit(tamanho)
+  ));
+  const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
+  return { produtos, cursor: snap.docs.at(-1) || null, temMais: snap.docs.length === tamanho };
 }
 
 export function escutarProdutos(callback, { apenasAtivos = true } = {}) {
