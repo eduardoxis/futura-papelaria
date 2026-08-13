@@ -1,0 +1,9 @@
+{
+  "name": "futura-papelaria",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Loja virtual Papelaria Futura — frontend estático + backend em Vercel Functions (/api)",
+  "dependencies": {
+    "firebase-admin": "^12.3.1"
+  }
+}
