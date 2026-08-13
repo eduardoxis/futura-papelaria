@@ -83,17 +83,16 @@
   }
 
   .pagination {
-    display: flex; justify-content: center; align-items: center; gap: 0.4rem;
+    display: flex; justify-content: center; align-items: center; gap: 0.75rem;
     margin-top: 2rem;
   }
   .pagination button {
-    min-width: 38px; height: 38px; padding: 0 0.5rem;
+    min-width: 38px; height: 38px; padding: 0 0.9rem;
     border: 1px solid var(--cinza-200); border-radius: var(--raio-sm);
     background: var(--branco); color: var(--cinza-700); font-size: 0.88rem; font-weight: 600;
   }
-  .pagination button.is-active { background: var(--azul-700); border-color: var(--azul-700); color: #fff; }
   .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .pagination__ellipsis { color: var(--cinza-400); padding: 0 0.2rem; }
+  .pagination__pagina { color: var(--cinza-500); font-size: 0.88rem; }
 
   .active-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
   .active-chips .chip-list li { margin: 0; }
@@ -289,10 +288,9 @@
 </aside>
 
 <script type="module">
-import { listarProdutos, escutarProdutos, listarCategorias, listarMarcas } from "../js/firestore.js";
-import { escHtml, getQueryParam, formatBRL, toast, podeExecutar } from "../js/utils.js";
-import { renderizarGrade, ordenarProdutos } from "../js/products.js";
-import { buscarProdutos } from "../js/search.js";
+import { listarCategorias, listarMarcas, buscarProdutosCatalogo, contarProdutosCatalogo } from "../js/firestore.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce } from "../js/utils.js";
+import { renderizarGrade } from "../js/products.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
@@ -314,18 +312,25 @@ function aplicarIconesEstaticos() {
 }
 aplicarIconesEstaticos();
 
-let TODOS_PRODUTOS = [];
 let CATEGORIAS = [];
 let MARCAS = [];
 let mostrarTodasMarcas = false;
+
+// Paginação por cursor: cada página guarda o cursor do Firestore pra
+// conseguir voltar sem refazer a consulta do zero (não dá pra "pular" pra
+// uma página arbitrária como antes — em 10k+ produtos isso exigiria
+// carregar tudo só pra contar. Anterior/Próxima continua correto e rápido).
 let paginaAtual = 1;
+let cursoresPorPagina = { 1: null };
+let temMaisProximaPagina = false;
+let carregando = false;
 
 const estado = {
   termo: getQueryParam("q") || "",
   categorias: new Set(),
   marcas: new Set(),
   faixasPreco: new Set(),
-  disponibilidade: new Set(),
+  disponibilidade: "", // Firestore só filtra um valor por vez aqui (ver buscarProdutosCatalogo)
   ordenar: "relevancia"
 };
 
@@ -346,15 +351,22 @@ btnToggleFiltros?.addEventListener("click", () => {
   btnToggleFiltros.setAttribute("aria-expanded", String(abrindo));
 });
 
+const buscaDebounced = debounce(() => { reiniciarPaginacao(); render(); }, 350);
+
 document.querySelector("#form-busca-catalogo").addEventListener("submit", (e) => {
   e.preventDefault();
   estado.termo = document.querySelector("#busca-header").value;
-  paginaAtual = 1;
+  reiniciarPaginacao();
   render();
+});
+document.querySelector("#busca-header").addEventListener("input", (e) => {
+  estado.termo = e.target.value;
+  buscaDebounced();
 });
 
 document.querySelector("#select-ordenar").addEventListener("change", (e) => {
   estado.ordenar = e.target.value;
+  reiniciarPaginacao();
   render();
 });
 
@@ -362,58 +374,38 @@ document.querySelector("#btn-limpar-filtros").addEventListener("click", () => {
   estado.categorias.clear();
   estado.marcas.clear();
   estado.faixasPreco.clear();
-  estado.disponibilidade.clear();
+  estado.disponibilidade = "";
   estado.termo = "";
   document.querySelector("#busca-header").value = "";
   document.querySelector("#filtro-categoria").value = "";
-  paginaAtual = 1;
+  reiniciarPaginacao();
   desenharFiltrosLaterais();
   render();
 });
 
-function faixaBate(preco, chave) {
-  const [minStr, maxStr] = chave.split("-");
-  const min = Number(minStr);
-  const max = maxStr === "" || maxStr === undefined ? Infinity : Number(maxStr);
-  return preco >= min && preco <= max;
+function reiniciarPaginacao() {
+  paginaAtual = 1;
+  cursoresPorPagina = { 1: null };
 }
 
-function produtosFiltrados() {
-  let lista = buscarProdutos(TODOS_PRODUTOS, estado.termo);
-
-  if (estado.categorias.size) lista = lista.filter(p => estado.categorias.has(p.categoria));
-  if (estado.marcas.size) lista = lista.filter(p => estado.marcas.has(p.marca));
-  if (estado.faixasPreco.size) {
-    lista = lista.filter(p => [...estado.faixasPreco].some(f => faixaBate(Number(p.preco) || 0, f)));
-  }
-  if (estado.disponibilidade.size) {
-    lista = lista.filter(p => {
-      const temEstoque = p.status !== "sem_estoque" && Number(p.quantidade) > 0;
-      if (estado.disponibilidade.has("em_estoque") && temEstoque) return true;
-      if (estado.disponibilidade.has("sem_estoque") && !temEstoque) return true;
-      return false;
-    });
-  }
-
-  return estado.ordenar === "relevancia" ? lista : ordenarProdutos(lista, estado.ordenar);
-}
-
-function contarComFiltro(lista, chave, valor) {
-  return lista.filter(p => {
-    if (chave === "categoria") return p.categoria === valor;
-    if (chave === "marca") return p.marca === valor;
-    return false;
-  }).length;
-}
-
-function desenharFiltrosLaterais() {
-  const baseParaContagem = buscarProdutos(TODOS_PRODUTOS, estado.termo);
+/**
+ * Conta cada opção de filtro com o RESTANTE dos filtros já ativos aplicado
+ * (mas sem o próprio campo que está sendo contado) — é o que dá o número
+ * certo do lado de cada checkbox sem baixar produto nenhum, via count()
+ * do Firestore (1 leitura agregada por opção, não N).
+ */
+async function desenharFiltrosLaterais() {
+  const filtroBase = {
+    termoBusca: estado.termo,
+    categoria: [...estado.categorias][0] || "",
+    marca: "", faixaPreco: "", disponibilidade: ""
+  };
 
   document.querySelector("#filtros-categorias").innerHTML = CATEGORIAS.map(c => `
     <label class="filter-option">
       <input type="checkbox" name="categoria" value="${escHtml(c.nome)}" ${estado.categorias.has(c.nome) ? "checked" : ""}>
       <span>${escHtml(c.nome)}</span>
-      <span class="filter-option__count">${contarComFiltro(baseParaContagem, "categoria", c.nome)}</span>
+      <span class="filter-option__count" data-count-categoria="${escHtml(c.nome)}">…</span>
     </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma categoria cadastrada.</p>`;
 
   const marcasParaMostrar = mostrarTodasMarcas ? MARCAS : MARCAS.slice(0, MARCAS_VISIVEIS_INICIAL);
@@ -421,7 +413,7 @@ function desenharFiltrosLaterais() {
     <label class="filter-option">
       <input type="checkbox" name="marca" value="${escHtml(m.nome)}" ${estado.marcas.has(m.nome) ? "checked" : ""}>
       <span>${escHtml(m.nome)}</span>
-      <span class="filter-option__count">${contarComFiltro(baseParaContagem, "marca", m.nome)}</span>
+      <span class="filter-option__count" data-count-marca="${escHtml(m.nome)}">…</span>
     </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma marca cadastrada.</p>`;
 
   const btnVerMais = document.querySelector("#btn-ver-mais-marcas");
@@ -429,12 +421,15 @@ function desenharFiltrosLaterais() {
   btnVerMais.textContent = mostrarTodasMarcas ? "Ver menos" : "Ver mais";
 
   document.querySelectorAll('[name="preco"]').forEach(el => { el.checked = estado.faixasPreco.has(el.value); });
-  document.querySelectorAll('[name="disponibilidade"]').forEach(el => { el.checked = estado.disponibilidade.has(el.value); });
+  document.querySelectorAll('[name="disponibilidade"]').forEach(el => { el.checked = estado.disponibilidade === el.value; });
 
   document.querySelector("#filtros-categorias").querySelectorAll("input").forEach(el => {
     el.addEventListener("change", () => {
-      el.checked ? estado.categorias.add(el.value) : estado.categorias.delete(el.value);
-      paginaAtual = 1;
+      // Uma categoria por vez (bate com o <select> do cabeçalho).
+      estado.categorias.clear();
+      if (el.checked) estado.categorias.add(el.value);
+      document.querySelector("#filtro-categoria").value = el.checked ? el.value : "";
+      reiniciarPaginacao();
       desenharFiltrosLaterais();
       render();
     });
@@ -442,7 +437,7 @@ function desenharFiltrosLaterais() {
   document.querySelector("#filtros-marcas").querySelectorAll("input").forEach(el => {
     el.addEventListener("change", () => {
       el.checked ? estado.marcas.add(el.value) : estado.marcas.delete(el.value);
-      paginaAtual = 1;
+      reiniciarPaginacao();
       desenharFiltrosLaterais();
       render();
     });
@@ -450,14 +445,18 @@ function desenharFiltrosLaterais() {
   document.querySelectorAll('[name="preco"]').forEach(el => {
     el.addEventListener("change", () => {
       el.checked ? estado.faixasPreco.add(el.value) : estado.faixasPreco.delete(el.value);
-      paginaAtual = 1;
+      reiniciarPaginacao();
+      desenharFiltrosLaterais();
       render();
     });
   });
   document.querySelectorAll('[name="disponibilidade"]').forEach(el => {
     el.addEventListener("change", () => {
-      el.checked ? estado.disponibilidade.add(el.value) : estado.disponibilidade.delete(el.value);
-      paginaAtual = 1;
+      estado.disponibilidade = el.checked ? el.value : "";
+      // Os dois checkboxes de disponibilidade são mutuamente exclusivos aqui.
+      document.querySelectorAll('[name="disponibilidade"]').forEach(o => { if (o !== el) o.checked = false; });
+      reiniciarPaginacao();
+      desenharFiltrosLaterais();
       render();
     });
   });
@@ -466,46 +465,87 @@ function desenharFiltrosLaterais() {
     mostrarTodasMarcas = !mostrarTodasMarcas;
     desenharFiltrosLaterais();
   };
-}
 
-function desenharPaginacao(totalPaginas) {
+  // Contagens carregam depois, em paralelo, sem travar a UI dos filtros.
+  const idContagem = ++idContagemAtual;
+  const promessasCategoria = CATEGORIAS.map(async c => {
+    const n = await contarProdutosCatalogo({ ...filtroBase, categoria: c.nome });
+    if (idContagem !== idContagemAtual) return;
+    const el = document.querySelector(`[data-count-categoria="${CSS.escape(c.nome)}"]`);
+    if (el) el.textContent = n;
+  });
+  const promessasMarca = marcasParaMostrar.map(async m => {
+    const n = await contarProdutosCatalogo({ ...filtroBase, marca: m.nome });
+    if (idContagem !== idContagemAtual) return;
+    const el = document.querySelector(`[data-count-marca="${CSS.escape(m.nome)}"]`);
+    if (el) el.textContent = n;
+  });
+  await Promise.all([...promessasCategoria, ...promessasMarca]).catch(() => {});
+}
+let idContagemAtual = 0;
+
+function desenharPaginacao() {
   const nav = document.querySelector("#paginacao");
-  if (totalPaginas <= 1) { nav.innerHTML = ""; return; }
+  if (paginaAtual === 1 && !temMaisProximaPagina) { nav.innerHTML = ""; return; }
+  nav.innerHTML = `
+    <button type="button" id="btn-pagina-anterior" ${paginaAtual === 1 ? "disabled" : ""} aria-label="Página anterior">‹ Anterior</button>
+    <span class="pagination__pagina">Página ${paginaAtual}</span>
+    <button type="button" id="btn-pagina-proxima" ${temMaisProximaPagina ? "" : "disabled"} aria-label="Próxima página">Próxima ›</button>`;
 
-  const botoes = [];
-  botoes.push(`<button type="button" data-pagina="${paginaAtual - 1}" ${paginaAtual === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`);
-
-  const paginas = new Set([1, totalPaginas, paginaAtual, paginaAtual - 1, paginaAtual + 1]);
-  let ultimo = 0;
-  [...paginas].filter(p => p >= 1 && p <= totalPaginas).sort((a, b) => a - b).forEach(p => {
-    if (ultimo && p - ultimo > 1) botoes.push(`<span class="pagination__ellipsis">…</span>`);
-    botoes.push(`<button type="button" data-pagina="${p}" class="${p === paginaAtual ? "is-active" : ""}">${p}</button>`);
-    ultimo = p;
+  document.querySelector("#btn-pagina-anterior")?.addEventListener("click", () => {
+    paginaAtual -= 1;
+    render();
+    document.querySelector(".search-page__main-head").scrollIntoView({ behavior: "smooth", block: "start" });
   });
-
-  botoes.push(`<button type="button" data-pagina="${paginaAtual + 1}" ${paginaAtual === totalPaginas ? "disabled" : ""} aria-label="Próxima página">›</button>`);
-  nav.innerHTML = botoes.join("");
-
-  nav.querySelectorAll("[data-pagina]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      paginaAtual = Number(btn.dataset.pagina);
-      render();
-      document.querySelector(".search-page__main-head").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+  document.querySelector("#btn-pagina-proxima")?.addEventListener("click", () => {
+    paginaAtual += 1;
+    render();
+    document.querySelector(".search-page__main-head").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
-function render() {
-  const lista = produtosFiltrados();
-  const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
-  if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
+async function render() {
+  if (carregando) return;
+  carregando = true;
+  const grade = document.querySelector("#grade-catalogo");
+  grade.setAttribute("aria-busy", "true");
 
-  const inicio = (paginaAtual - 1) * POR_PAGINA;
-  const pagina = lista.slice(inicio, inicio + POR_PAGINA);
+  try {
+    const { produtos, cursor, temMais } = await buscarProdutosCatalogo({
+      tamanho: POR_PAGINA,
+      cursor: cursoresPorPagina[paginaAtual] || null,
+      categoria: [...estado.categorias][0] || "",
+      marcas: [...estado.marcas],
+      faixasPreco: [...estado.faixasPreco],
+      disponibilidade: estado.disponibilidade,
+      termoBusca: estado.termo,
+      ordenar: estado.ordenar
+    });
 
-  document.querySelector("#contador-produtos").textContent = lista.length;
-  renderizarGrade(document.querySelector("#grade-catalogo"), pagina);
-  desenharPaginacao(totalPaginas);
+    cursoresPorPagina[paginaAtual + 1] = cursor;
+    temMaisProximaPagina = temMais;
+
+    const contador = await contarProdutosCatalogo({
+      categoria: [...estado.categorias][0] || "",
+      marcas: [...estado.marcas],
+      faixasPreco: [...estado.faixasPreco],
+      disponibilidade: estado.disponibilidade,
+      termoBusca: estado.termo
+    });
+
+    document.querySelector("#contador-produtos").textContent = contador;
+    renderizarGrade(grade, produtos);
+    desenharPaginacao();
+  } catch (erro) {
+    console.error(erro);
+    // Erro mais comum aqui é o Firestore pedindo um índice composto novo —
+    // o link pra criar aparece no console do navegador (F12).
+    grade.innerHTML = `<div class="empty-state">Não foi possível carregar os produtos agora. Tente novamente em instantes.</div>`;
+    toast("Erro ao carregar produtos.", "error");
+  } finally {
+    carregando = false;
+    grade.removeAttribute("aria-busy");
+  }
 }
 
 const grade = document.querySelector("#grade-catalogo");
@@ -647,16 +687,13 @@ async function iniciar() {
   selectCategoria.addEventListener("change", () => {
     estado.categorias.clear();
     if (selectCategoria.value) estado.categorias.add(selectCategoria.value);
-    paginaAtual = 1;
+    reiniciarPaginacao();
     desenharFiltrosLaterais();
     render();
   });
 
-  escutarProdutos((produtos) => {
-    TODOS_PRODUTOS = produtos;
-    desenharFiltrosLaterais();
-    render();
-  }, { apenasAtivos: true });
+  await desenharFiltrosLaterais();
+  await render();
 
   atualizarBadgeCarrinho();
 }
