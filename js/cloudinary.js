@@ -1,36 +1,48 @@
 // js/cloudinary.js
-// Upload de imagens para o Cloudinary (plano gratuito) usando um "unsigned
-// upload preset" — não expõe nenhuma chave secreta no navegador, só o
-// cloud name e o nome do preset, que são públicos por natureza.
-//
-// Como configurar (uma vez só, gratuito):
-// 1. Crie uma conta em https://cloudinary.com
-// 2. No Dashboard, copie o "Cloud name" e cole em CLOUDINARY_CONFIG.cloudName
-// 3. Em Settings > Upload > Upload presets, crie um preset novo, marque o
-//    modo como "Unsigned" e cole o nome dele em CLOUDINARY_CONFIG.uploadPreset
-export const CLOUDINARY_CONFIG = {
-  cloudName: "zrcf5mxc",
-  uploadPreset: "papelaria-futura",
-  pasta: "papelaria-futura"
-};
+// Upload de imagens para o Cloudinary usando upload ASSINADO: o navegador
+// pede uma assinatura pra nossa própria function (/api/cloudinary-signature,
+// que exige login de admin) e só então envia a imagem direto pro Cloudinary.
+// A API secret nunca existe no navegador — fica só no servidor.
+const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
+const TIPOS_PERMITIDOS = ["image/webp", "image/png", "image/jpeg"];
 
 /**
- * Envia um Blob (já convertido para WebP) para o Cloudinary e retorna a
- * URL pública e segura (https) da imagem hospedada.
+ * Envia um Blob (já convertido para WebP/PNG) para o Cloudinary via upload
+ * assinado e retorna a URL pública e segura (https) da imagem hospedada.
  */
 export async function enviarImagemParaCloudinary(blob, nomeArquivo = "produto") {
-  if (CLOUDINARY_CONFIG.cloudName === "SEU_CLOUD_NAME_AQUI") {
-    throw new Error("Configure o Cloudinary em js/cloudinary.js antes de enviar imagens.");
+  if (blob.size > TAMANHO_MAXIMO_BYTES) {
+    throw new Error("Imagem maior que 5MB — reduza o tamanho antes de enviar.");
   }
+  if (!TIPOS_PERMITIDOS.includes(blob.type)) {
+    throw new Error("Tipo de imagem não permitido.");
+  }
+
+  const { auth } = await import("../firebase/firebase-config.js");
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error("Faça login como admin para enviar imagens.");
+
+  const assinaturaResp = await fetch("/api/cloudinary-signature", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ tamanho: blob.size, tipo: blob.type })
+  });
+  if (!assinaturaResp.ok) {
+    const erro = await assinaturaResp.json().catch(() => null);
+    throw new Error(erro?.erro || "Falha ao autorizar upload de imagem.");
+  }
+  const { signature, timestamp, apiKey, cloudName, folder } = await assinaturaResp.json();
 
   const extensao = blob.type === "image/png" ? "png" : "webp";
   const form = new FormData();
   form.append("file", blob, `${nomeArquivo}.${extensao}`);
-  form.append("upload_preset", CLOUDINARY_CONFIG.uploadPreset);
-  form.append("folder", CLOUDINARY_CONFIG.pasta);
+  form.append("api_key", apiKey);
+  form.append("timestamp", timestamp);
+  form.append("signature", signature);
+  form.append("folder", folder);
 
   const resp = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
     { method: "POST", body: form }
   );
 
