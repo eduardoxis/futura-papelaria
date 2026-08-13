@@ -79,6 +79,29 @@ export function escutarProdutos(callback, { apenasAtivos = true } = {}) {
   });
 }
 
+/** Últimos N produtos cadastrados — usado na home ("Recentes"), sem baixar a coleção inteira. */
+export async function listarProdutosRecentes(tamanho = 8) {
+  const snap = await getDocs(query(collection(db, "produtos"), orderBy("criadoEm", "desc"), limit(tamanho + 4)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+}
+
+/** Produtos com etiqueta "Mais Vendido" ou "Promoção" — usado na home ("Destaques"). */
+export async function listarProdutosDestaque(tamanho = 8) {
+  const snap = await getDocs(query(
+    collection(db, "produtos"),
+    where("etiquetas", "array-contains-any", ["Mais Vendido", "Promoção"]),
+    limit(tamanho + 4)
+  ));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+}
+
+/** Produtos de uma categoria (até um teto razoável) — usado no filtro rápido da home. */
+export async function listarProdutosPorCategoria(categoria, tamanho = 60) {
+  if (!categoria) return [];
+  const snap = await getDocs(query(collection(db, "produtos"), where("categoria", "==", categoria), limit(tamanho)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
+}
+
 export async function obterProduto(id) {
   const ref = doc(db, "produtos", id);
   const snap = await getDoc(ref);
