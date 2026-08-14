@@ -1,6 +1,7 @@
-// js/firestore.js
+// js/services/firestore.js
 import { db } from "../../firebase/firebase-config.js";
 import {
+import { withLoading, beginListener } from "../utils/loadingManager.js";
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, increment, onSnapshot,
   runTransaction, getCountFromServer
@@ -24,12 +25,14 @@ function calcularDisponivel(status, quantidade) {
 }
 
 // ---------- PRODUTOS ----------
-export async function listarProdutos({ apenasAtivos = true } = {}) {
-  const col = collection(db, "produtos");
-  const snap = await getDocs(col);
-  let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
-  return produtos;
+export function listarProdutos({ apenasAtivos = true } = {}) {
+  return withLoading("listarProdutos", async () => {
+    const col = collection(db, "produtos");
+    const snap = await getDocs(col);
+    let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
+    return produtos;
+  });
 }
 
 /**
@@ -45,24 +48,26 @@ export async function listarProdutos({ apenasAtivos = true } = {}) {
  * @param {boolean} opts.apenasAtivos - exclui produtos com status "oculto"
  * @returns {Promise<{produtos: object[], cursor: any, temMais: boolean}>}
  */
-export async function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = "", apenasAtivos = true } = {}) {
-  const col = collection(db, "produtos");
-  const clausulas = [orderBy("nome")];
-  if (categoria) clausulas.unshift(where("categoria", "==", categoria));
-  // Buscamos 1 a mais do que o pedido só pra saber se existe próxima página,
-  // sem precisar de uma segunda consulta count().
-  clausulas.push(limit(tamanho + 1));
-  if (cursor) clausulas.push(startAfter(cursor));
+export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = "", apenasAtivos = true } = {}) {
+  return withLoading("listarProdutosPagina", async () => {
+    const col = collection(db, "produtos");
+    const clausulas = [orderBy("nome")];
+    if (categoria) clausulas.unshift(where("categoria", "==", categoria));
+    // Buscamos 1 a mais do que o pedido só pra saber se existe próxima página,
+    // sem precisar de uma segunda consulta count().
+    clausulas.push(limit(tamanho + 1));
+    if (cursor) clausulas.push(startAfter(cursor));
 
-  const snap = await getDocs(query(col, ...clausulas));
-  let docs = snap.docs;
-  const temMais = docs.length > tamanho;
-  docs = docs.slice(0, tamanho);
+    const snap = await getDocs(query(col, ...clausulas));
+    let docs = snap.docs;
+    const temMais = docs.length > tamanho;
+    docs = docs.slice(0, tamanho);
 
-  let produtos = docs.map(d => ({ id: d.id, ...d.data() }));
-  if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
+    let produtos = docs.map(d => ({ id: d.id, ...d.data() }));
+    if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
 
-  return { produtos, cursor: docs.at(-1) || cursor, temMais };
+    return { produtos, cursor: docs.at(-1) || cursor, temMais };
+  });
 }
 
 /**
@@ -72,28 +77,37 @@ export async function listarProdutosPagina({ tamanho = 20, cursor = null, catego
  * é o limite do que dá pra fazer sem um serviço de busca dedicado
  * (Algolia/Typesense) mantendo custo de leitura baixo em catálogos grandes.
  */
-export async function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
-  const termoNormalizado = termo.trim();
-  if (!termoNormalizado) return { produtos: [], cursor: null, temMais: false };
+export function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
+  return withLoading("buscarProdutosPorPrefixo", async () => {
+    const termoNormalizado = termo.trim();
+    if (!termoNormalizado) return { produtos: [], cursor: null, temMais: false };
 
-  const col = collection(db, "produtos");
-  const fim = termoNormalizado + "\uf8ff";
-  const snap = await getDocs(query(
-    col,
-    orderBy("nome"),
-    where("nome", ">=", termoNormalizado),
-    where("nome", "<=", fim),
-    limit(tamanho)
-  ));
-  const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
-  return { produtos, cursor: snap.docs.at(-1) || null, temMais: snap.docs.length === tamanho };
+    const col = collection(db, "produtos");
+    const fim = termoNormalizado + "\uf8ff";
+    const snap = await getDocs(query(
+      col,
+      orderBy("nome"),
+      where("nome", ">=", termoNormalizado),
+      where("nome", "<=", fim),
+      limit(tamanho)
+    ));
+    const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
+    return { produtos, cursor: snap.docs.at(-1) || null, temMais: snap.docs.length === tamanho };
+  });
 }
 
 export function escutarProdutos(callback, { apenasAtivos = true } = {}) {
+  // Loading cobre só até o primeiro snapshot chegar; atualizações
+  // seguintes em tempo real não reacendem o loading global.
+  const finalizarPrimeiroSnapshot = beginListener("escutarProdutos");
   return onSnapshot(collection(db, "produtos"), (snap) => {
     let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
     callback(produtos);
+    finalizarPrimeiroSnapshot();
+  }, (erro) => {
+    finalizarPrimeiroSnapshot();
+    console.error("[escutarProdutos] erro no listener:", erro);
   });
 }
 
@@ -105,70 +119,82 @@ export function escutarProdutos(callback, { apenasAtivos = true } = {}) {
  * Feito em lotes de 400 gravações (limite do writeBatch é 500) pra não
  * estourar limite de escrita/dia do plano gratuito de uma vez só.
  */
-export async function migrarCamposFiltroCatalogo(onProgresso) {
-  const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-  const snap = await getDocs(collection(db, "produtos"));
-  const pendentes = snap.docs.filter(d => {
-    const dados = d.data();
-    return dados.faixaPreco === undefined || dados.disponivel === undefined;
-  });
-
-  const TAMANHO_LOTE = 400;
-  let feitos = 0;
-  for (let i = 0; i < pendentes.length; i += TAMANHO_LOTE) {
-    const lote = pendentes.slice(i, i + TAMANHO_LOTE);
-    const batch = writeBatch(db);
-    lote.forEach(d => {
+export function migrarCamposFiltroCatalogo(onProgresso) {
+  return withLoading("migrarCamposFiltroCatalogo", async () => {
+    const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const snap = await getDocs(collection(db, "produtos"));
+    const pendentes = snap.docs.filter(d => {
       const dados = d.data();
-      batch.update(d.ref, {
-        faixaPreco: calcularFaixaPreco(dados.preco),
-        disponivel: calcularDisponivel(dados.status, dados.quantidade)
-      });
+      return dados.faixaPreco === undefined || dados.disponivel === undefined;
     });
-    await batch.commit();
-    feitos += lote.length;
-    onProgresso?.(feitos, pendentes.length);
-  }
-  return { total: pendentes.length };
+
+    const TAMANHO_LOTE = 400;
+    let feitos = 0;
+    for (let i = 0; i < pendentes.length; i += TAMANHO_LOTE) {
+      const lote = pendentes.slice(i, i + TAMANHO_LOTE);
+      const batch = writeBatch(db);
+      lote.forEach(d => {
+        const dados = d.data();
+        batch.update(d.ref, {
+          faixaPreco: calcularFaixaPreco(dados.preco),
+          disponivel: calcularDisponivel(dados.status, dados.quantidade)
+        });
+      });
+      await batch.commit();
+      feitos += lote.length;
+      onProgresso?.(feitos, pendentes.length);
+    }
+    return { total: pendentes.length };
+  });
 }
 
 /** Últimos N produtos cadastrados — usado na home ("Recentes"), sem baixar a coleção inteira. */
-export async function listarProdutosRecentes(tamanho = 8) {
-  const snap = await getDocs(query(collection(db, "produtos"), orderBy("criadoEm", "desc"), limit(tamanho + 4)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+export function listarProdutosRecentes(tamanho = 8) {
+  return withLoading("listarProdutosRecentes", async () => {
+    const snap = await getDocs(query(collection(db, "produtos"), orderBy("criadoEm", "desc"), limit(tamanho + 4)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+  });
 }
 
 /** Produtos com etiqueta "Mais Vendido" ou "Promoção" — usado na home ("Destaques"). */
-export async function listarProdutosDestaque(tamanho = 8) {
-  const snap = await getDocs(query(
-    collection(db, "produtos"),
-    where("etiquetas", "array-contains-any", ["Mais Vendido", "Promoção"]),
-    limit(tamanho + 4)
-  ));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+export function listarProdutosDestaque(tamanho = 8) {
+  return withLoading("listarProdutosDestaque", async () => {
+    const snap = await getDocs(query(
+      collection(db, "produtos"),
+      where("etiquetas", "array-contains-any", ["Mais Vendido", "Promoção"]),
+      limit(tamanho + 4)
+    ));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+  });
 }
 
 /** Produtos de uma categoria (até um teto razoável) — usado no filtro rápido da home. */
-export async function listarProdutosPorCategoria(categoria, tamanho = 60) {
-  if (!categoria) return [];
-  const snap = await getDocs(query(collection(db, "produtos"), where("categoria", "==", categoria), limit(tamanho)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
+export function listarProdutosPorCategoria(categoria, tamanho = 60) {
+  return withLoading("listarProdutosPorCategoria", async () => {
+    if (!categoria) return [];
+    const snap = await getDocs(query(collection(db, "produtos"), where("categoria", "==", categoria), limit(tamanho)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
+  });
 }
 
-export async function obterProduto(id) {
-  const ref = doc(db, "produtos", id);
-  const snap = await getDoc(ref);
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+export function obterProduto(id) {
+  return withLoading("obterProduto", async () => {
+    const ref = doc(db, "produtos", id);
+    const snap = await getDoc(ref);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  });
 }
 
-export async function criarProduto(dados) {
-  return addDoc(collection(db, "produtos"), {
-    ...dados,
-    faixaPreco: calcularFaixaPreco(dados.preco),
-    disponivel: calcularDisponivel(dados.status, dados.quantidade),
-    visualizacoes: 0,
-    compartilhamentos: 0,
-    criadoEm: serverTimestamp()
+export function criarProduto(dados) {
+  return withLoading("criarProduto", async () => {
+    return addDoc(collection(db, "produtos"), {
+      ...dados,
+      faixaPreco: calcularFaixaPreco(dados.preco),
+      disponivel: calcularDisponivel(dados.status, dados.quantidade),
+      visualizacoes: 0,
+      compartilhamentos: 0,
+      criadoEm: serverTimestamp()
+    });
   });
 }
 
@@ -179,58 +205,70 @@ export async function criarProduto(dados) {
  * Por isso lemos o doc atual antes de gravar (transação), em vez de
  * confiar só no que veio em `dados`.
  */
-export async function atualizarProduto(id, dados) {
-  const ref = doc(db, "produtos", id);
-  const precisaRecalcular = "preco" in dados || "status" in dados || "quantidade" in dados;
-  if (!precisaRecalcular) return updateDoc(ref, dados);
+export function atualizarProduto(id, dados) {
+  return withLoading("atualizarProduto", async () => {
+    const ref = doc(db, "produtos", id);
+    const precisaRecalcular = "preco" in dados || "status" in dados || "quantidade" in dados;
+    if (!precisaRecalcular) return updateDoc(ref, dados);
 
-  return runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    const atual = snap.exists() ? snap.data() : {};
-    const preco = "preco" in dados ? dados.preco : atual.preco;
-    const status = "status" in dados ? dados.status : atual.status;
-    const quantidade = "quantidade" in dados ? dados.quantidade : atual.quantidade;
-    tx.update(ref, {
-      ...dados,
-      faixaPreco: calcularFaixaPreco(preco),
-      disponivel: calcularDisponivel(status, quantidade)
+    return runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      const atual = snap.exists() ? snap.data() : {};
+      const preco = "preco" in dados ? dados.preco : atual.preco;
+      const status = "status" in dados ? dados.status : atual.status;
+      const quantidade = "quantidade" in dados ? dados.quantidade : atual.quantidade;
+      tx.update(ref, {
+        ...dados,
+        faixaPreco: calcularFaixaPreco(preco),
+        disponivel: calcularDisponivel(status, quantidade)
+      });
     });
   });
 }
 
-export async function excluirProduto(id) {
-  return deleteDoc(doc(db, "produtos", id));
-}
-
-export async function duplicarProduto(produto) {
-  const { id, ...resto } = produto;
-  return criarProduto({ ...resto, nome: `${resto.nome} (cópia)` });
-}
-
-export async function incrementarVisualizacao(id) {
-  return updateDoc(doc(db, "produtos", id), { visualizacoes: increment(1) });
-}
-
-export async function incrementarCompartilhamento(id) {
-  return updateDoc(doc(db, "produtos", id), { compartilhamentos: increment(1) });
-}
-
-export async function ajustarEstoque(id, delta, motivo = "") {
-  const ref = doc(db, "produtos", id);
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    const atual = snap.data() || {};
-    const novaQuantidade = (Number(atual.quantidade) || 0) + delta;
-    tx.update(ref, {
-      quantidade: novaQuantidade,
-      disponivel: calcularDisponivel(atual.status, novaQuantidade)
-    });
+export function excluirProduto(id) {
+  return withLoading("excluirProduto", async () => {
+    return deleteDoc(doc(db, "produtos", id));
   });
-  await addDoc(collection(db, "historicoEstoque"), {
-    produtoId: id,
-    delta,
-    motivo,
-    data: serverTimestamp()
+}
+
+export function duplicarProduto(produto) {
+  return withLoading("duplicarProduto", async () => {
+    const { id, ...resto } = produto;
+    return criarProduto({ ...resto, nome: `${resto.nome} (cópia)` });
+  });
+}
+
+export function incrementarVisualizacao(id) {
+  return withLoading("incrementarVisualizacao", async () => {
+    return updateDoc(doc(db, "produtos", id), { visualizacoes: increment(1) });
+  });
+}
+
+export function incrementarCompartilhamento(id) {
+  return withLoading("incrementarCompartilhamento", async () => {
+    return updateDoc(doc(db, "produtos", id), { compartilhamentos: increment(1) });
+  });
+}
+
+export function ajustarEstoque(id, delta, motivo = "") {
+  return withLoading("ajustarEstoque", async () => {
+    const ref = doc(db, "produtos", id);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      const atual = snap.data() || {};
+      const novaQuantidade = (Number(atual.quantidade) || 0) + delta;
+      tx.update(ref, {
+        quantidade: novaQuantidade,
+        disponivel: calcularDisponivel(atual.status, novaQuantidade)
+      });
+    });
+    await addDoc(collection(db, "historicoEstoque"), {
+      produtoId: id,
+      delta,
+      motivo,
+      data: serverTimestamp()
+    });
   });
 }
 
@@ -250,7 +288,7 @@ export async function ajustarEstoque(id, delta, motivo = "") {
  * é só clicar no link do erro (aparece no console do navegador) uma vez;
  * depois disso a combinação fica rápida pra sempre.
  */
-export async function buscarProdutosCatalogo({
+export function buscarProdutosCatalogo({
   tamanho = 24,
   cursor = null,
   categoria = "",
@@ -260,36 +298,38 @@ export async function buscarProdutosCatalogo({
   termoBusca = "",
   ordenar = "nome" // "nome" | "preco_asc" | "preco_desc" | "recentes"
 } = {}) {
-  const col = collection(db, "produtos");
-  const clausulas = [where("status", "!=", "oculto")];
+  return withLoading("buscarProdutosCatalogo", async () => {
+    const col = collection(db, "produtos");
+    const clausulas = [where("status", "!=", "oculto")];
 
-  if (categoria) clausulas.push(where("categoria", "==", categoria));
-  if (marcas.length === 1) clausulas.push(where("marca", "==", marcas[0]));
-  else if (marcas.length > 1) clausulas.push(where("marca", "in", marcas.slice(0, 10)));
-  if (faixasPreco.length === 1) clausulas.push(where("faixaPreco", "==", faixasPreco[0]));
-  else if (faixasPreco.length > 1) clausulas.push(where("faixaPreco", "in", faixasPreco.slice(0, 10)));
-  if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
-  else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
+    if (categoria) clausulas.push(where("categoria", "==", categoria));
+    if (marcas.length === 1) clausulas.push(where("marca", "==", marcas[0]));
+    else if (marcas.length > 1) clausulas.push(where("marca", "in", marcas.slice(0, 10)));
+    if (faixasPreco.length === 1) clausulas.push(where("faixaPreco", "==", faixasPreco[0]));
+    else if (faixasPreco.length > 1) clausulas.push(where("faixaPreco", "in", faixasPreco.slice(0, 10)));
+    if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
+    else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
 
-  const termo = termoBusca.trim();
-  if (termo) {
-    // Busca por prefixo precisa que orderBy/where sejam no mesmo campo (nome).
-    clausulas.push(where("nome", ">=", termo), where("nome", "<=", termo + "\uf8ff"), orderBy("nome"));
-  } else if (ordenar === "preco_asc") clausulas.push(orderBy("preco", "asc"));
-  else if (ordenar === "preco_desc") clausulas.push(orderBy("preco", "desc"));
-  else if (ordenar === "recentes") clausulas.push(orderBy("criadoEm", "desc"));
-  else clausulas.push(orderBy("nome"));
+    const termo = termoBusca.trim();
+    if (termo) {
+      // Busca por prefixo precisa que orderBy/where sejam no mesmo campo (nome).
+      clausulas.push(where("nome", ">=", termo), where("nome", "<=", termo + "\uf8ff"), orderBy("nome"));
+    } else if (ordenar === "preco_asc") clausulas.push(orderBy("preco", "asc"));
+    else if (ordenar === "preco_desc") clausulas.push(orderBy("preco", "desc"));
+    else if (ordenar === "recentes") clausulas.push(orderBy("criadoEm", "desc"));
+    else clausulas.push(orderBy("nome"));
 
-  clausulas.push(limit(tamanho + 1));
-  if (cursor) clausulas.push(startAfter(cursor));
+    clausulas.push(limit(tamanho + 1));
+    if (cursor) clausulas.push(startAfter(cursor));
 
-  const snap = await getDocs(query(col, ...clausulas));
-  let docs = snap.docs;
-  const temMais = docs.length > tamanho;
-  docs = docs.slice(0, tamanho);
-  const produtos = docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(query(col, ...clausulas));
+    let docs = snap.docs;
+    const temMais = docs.length > tamanho;
+    docs = docs.slice(0, tamanho);
+    const produtos = docs.map(d => ({ id: d.id, ...d.data() }));
 
-  return { produtos, cursor: docs.at(-1) || null, temMais };
+    return { produtos, cursor: docs.at(-1) || null, temMais };
+  });
 }
 
 /**
@@ -297,144 +337,208 @@ export async function buscarProdutosCatalogo({
  * documentos (getCountFromServer = 1 leitura agregada, não N leituras).
  * Usada pros números ao lado de cada opção de filtro no catálogo.
  */
-export async function contarProdutosCatalogo({
+export function contarProdutosCatalogo({
   categoria = "", marca = "", marcas = [], faixaPreco = "", faixasPreco = [], disponibilidade = "", termoBusca = ""
 } = {}) {
-  const col = collection(db, "produtos");
-  const clausulas = [where("status", "!=", "oculto")];
-  if (categoria) clausulas.push(where("categoria", "==", categoria));
-  const listaMarcas = marca ? [marca] : marcas;
-  if (listaMarcas.length === 1) clausulas.push(where("marca", "==", listaMarcas[0]));
-  else if (listaMarcas.length > 1) clausulas.push(where("marca", "in", listaMarcas.slice(0, 10)));
-  const listaFaixas = faixaPreco ? [faixaPreco] : faixasPreco;
-  if (listaFaixas.length === 1) clausulas.push(where("faixaPreco", "==", listaFaixas[0]));
-  else if (listaFaixas.length > 1) clausulas.push(where("faixaPreco", "in", listaFaixas.slice(0, 10)));
-  if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
-  else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
-  const termo = termoBusca.trim();
-  if (termo) clausulas.push(where("nome", ">=", termo), where("nome", "<=", termo + "\uf8ff"));
+  return withLoading("contarProdutosCatalogo", async () => {
+    const col = collection(db, "produtos");
+    const clausulas = [where("status", "!=", "oculto")];
+    if (categoria) clausulas.push(where("categoria", "==", categoria));
+    const listaMarcas = marca ? [marca] : marcas;
+    if (listaMarcas.length === 1) clausulas.push(where("marca", "==", listaMarcas[0]));
+    else if (listaMarcas.length > 1) clausulas.push(where("marca", "in", listaMarcas.slice(0, 10)));
+    const listaFaixas = faixaPreco ? [faixaPreco] : faixasPreco;
+    if (listaFaixas.length === 1) clausulas.push(where("faixaPreco", "==", listaFaixas[0]));
+    else if (listaFaixas.length > 1) clausulas.push(where("faixaPreco", "in", listaFaixas.slice(0, 10)));
+    if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
+    else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
+    const termo = termoBusca.trim();
+    if (termo) clausulas.push(where("nome", ">=", termo), where("nome", "<=", termo + "\uf8ff"));
 
-  const snap = await getCountFromServer(query(col, ...clausulas));
-  return snap.data().count;
+    const snap = await getCountFromServer(query(col, ...clausulas));
+    return snap.data().count;
+  });
 }
 
 // ---------- CATEGORIAS ----------
-export async function listarCategorias() {
-  const snap = await getDocs(collection(db, "categorias"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-export function escutarCategorias(callback) {
-  return onSnapshot(collection(db, "categorias"), (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+export function listarCategorias() {
+  return withLoading("listarCategorias", async () => {
+    const snap = await getDocs(collection(db, "categorias"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
-export async function criarCategoria(nome, emoji = "", imagem = "") {
-  return addDoc(collection(db, "categorias"), { nome, emoji, imagem });
+export function escutarCategorias(callback) {
+  const finalizarPrimeiroSnapshot = beginListener("escutarCategorias");
+  return onSnapshot(collection(db, "categorias"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    finalizarPrimeiroSnapshot();
+  }, (erro) => {
+    finalizarPrimeiroSnapshot();
+    console.error("[escutarCategorias] erro no listener:", erro);
+  });
 }
-export async function atualizarCategoria(id, dados) {
-  return updateDoc(doc(db, "categorias", id), dados);
+export function criarCategoria(nome, emoji = "", imagem = "") {
+  return withLoading("criarCategoria", async () => {
+    return addDoc(collection(db, "categorias"), { nome, emoji, imagem });
+  });
 }
-export async function excluirCategoria(id) {
-  return deleteDoc(doc(db, "categorias", id));
+export function atualizarCategoria(id, dados) {
+  return withLoading("atualizarCategoria", async () => {
+    return updateDoc(doc(db, "categorias", id), dados);
+  });
+}
+export function excluirCategoria(id) {
+  return withLoading("excluirCategoria", async () => {
+    return deleteDoc(doc(db, "categorias", id));
+  });
 }
 
 // ---------- MARCAS ----------
-export async function listarMarcas() {
-  const snap = await getDocs(collection(db, "marcas"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-export function escutarMarcas(callback) {
-  return onSnapshot(collection(db, "marcas"), (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+export function listarMarcas() {
+  return withLoading("listarMarcas", async () => {
+    const snap = await getDocs(collection(db, "marcas"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
-export async function criarMarca(dados) {
-  return addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
+export function escutarMarcas(callback) {
+  const finalizarPrimeiroSnapshot = beginListener("escutarMarcas");
+  return onSnapshot(collection(db, "marcas"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    finalizarPrimeiroSnapshot();
+  }, (erro) => {
+    finalizarPrimeiroSnapshot();
+    console.error("[escutarMarcas] erro no listener:", erro);
+  });
 }
-export async function atualizarMarca(id, dados) {
-  return updateDoc(doc(db, "marcas", id), dados);
+export function criarMarca(dados) {
+  return withLoading("criarMarca", async () => {
+    return addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
+  });
 }
-export async function excluirMarca(id) {
-  return deleteDoc(doc(db, "marcas", id));
+export function atualizarMarca(id, dados) {
+  return withLoading("atualizarMarca", async () => {
+    return updateDoc(doc(db, "marcas", id), dados);
+  });
+}
+export function excluirMarca(id) {
+  return withLoading("excluirMarca", async () => {
+    return deleteDoc(doc(db, "marcas", id));
+  });
 }
 
 // ---------- CLIENTES ----------
-export async function listarClientes() {
-  const snap = await getDocs(collection(db, "clientes"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export function listarClientes() {
+  return withLoading("listarClientes", async () => {
+    const snap = await getDocs(collection(db, "clientes"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
 }
-export async function criarCliente(dados) {
-  return addDoc(collection(db, "clientes"), { ...dados, criadoEm: serverTimestamp() });
+export function criarCliente(dados) {
+  return withLoading("criarCliente", async () => {
+    return addDoc(collection(db, "clientes"), { ...dados, criadoEm: serverTimestamp() });
+  });
 }
-export async function atualizarCliente(id, dados) {
-  return updateDoc(doc(db, "clientes", id), dados);
+export function atualizarCliente(id, dados) {
+  return withLoading("atualizarCliente", async () => {
+    return updateDoc(doc(db, "clientes", id), dados);
+  });
 }
-export async function excluirCliente(id) {
-  return deleteDoc(doc(db, "clientes", id));
+export function excluirCliente(id) {
+  return withLoading("excluirCliente", async () => {
+    return deleteDoc(doc(db, "clientes", id));
+  });
 }
 
 // ---------- ETIQUETAS ----------
-export async function listarEtiquetas() {
-  const snap = await getDocs(collection(db, "etiquetas"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export function listarEtiquetas() {
+  return withLoading("listarEtiquetas", async () => {
+    const snap = await getDocs(collection(db, "etiquetas"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
 }
-export async function criarEtiqueta(nome) {
-  return addDoc(collection(db, "etiquetas"), { nome });
+export function criarEtiqueta(nome) {
+  return withLoading("criarEtiqueta", async () => {
+    return addDoc(collection(db, "etiquetas"), { nome });
+  });
 }
-export async function excluirEtiqueta(id) {
-  return deleteDoc(doc(db, "etiquetas", id));
+export function excluirEtiqueta(id) {
+  return withLoading("excluirEtiqueta", async () => {
+    return deleteDoc(doc(db, "etiquetas", id));
+  });
 }
 
 // ---------- LEADS PERDIDOS ----------
-export async function salvarLeadPerdido(lead) {
-  return addDoc(collection(db, "leadsPerdidos"), {
-    ...lead,
-    status: "lead_perdido",
-    data: serverTimestamp()
+export function salvarLeadPerdido(lead) {
+  return withLoading("salvarLeadPerdido", async () => {
+    return addDoc(collection(db, "leadsPerdidos"), {
+      ...lead,
+      status: "lead_perdido",
+      data: serverTimestamp()
+    });
   });
 }
-export async function listarLeadsPerdidos() {
-  const snap = await getDocs(query(collection(db, "leadsPerdidos"), orderBy("data", "desc")));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export function listarLeadsPerdidos() {
+  return withLoading("listarLeadsPerdidos", async () => {
+    const snap = await getDocs(query(collection(db, "leadsPerdidos"), orderBy("data", "desc")));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
 }
-export async function marcarLeadRecuperado(id) {
-  return updateDoc(doc(db, "leadsPerdidos", id), { status: "recuperado" });
+export function marcarLeadRecuperado(id) {
+  return withLoading("marcarLeadRecuperado", async () => {
+    return updateDoc(doc(db, "leadsPerdidos", id), { status: "recuperado" });
+  });
 }
 
 // ---------- PEDIDOS ----------
-export async function criarPedido(dados) {
-  return addDoc(collection(db, "pedidos"), { ...dados, status: "pendente", criadoEm: serverTimestamp() });
+export function criarPedido(dados) {
+  return withLoading("criarPedido", async () => {
+    return addDoc(collection(db, "pedidos"), { ...dados, status: "pendente", criadoEm: serverTimestamp() });
+  });
 }
-export async function listarPedidosUsuario(usuarioId) {
-  const snap = await getDocs(query(collection(db, "pedidos"), where("usuarioId", "==", usuarioId)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
+export function listarPedidosUsuario(usuarioId) {
+  return withLoading("listarPedidosUsuario", async () => {
+    const snap = await getDocs(query(collection(db, "pedidos"), where("usuarioId", "==", usuarioId)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
+  });
 }
 
 // ---------- ENDEREÇOS ----------
-export async function listarEnderecos(usuarioId) {
-  const snap = await getDocs(query(collection(db, "enderecos"), where("usuarioId", "==", usuarioId)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export function listarEnderecos(usuarioId) {
+  return withLoading("listarEnderecos", async () => {
+    const snap = await getDocs(query(collection(db, "enderecos"), where("usuarioId", "==", usuarioId)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
 }
-export async function criarEndereco(usuarioId, dados) {
-  return addDoc(collection(db, "enderecos"), { ...dados, usuarioId, criadoEm: serverTimestamp() });
+export function criarEndereco(usuarioId, dados) {
+  return withLoading("criarEndereco", async () => {
+    return addDoc(collection(db, "enderecos"), { ...dados, usuarioId, criadoEm: serverTimestamp() });
+  });
 }
-export async function excluirEndereco(id) {
-  return deleteDoc(doc(db, "enderecos", id));
+export function excluirEndereco(id) {
+  return withLoading("excluirEndereco", async () => {
+    return deleteDoc(doc(db, "enderecos", id));
+  });
 }
 
 // ---------- PERFIL (preferências / configurações) ----------
-export async function atualizarPerfilUsuario(uid, dados) {
-  return setDoc(doc(db, "usuarios", uid), dados, { merge: true });
+export function atualizarPerfilUsuario(uid, dados) {
+  return withLoading("atualizarPerfilUsuario", async () => {
+    return setDoc(doc(db, "usuarios", uid), dados, { merge: true });
+  });
 }
 
 // ---------- USUÁRIOS ----------
-export async function obterPerfilUsuario(uid) {
-  const ref = doc(db, "usuarios", uid);
-  const snap = await getDoc(ref);
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+export function obterPerfilUsuario(uid) {
+  return withLoading("obterPerfilUsuario", async () => {
+    const ref = doc(db, "usuarios", uid);
+    const snap = await getDoc(ref);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  });
 }
-export async function listarUsuarios() {
-  const snap = await getDocs(collection(db, "usuarios"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export function listarUsuarios() {
+  return withLoading("listarUsuarios", async () => {
+    const snap = await getDocs(collection(db, "usuarios"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
 }
