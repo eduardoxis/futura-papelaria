@@ -177,7 +177,7 @@
 </aside>
 
 <script type="module">
-import { obterProduto, listarProdutos, listarCategorias, incrementarVisualizacao } from "../js/services/firestore.js";
+import { obterProduto, listarProdutosPorCategoria, listarCategorias, incrementarVisualizacao } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos } from "../js/utils/utils.js";
 import { renderizarGrade, cartaoProduto, compartilharProduto, obterFavoritos, alternarFavorito } from "../js/modules/products.js";
 import { ouvirEstadoAuth, ehAdmin, sair } from "../js/services/auth.js";
@@ -186,6 +186,9 @@ import {
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
 } from "../js/modules/cart.js";
 import { ICONS, icon } from "../js/utils/icons.js";
+import { iniciarLoadingGlobal } from "../js/utils/loadingUI.js";
+
+iniciarLoadingGlobal();
 
 function aplicarIconesEstaticos() {
   document.querySelectorAll("[data-icon]").forEach(el => {
@@ -243,9 +246,13 @@ function renderizarSeletorCores(produto) {
 
 async function renderizarRelacionados(produto) {
   try {
-    const todos = await listarProdutos({ apenasAtivos: true });
-    const relacionados = todos
-      .filter(p => p.id !== produto.id && p.categoria === produto.categoria)
+    // Antes baixava TODO o catálogo só pra filtrar por categoria no
+    // navegador. Trocado por uma consulta já filtrada e limitada no
+    // Firestore (mesma função usada em outras vitrines) — resultado
+    // idêntico, mas sem baixar produtos que nunca seriam usados aqui.
+    const daCategoria = await listarProdutosPorCategoria(produto.categoria, 7);
+    const relacionados = daCategoria
+      .filter(p => p.id !== produto.id)
       .slice(0, 6);
     if (!relacionados.length) return;
     document.querySelector("#secao-relacionados").hidden = false;
