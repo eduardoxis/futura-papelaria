@@ -1,4 +1,4 @@
-// js/cart.js
+// js/modules/cart.js
 import { formatBRL, escHtml, podeExecutar } from "../utils/utils.js";
 import { salvarLeadPerdido } from "../services/firestore.js";
 import { STORE_CONFIG } from "../../firebase/firebase-config.js";
