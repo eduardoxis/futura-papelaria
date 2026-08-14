@@ -1,4 +1,4 @@
-// js/cloudinary.js
+// js/services/cloudinary.js
 import { withLoading } from "../utils/loadingManager.js";
 // Upload de imagens para o Cloudinary usando upload ASSINADO: o navegador
 // pede uma assinatura pra nossa própria function (/api/cloudinary-signature,
