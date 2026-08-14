@@ -18,6 +18,9 @@ import { iniciarPainelAdmin } from "./modules/dashboard.js";
 import { iniciarOrcamento } from "./modules/orcamento.js";
 import { ICONS, icon } from "./utils/icons.js";
 import { STORE_CONFIG } from "../firebase/firebase-config.js";
+import { iniciarLoadingGlobal } from "./utils/loadingUI.js";
+
+iniciarLoadingGlobal();
 
 let filtrosAtivos = {};
 
