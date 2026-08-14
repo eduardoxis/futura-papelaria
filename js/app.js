@@ -10,7 +10,7 @@ import { buscarProdutos } from "./modules/search.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
-} from "./cart.js";
+} from "./modules/cart.js";
 import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos, registrarErroCliente } from "./utils/utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha, atualizarNomeAuth } from "./services/auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./utils/modal.js";
