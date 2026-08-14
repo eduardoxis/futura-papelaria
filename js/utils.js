@@ -1,4 +1,23 @@
 // js/utils.js
+
+// Grava um erro do lado do cliente em "logsErros" (Firestore), pro admin
+// conseguir ver depois no Dashboard. Import dinâmico pra não criar
+// dependência circular com módulos que já importam utils.js.
+export async function registrarErroCliente(origem, erro, extra = {}) {
+  try {
+    const { db } = await import("../firebase/firebase-config.js");
+    const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    await addDoc(collection(db, "logsErros"), {
+      origem,
+      mensagem: String(erro?.message || erro || "Erro desconhecido"),
+      extra,
+      criadoEm: serverTimestamp()
+    });
+  } catch {
+    // Se nem o log der certo, não tem o que fazer — não pode travar a UI por isso.
+  }
+}
+
 export function escHtml(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
