@@ -44,8 +44,17 @@ service cloud.firestore {
 
     // ---------- PEDIDOS ----------
     // Cliente cria e lê apenas os próprios pedidos; admin lê/edita tudo.
+    // A validação abaixo impede que alguém escreva direto pelo SDK do
+    // cliente um pedido com campos faltando, tipos errados, total negativo
+    // ou um total que não bate com a soma dos itens.
     match /pedidos/{id} {
-      allow create: if autenticado() && request.resource.data.usuarioId == request.auth.uid;
+      allow create: if autenticado() &&
+        request.resource.data.usuarioId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['usuarioId', 'itens', 'total', 'criadoEm']) &&
+        request.resource.data.itens is list && request.resource.data.itens.size() > 0 &&
+        request.resource.data.itens.size() <= 100 &&
+        request.resource.data.total is number && request.resource.data.total >= 0 &&
+        (!('status' in request.resource.data) || request.resource.data.status == 'pendente');
       allow read: if autenticado() && (resource.data.usuarioId == request.auth.uid || ehAdmin());
       allow update, delete: if ehAdmin();
     }
@@ -71,6 +80,21 @@ service cloud.firestore {
         request.resource.data.cargos == ['cliente'];
       allow update: if ehAdmin();
       allow delete: if ehAdmin();
+    }
+
+    // ---------- LOGS DE ERRO (monitoramento) ----------
+    // Client e as functions gravam aqui quando algo falha (upload, relatório,
+    // criação de pedido). Ninguém além do admin lista ou lê os logs.
+    match /logsErros/{id} {
+      allow create: if request.resource.data.keys().hasAll(['origem', 'mensagem', 'criadoEm']);
+      allow read, delete: if ehAdmin();
+      allow update: if false;
+    }
+
+    // ---------- LIMITES DE USO (rate limit das functions) ----------
+    // Só as próprias functions (Admin SDK, que ignora rules) leem/escrevem aqui.
+    match /limitesUso/{id} {
+      allow read, write: if false;
     }
 
     // ---------- LEADS PERDIDOS ----------
