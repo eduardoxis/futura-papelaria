@@ -297,6 +297,9 @@ import {
 } from "../js/modules/cart.js";
 import { ouvirEstadoAuth, usuarioAtual, ehAdmin, sair } from "../js/services/auth.js";
 import { ICONS } from "../js/utils/icons.js";
+import { iniciarLoadingGlobal } from "../js/utils/loadingUI.js";
+
+iniciarLoadingGlobal();
 
 const MARCAS_VISIVEIS_INICIAL = 6;
 const POR_PAGINA = 20;
@@ -324,6 +327,14 @@ let paginaAtual = 1;
 let cursoresPorPagina = { 1: null };
 let temMaisProximaPagina = false;
 let carregando = false;
+// Token de requisição: em vez de simplesmente IGNORAR uma nova busca
+// enquanto a anterior ainda está em andamento (o que fazia o filtro mais
+// recente do usuário "sumir" quando o Firestore demorava um pouco mais),
+// cada chamada a render() ganha um número. Só o resultado da chamada MAIS
+// RECENTE é aplicado na tela; respostas antigas que chegam atrasadas são
+// descartadas silenciosamente, sem travar nem sobrescrever o que o
+// usuário já pediu depois.
+let tokenRequisicaoAtual = 0;
 
 const estado = {
   termo: getQueryParam("q") || "",
@@ -505,7 +516,10 @@ function desenharPaginacao() {
 }
 
 async function render() {
-  if (carregando) return;
+  // Cada chamada recebe um token novo e mais alto que o anterior. Isso
+  // substitui o antigo "if (carregando) return" — que descartava buscas
+  // novas em vez de refletir o filtro mais recente do usuário.
+  const meuToken = ++tokenRequisicaoAtual;
   carregando = true;
   const grade = document.querySelector("#grade-catalogo");
   grade.setAttribute("aria-busy", "true");
@@ -522,6 +536,11 @@ async function render() {
       ordenar: estado.ordenar
     });
 
+    // Se enquanto esperávamos essa resposta o usuário já disparou outra
+    // busca/filtro mais recente, essa aqui está desatualizada — descarta
+    // sem tocar na tela (quem manda é sempre a requisição mais recente).
+    if (meuToken !== tokenRequisicaoAtual) return;
+
     cursoresPorPagina[paginaAtual + 1] = cursor;
     temMaisProximaPagina = temMais;
 
@@ -533,18 +552,24 @@ async function render() {
       termoBusca: estado.termo
     });
 
+    if (meuToken !== tokenRequisicaoAtual) return;
+
     document.querySelector("#contador-produtos").textContent = contador;
     renderizarGrade(grade, produtos);
     desenharPaginacao();
   } catch (erro) {
+    if (meuToken !== tokenRequisicaoAtual) return; // busca desatualizada, ignora até o erro
     console.error(erro);
     // Erro mais comum aqui é o Firestore pedindo um índice composto novo —
     // o link pra criar aparece no console do navegador (F12).
     grade.innerHTML = `<div class="empty-state">Não foi possível carregar os produtos agora. Tente novamente em instantes.</div>`;
     toast("Erro ao carregar produtos.", "error");
   } finally {
-    carregando = false;
-    grade.removeAttribute("aria-busy");
+    // Só a requisição mais recente controla o estado visual de "carregando".
+    if (meuToken === tokenRequisicaoAtual) {
+      carregando = false;
+      grade.removeAttribute("aria-busy");
+    }
   }
 }
 
