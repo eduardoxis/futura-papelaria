@@ -1,4 +1,4 @@
-// js/dashboard.js
+// js/modules/dashboard.js
 import {
   listarProdutos, listarProdutosPagina, buscarProdutosPorPrefixo, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
   listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
