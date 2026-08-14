@@ -164,7 +164,24 @@ export function listarProdutosDestaque(tamanho = 8) {
       where("etiquetas", "array-contains-any", ["Mais Vendido", "Promoção"]),
       limit(tamanho + 4)
     ));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+    const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+    if (produtos.length) return produtos;
+
+    try {
+      const snapRecentes = await getDocs(query(
+        collection(db, "produtos"),
+        orderBy("criadoEm", "desc"),
+        limit(tamanho + 4)
+      ));
+      const recentes = snapRecentes.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+      if (recentes.length) return recentes;
+    } catch { /* segue pro fallback final abaixo */ }
+
+    // Último fallback: se nada tiver etiqueta de destaque nem campo
+    // criadoEm válido pra ordenar (ex: produtos importados em lote sem
+    // esse campo), pega qualquer produto ativo em vez de mostrar vazio.
+    const snapTodos = await getDocs(query(collection(db, "produtos"), limit(tamanho + 4)));
+    return snapTodos.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
   });
 }
 
