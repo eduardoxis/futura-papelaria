@@ -121,6 +121,14 @@ async function carregarDashboard(container) {
         <button class="btn-secondary" id="btn-baixar-relatorio-csv" style="display:none;">${icon("archive")}Baixar CSV</button>
       </div>
       <div id="resultado-relatorio"></div>
+    </div>
+    <div class="dash-list" id="bloco-erros-recentes">
+      <h4>Erros recentes do sistema</h4>
+      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
+        Falhas de upload, relatório ou pedidos registradas automaticamente (últimos 20).
+      </p>
+      <button class="btn-secondary" id="btn-carregar-erros">${icon("archive")}Carregar erros recentes</button>
+      <div id="lista-erros-recentes" style="margin-top:0.75rem;"></div>
     </div>`;
 
   container.querySelector("#btn-migrar-filtros")?.addEventListener("click", async (e) => {
@@ -218,6 +226,34 @@ async function carregarDashboard(container) {
     a.download = "relatorio-vendas.csv";
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  container.querySelector("#btn-carregar-erros")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const lista = container.querySelector("#lista-erros-recentes");
+    btn.disabled = true;
+    lista.innerHTML = `<p style="color:var(--cinza-500);font-size:0.85rem;">Carregando...</p>`;
+    try {
+      const { collection, query, orderBy, limit, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { db } = await import("../firebase/firebase-config.js");
+      const snap = await getDocs(query(collection(db, "logsErros"), orderBy("criadoEm", "desc"), limit(20)));
+      if (snap.empty) {
+        lista.innerHTML = `<p style="color:var(--cinza-500);font-size:0.85rem;">Nenhum erro registrado. 🎉</p>`;
+        return;
+      }
+      lista.innerHTML = `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.5rem;">${snap.docs.map(d => {
+        const l = d.data();
+        const quando = l.criadoEm?.toDate ? l.criadoEm.toDate().toLocaleString("pt-BR") : "—";
+        return `<li style="border:1px solid var(--cinza-200,#eee);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.82rem;">
+          <strong>${escHtml(l.origem || "desconhecido")}</strong> · <span style="color:var(--cinza-500);">${quando}</span>
+          <br>${escHtml(l.mensagem || "")}
+        </li>`;
+      }).join("")}</ul>`;
+    } catch (erro) {
+      lista.innerHTML = `<p style="color:var(--erro,#c0392b);font-size:0.85rem;">Falha ao carregar erros: ${escHtml(erro.message || "")}</p>`;
+    } finally {
+      btn.disabled = false;
+    }
   });
 }
 
