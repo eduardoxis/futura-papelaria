@@ -6,6 +6,8 @@
 
 import { obterDbAdmin } from "./_firebaseAdmin.js";
 import { exigirAdmin } from "./_auth.js";
+import { aplicarLimite } from "./_rateLimit.js";
+import { registrarErro } from "./_log.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -14,7 +16,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    await exigirAdmin(req);
+    const uid = await exigirAdmin(req);
+    await aplicarLimite(`relatorio:${uid}`, { maximo: 30, janelaMs: 10 * 60 * 1000 });
 
     const agora = new Date();
     const trintaDiasAtras = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -74,6 +77,7 @@ export default async function handler(req, res) {
 
     res.status(200).json(relatorio);
   } catch (erro) {
+    await registrarErro("relatorio-vendas", erro);
     res.status(erro.status || 500).json({ erro: erro.message || "Falha ao gerar relatório." });
   }
 }
