@@ -11,7 +11,7 @@ import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
 } from "./cart.js";
-import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos } from "./utils.js";
+import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos, registrarErroCliente } from "./utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha, atualizarNomeAuth } from "./auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./modal.js";
 import { iniciarPainelAdmin } from "./dashboard.js";
@@ -400,7 +400,10 @@ function configurarCarrinhoUI() {
         nomeCliente: nomeParaPedido,
         itens: carrinho.map(i => ({ id: i.id, nome: i.nome, quantidade: i.quantidade, preco: i.preco, cor: i.cor || "" })),
         total
-      }).catch(() => {});
+      }).catch((erro) => {
+        toast("Pedido não foi salvo no seu histórico, mas o WhatsApp vai abrir normalmente.", "error");
+        registrarErroCliente("checkout-criarPedido", erro, { usuarioId: usuarioAtual.uid });
+      });
     }
     finalizarPedidoWhatsApp(nomeParaPedido);
     fechar();
