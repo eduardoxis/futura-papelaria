@@ -1,11 +1,11 @@
 // js/services/firestore.js
 import { db } from "../../firebase/firebase-config.js";
 import {
-import { withLoading, beginListener } from "../utils/loadingManager.js";
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, increment, onSnapshot,
   runTransaction, getCountFromServer
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { withLoading, beginListener } from "../utils/loadingManager.js";
 
 // ---------- CAMPOS DERIVADOS (pra filtrar no catálogo sem baixar tudo) ----------
 /**
