@@ -288,15 +288,15 @@
 </aside>
 
 <script type="module">
-import { listarCategorias, listarMarcas, buscarProdutosCatalogo, contarProdutosCatalogo } from "../js/firestore.js";
-import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce } from "../js/utils.js";
-import { renderizarGrade } from "../js/products.js";
+import { listarCategorias, listarMarcas, buscarProdutosCatalogo, contarProdutosCatalogo } from "../js/services/firestore.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce } from "../js/utils/utils.js";
+import { renderizarGrade } from "../js/modules/products.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
-} from "../js/cart.js";
-import { ouvirEstadoAuth, usuarioAtual, ehAdmin, sair } from "../js/auth.js";
-import { ICONS } from "../js/icons.js";
+} from "../js/modules/cart.js";
+import { ouvirEstadoAuth, usuarioAtual, ehAdmin, sair } from "../js/services/auth.js";
+import { ICONS } from "../js/utils/icons.js";
 
 const MARCAS_VISIVEIS_INICIAL = 6;
 const POR_PAGINA = 20;
