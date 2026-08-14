@@ -13,6 +13,8 @@
 
 import crypto from "node:crypto";
 import { exigirAdmin } from "./_auth.js";
+import { aplicarLimite } from "./_rateLimit.js";
+import { registrarErro } from "./_log.js";
 
 const PASTA = "papelaria-futura";
 const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
@@ -25,7 +27,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    await exigirAdmin(req);
+    const uid = await exigirAdmin(req);
+    await aplicarLimite(`cloudinary:${uid}`, { maximo: 20, janelaMs: 10 * 60 * 1000 });
 
     const { tamanho, tipo } = req.body || {};
     if (typeof tamanho === "number" && tamanho > TAMANHO_MAXIMO_BYTES) {
@@ -53,6 +56,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ signature, timestamp, apiKey, cloudName, folder: PASTA });
   } catch (erro) {
+    await registrarErro("cloudinary-signature", erro);
     res.status(erro.status || 500).json({ erro: erro.message || "Falha ao gerar assinatura." });
   }
 }
