@@ -178,7 +178,7 @@
 
 <script type="module">
 import { obterProduto, listarProdutosPorCategoria, listarCategorias, incrementarVisualizacao } from "../js/services/firestore.js";
-import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos } from "../js/utils/utils.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos, registrarErroCliente } from "../js/utils/utils.js";
 import { renderizarGrade, cartaoProduto, compartilharProduto, obterFavoritos, alternarFavorito } from "../js/modules/products.js";
 import { ouvirEstadoAuth, ehAdmin, sair } from "../js/services/auth.js";
 import {
@@ -189,6 +189,18 @@ import { ICONS, icon } from "../js/utils/icons.js";
 import { iniciarLoadingGlobal } from "../js/utils/loadingUI.js";
 
 iniciarLoadingGlobal();
+
+(function monitorarErrosGlobais() {
+  const jaRegistrados = new Set();
+  function registrar(origem, erro) {
+    const chave = `${origem}:${String(erro?.message || erro)}`;
+    if (jaRegistrados.has(chave)) return;
+    jaRegistrados.add(chave);
+    registrarErroCliente(origem, erro);
+  }
+  window.addEventListener("error", (e) => registrar("erro-js-global", e.error || e.message));
+  window.addEventListener("unhandledrejection", (e) => registrar("promise-rejeitada", e.reason));
+})();
 
 function aplicarIconesEstaticos() {
   document.querySelectorAll("[data-icon]").forEach(el => {
