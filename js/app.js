@@ -22,6 +22,22 @@ import { iniciarLoadingGlobal } from "./utils/loadingUI.js";
 
 iniciarLoadingGlobal();
 
+// Captura qualquer erro de JS ou Promise rejeitada sem tratamento que
+// aconteça em produção — sem isso, um bug em produção falha silenciosamente
+// pro usuário e o admin nunca fica sabendo. Registrado 1x por sessão de
+// cada tipo de erro pra não inundar o Firestore se algo ficar repetindo.
+(function monitorarErrosGlobais() {
+  const jaRegistrados = new Set();
+  function registrar(origem, erro) {
+    const chave = `${origem}:${String(erro?.message || erro)}`;
+    if (jaRegistrados.has(chave)) return;
+    jaRegistrados.add(chave);
+    registrarErroCliente(origem, erro);
+  }
+  window.addEventListener("error", (e) => registrar("erro-js-global", e.error || e.message));
+  window.addEventListener("unhandledrejection", (e) => registrar("promise-rejeitada", e.reason));
+})();
+
 let filtrosAtivos = {};
 
 function iconeParaCategoria(nome = "") {
