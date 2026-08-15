@@ -289,7 +289,7 @@
 
 <script type="module">
 import { listarCategorias, listarMarcas, buscarProdutosCatalogo, contarProdutosCatalogo } from "../js/services/firestore.js";
-import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce } from "../js/utils/utils.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce, registrarErroCliente } from "../js/utils/utils.js";
 import { renderizarGrade } from "../js/modules/products.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
@@ -300,6 +300,18 @@ import { ICONS } from "../js/utils/icons.js";
 import { iniciarLoadingGlobal } from "../js/utils/loadingUI.js";
 
 iniciarLoadingGlobal();
+
+(function monitorarErrosGlobais() {
+  const jaRegistrados = new Set();
+  function registrar(origem, erro) {
+    const chave = `${origem}:${String(erro?.message || erro)}`;
+    if (jaRegistrados.has(chave)) return;
+    jaRegistrados.add(chave);
+    registrarErroCliente(origem, erro);
+  }
+  window.addEventListener("error", (e) => registrar("erro-js-global", e.error || e.message));
+  window.addEventListener("unhandledrejection", (e) => registrar("promise-rejeitada", e.reason));
+})();
 
 const MARCAS_VISIVEIS_INICIAL = 6;
 const POR_PAGINA = 20;
