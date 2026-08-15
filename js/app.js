@@ -607,6 +607,10 @@ function configurarModalAuth() {
       erroEl.textContent = "As senhas não coincidem.";
       return;
     }
+    if (!form.aceiteTermos.checked) {
+      erroEl.textContent = "É preciso concordar com a Política de Privacidade para criar a conta.";
+      return;
+    }
     const tipoConta = form.tipoConta.value;
     const dados = tipoConta === "empresa"
       ? {
