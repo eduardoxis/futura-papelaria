@@ -802,6 +802,9 @@ button {
 #form-cadastrar-modal [data-campos-tipo] { display: grid; gap: 0.85rem; }
 #form-cadastrar-modal [data-campos-tipo][hidden] { display: none; }
 .auth-error { color: #b42318; font-size: 0.82rem; min-height: 1.1em; margin: 0; }
+.campo-consentimento { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--cinza-600, #4b5563); cursor: pointer; margin: 0.4rem 0; }
+.campo-consentimento input { margin-top: 0.2rem; flex-shrink: 0; }
+.campo-consentimento a { color: var(--azul-600, #2563eb); }
 .auth-success { color: #1a7f4e; font-size: 0.82rem; margin: 0; line-height: 1.5; background: #eafaf1; border-radius: var(--raio-sm); padding: 0.6rem 0.75rem; }
 .auth-info { color: var(--cinza-500); font-size: 0.85rem; margin: 0 0 -0.3rem; line-height: 1.5; }
 #form-entrar-modal .checkbox-inline, #form-cadastrar-modal .checkbox-inline {
