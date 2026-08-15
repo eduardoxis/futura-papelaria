@@ -97,6 +97,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ---------- ALERTAS DE ESTOQUE BAIXO (gerado pelo cron) ----------
+    // Só a function (Admin SDK) grava aqui; o admin lê no painel.
+    match /alertasEstoque/{id} {
+      allow read: if ehAdmin();
+      allow write: if false;
+    }
+
     // ---------- LEADS PERDIDOS ----------
     // Qualquer visitante (mesmo sem login) pode CRIAR um lead ao abandonar o carrinho,
     // mas ninguém além do admin pode listar/editar — evita vazar dados de outros clientes.
