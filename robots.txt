@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /pages/login.html
 
-Sitemap: https://www.papelariafutura.com.br/sitemap.xml
+Sitemap: https://futura-papelaria.vercel.app/sitemap.xml
