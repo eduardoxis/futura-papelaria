@@ -56,6 +56,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ signature, timestamp, apiKey, cloudName, folder: PASTA });
   } catch (erro) {
+    console.error("[cloudinary-signature]", erro?.status, erro?.message, erro);
     await registrarErro("cloudinary-signature", erro);
     res.status(erro.status || 500).json({ erro: erro.message || "Falha ao gerar assinatura." });
   }
