@@ -29,6 +29,15 @@ export function enviarImagemParaCloudinary(blob, nomeArquivo = "produto") {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
       body: JSON.stringify({ tamanho: blob.size, tipo: blob.type })
     });
+    if (assinaturaResp.status === 401) {
+      // Sessão expirada (token velho por inatividade) — desloga e manda
+      // pro login em vez de deixar o usuário preso num erro sem saída.
+      const { sair } = await import("./auth.js");
+      const { toast } = await import("../utils/utils.js");
+      toast("Sua sessão expirou. Faça login novamente.", "error");
+      await sair();
+      throw new Error("Sessão expirada. Faça login novamente.");
+    }
     if (!assinaturaResp.ok) {
       const erro = await assinaturaResp.json().catch(() => null);
       throw new Error(erro?.erro || "Falha ao autorizar upload de imagem.");
