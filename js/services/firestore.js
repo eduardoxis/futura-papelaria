@@ -305,6 +305,17 @@ export function ajustarEstoque(id, delta, motivo = "") {
  * é só clicar no link do erro (aparece no console do navegador) uma vez;
  * depois disso a combinação fica rápida pra sempre.
  */
+/**
+ * Remove acentos e caixa pra comparar texto de forma tolerante
+ * (ex: "cabo" bate com "Cabo USB 3.1" e "café" bate com "CAFE").
+ */
+function normalizarTexto(txt) {
+  return String(txt || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export function buscarProdutosCatalogo({
   tamanho = 24,
   cursor = null,
@@ -328,10 +339,28 @@ export function buscarProdutosCatalogo({
     else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
 
     const termo = termoBusca.trim();
+
     if (termo) {
-      // Busca por prefixo precisa que orderBy/where sejam no mesmo campo (nome).
-      clausulas.push(where("nome", ">=", termo), where("nome", "<=", termo + "\uf8ff"), orderBy("nome"));
-    } else if (ordenar === "preco_asc") clausulas.push(orderBy("preco", "asc"));
+      // Busca "contém em qualquer parte do nome" não dá pra fazer só com
+      // where() do Firestore — ele só suporta prefixo. Então baixamos os
+      // produtos que batem com os outros filtros (categoria/marca/etc,
+      // continuam no servidor) e filtramos o texto aqui no navegador.
+      // Cursor vira um índice numérico (offset) em vez de doc snapshot.
+      clausulas.push(orderBy("nome"));
+      const snap = await getDocs(query(col, ...clausulas));
+      const termoNormalizado = normalizarTexto(termo);
+      const todos = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => normalizarTexto(p.nome).includes(termoNormalizado));
+
+      const offset = typeof cursor === "number" ? cursor : 0;
+      const pagina = todos.slice(offset, offset + tamanho);
+      const temMais = offset + tamanho < todos.length;
+
+      return { produtos: pagina, cursor: temMais ? offset + tamanho : null, temMais };
+    }
+
+    if (ordenar === "preco_asc") clausulas.push(orderBy("preco", "asc"));
     else if (ordenar === "preco_desc") clausulas.push(orderBy("preco", "desc"));
     else if (ordenar === "recentes") clausulas.push(orderBy("criadoEm", "desc"));
     else clausulas.push(orderBy("nome"));
@@ -370,7 +399,15 @@ export function contarProdutosCatalogo({
     if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
     else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
     const termo = termoBusca.trim();
-    if (termo) clausulas.push(where("nome", ">=", termo), where("nome", "<=", termo + "\uf8ff"));
+
+    if (termo) {
+      // Mesma lógica de "contém" usada em buscarProdutosCatalogo — não dá
+      // pra contar no servidor com esse tipo de filtro, então baixamos os
+      // documentos (só os campos que batem nos outros filtros) e contamos aqui.
+      const snap = await getDocs(query(col, ...clausulas));
+      const termoNormalizado = normalizarTexto(termo);
+      return snap.docs.filter(d => normalizarTexto(d.data().nome).includes(termoNormalizado)).length;
+    }
 
     const snap = await getCountFromServer(query(col, ...clausulas));
     return snap.data().count;
