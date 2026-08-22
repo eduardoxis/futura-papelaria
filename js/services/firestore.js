@@ -306,6 +306,49 @@ export function ajustarEstoque(id, delta, motivo = "") {
  * depois disso a combinação fica rápida pra sempre.
  */
 /**
+ * Traz do Firestore só o conjunto restrito por, no máximo, UM campo de
+ * igualdade (categoria OU marca) + status != oculto — essa é a única
+ * combinação que usa índice composto, e já temos os dois criados
+ * (categoria+status e marca+status). Todo filtro adicional (a outra marca,
+ * faixa de preço, disponibilidade, busca por nome) e toda ordenação
+ * acontecem aqui no navegador depois. Isso evita ficar pedindo um índice
+ * novo pra cada combinação de filtros que o cliente escolher.
+ */
+async function buscarConjuntoRestrito({ categoria, marcas }) {
+  const col = collection(db, "produtos");
+  const clausulas = [where("status", "!=", "oculto")];
+
+  if (categoria) clausulas.push(where("categoria", "==", categoria));
+  else if (marcas.length === 1) clausulas.push(where("marca", "==", marcas[0]));
+
+  const snap = await getDocs(query(col, ...clausulas));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+function aplicarFiltrosClientSide(produtos, { categoria, marcas, faixasPreco, disponibilidade, termo }) {
+  let lista = produtos;
+  if (categoria) lista = lista.filter(p => p.categoria === categoria);
+  if (marcas.length) lista = lista.filter(p => marcas.includes(p.marca));
+  if (faixasPreco.length) lista = lista.filter(p => faixasPreco.includes(p.faixaPreco));
+  if (disponibilidade === "em_estoque") lista = lista.filter(p => p.disponivel === true);
+  else if (disponibilidade === "sem_estoque") lista = lista.filter(p => p.disponivel === false);
+  if (termo) {
+    const termoNormalizado = normalizarTexto(termo);
+    lista = lista.filter(p => normalizarTexto(p.nome).includes(termoNormalizado));
+  }
+  return lista;
+}
+
+function ordenarProdutos(produtos, ordenar) {
+  const lista = [...produtos];
+  if (ordenar === "preco_asc") lista.sort((a, b) => (Number(a.preco) || 0) - (Number(b.preco) || 0));
+  else if (ordenar === "preco_desc") lista.sort((a, b) => (Number(b.preco) || 0) - (Number(a.preco) || 0));
+  else if (ordenar === "recentes") lista.sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
+  else lista.sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+  return lista;
+}
+
+/**
  * Remove acentos e caixa pra comparar texto de forma tolerante
  * (ex: "cabo" bate com "Cabo USB 3.1" e "café" bate com "CAFE").
  */
@@ -327,90 +370,39 @@ export function buscarProdutosCatalogo({
   ordenar = "nome" // "nome" | "preco_asc" | "preco_desc" | "recentes"
 } = {}) {
   return withLoading("buscarProdutosCatalogo", async () => {
-    const col = collection(db, "produtos");
-    const clausulas = [where("status", "!=", "oculto")];
+    const brutos = await buscarConjuntoRestrito({ categoria, marcas });
+    const filtrados = aplicarFiltrosClientSide(brutos, {
+      categoria, marcas, faixasPreco, disponibilidade, termo: termoBusca.trim()
+    });
+    const ordenados = ordenarProdutos(filtrados, ordenar);
 
-    if (categoria) clausulas.push(where("categoria", "==", categoria));
-    if (marcas.length === 1) clausulas.push(where("marca", "==", marcas[0]));
-    else if (marcas.length > 1) clausulas.push(where("marca", "in", marcas.slice(0, 10)));
-    if (faixasPreco.length === 1) clausulas.push(where("faixaPreco", "==", faixasPreco[0]));
-    else if (faixasPreco.length > 1) clausulas.push(where("faixaPreco", "in", faixasPreco.slice(0, 10)));
-    if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
-    else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
+    // Cursor virou um offset numérico (não doc snapshot) já que a
+    // paginação agora é feita em memória, sobre a lista já filtrada.
+    const offset = typeof cursor === "number" ? cursor : 0;
+    const pagina = ordenados.slice(offset, offset + tamanho);
+    const temMais = offset + tamanho < ordenados.length;
 
-    const termo = termoBusca.trim();
-
-    if (termo) {
-      // Busca "contém em qualquer parte do nome" não dá pra fazer só com
-      // where() do Firestore — ele só suporta prefixo. Então baixamos os
-      // produtos que batem com os outros filtros (categoria/marca/etc,
-      // continuam no servidor) e filtramos o texto aqui no navegador.
-      // Cursor vira um índice numérico (offset) em vez de doc snapshot.
-      clausulas.push(orderBy("nome"));
-      const snap = await getDocs(query(col, ...clausulas));
-      const termoNormalizado = normalizarTexto(termo);
-      const todos = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(p => normalizarTexto(p.nome).includes(termoNormalizado));
-
-      const offset = typeof cursor === "number" ? cursor : 0;
-      const pagina = todos.slice(offset, offset + tamanho);
-      const temMais = offset + tamanho < todos.length;
-
-      return { produtos: pagina, cursor: temMais ? offset + tamanho : null, temMais };
-    }
-
-    if (ordenar === "preco_asc") clausulas.push(orderBy("preco", "asc"));
-    else if (ordenar === "preco_desc") clausulas.push(orderBy("preco", "desc"));
-    else if (ordenar === "recentes") clausulas.push(orderBy("criadoEm", "desc"));
-    else clausulas.push(orderBy("nome"));
-
-    clausulas.push(limit(tamanho + 1));
-    if (cursor) clausulas.push(startAfter(cursor));
-
-    const snap = await getDocs(query(col, ...clausulas));
-    let docs = snap.docs;
-    const temMais = docs.length > tamanho;
-    docs = docs.slice(0, tamanho);
-    const produtos = docs.map(d => ({ id: d.id, ...d.data() }));
-
-    return { produtos, cursor: docs.at(-1) || null, temMais };
+    return { produtos: pagina, cursor: temMais ? offset + tamanho : null, temMais };
   });
 }
 
 /**
- * Conta quantos produtos batem com um conjunto de filtros, sem baixar os
- * documentos (getCountFromServer = 1 leitura agregada, não N leituras).
- * Usada pros números ao lado de cada opção de filtro no catálogo.
+ * Conta quantos produtos batem com um conjunto de filtros. Usa o mesmo
+ * conjunto restrito + filtro client-side de buscarProdutosCatalogo, então
+ * não pede índice novo nenhum além dos dois que já existem.
  */
 export function contarProdutosCatalogo({
   categoria = "", marca = "", marcas = [], faixaPreco = "", faixasPreco = [], disponibilidade = "", termoBusca = ""
 } = {}) {
   return withLoading("contarProdutosCatalogo", async () => {
-    const col = collection(db, "produtos");
-    const clausulas = [where("status", "!=", "oculto")];
-    if (categoria) clausulas.push(where("categoria", "==", categoria));
     const listaMarcas = marca ? [marca] : marcas;
-    if (listaMarcas.length === 1) clausulas.push(where("marca", "==", listaMarcas[0]));
-    else if (listaMarcas.length > 1) clausulas.push(where("marca", "in", listaMarcas.slice(0, 10)));
     const listaFaixas = faixaPreco ? [faixaPreco] : faixasPreco;
-    if (listaFaixas.length === 1) clausulas.push(where("faixaPreco", "==", listaFaixas[0]));
-    else if (listaFaixas.length > 1) clausulas.push(where("faixaPreco", "in", listaFaixas.slice(0, 10)));
-    if (disponibilidade === "em_estoque") clausulas.push(where("disponivel", "==", true));
-    else if (disponibilidade === "sem_estoque") clausulas.push(where("disponivel", "==", false));
-    const termo = termoBusca.trim();
 
-    if (termo) {
-      // Mesma lógica de "contém" usada em buscarProdutosCatalogo — não dá
-      // pra contar no servidor com esse tipo de filtro, então baixamos os
-      // documentos (só os campos que batem nos outros filtros) e contamos aqui.
-      const snap = await getDocs(query(col, ...clausulas));
-      const termoNormalizado = normalizarTexto(termo);
-      return snap.docs.filter(d => normalizarTexto(d.data().nome).includes(termoNormalizado)).length;
-    }
-
-    const snap = await getCountFromServer(query(col, ...clausulas));
-    return snap.data().count;
+    const brutos = await buscarConjuntoRestrito({ categoria, marcas: listaMarcas });
+    const filtrados = aplicarFiltrosClientSide(brutos, {
+      categoria, marcas: listaMarcas, faixasPreco: listaFaixas, disponibilidade, termo: termoBusca.trim()
+    });
+    return filtrados.length;
   });
 }
 
