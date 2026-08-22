@@ -538,7 +538,9 @@ function abrirAjusteEnquadramento(url, onSalvar) {
 async function abrirFormularioProduto(container, produto = null) {
   const dialog = container.querySelector("#dialog-produto");
   cacheCategorias = await listarCategorias();
+  cacheMarcas = (await listarMarcas()).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
   const opcoesCategoria = cacheCategorias.map(c => `<option value="${escHtml(c.nome)}" ${produto?.categoria === c.nome ? "selected" : ""}>${escHtml(c.nome)}</option>`).join("");
+  const opcoesMarca = cacheMarcas.map(m => `<option value="${escHtml(m.nome)}" ${produto?.marca === m.nome ? "selected" : ""}>${escHtml(m.nome)}</option>`).join("");
   const opcoesEtiquetas = cacheEtiquetas.map(e => `
     <label class="chip-check">
       <input type="checkbox" value="${escHtml(e.nome)}" ${(produto?.etiquetas || []).includes(e.nome) ? "checked" : ""}> ${escHtml(e.nome)}
@@ -569,7 +571,7 @@ async function abrirFormularioProduto(container, produto = null) {
       <h3>${produto ? "Editar produto" : "Novo produto"}</h3>
       <div class="form-grid">
         <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(produto?.nome || "")}"></label>
-        <label>Marca<input name="marca" autocomplete="off" value="${escHtml(produto?.marca || "")}"></label>
+        <label>Marca<select name="marca"><option value="">Selecione</option>${opcoesMarca}</select></label>
         <label>Preço (R$)<input name="preco" type="number" step="0.01" required value="${produto?.preco ?? ""}"></label>
         <label>Quantidade<input name="quantidade" type="number" required value="${produto?.quantidade ?? 0}"></label>
         <label>Categoria<select name="categoria"><option value="">Selecione</option>${opcoesCategoria}</select></label>
