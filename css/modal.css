@@ -215,6 +215,10 @@
 }
 .input-icon--full { max-width: 340px; margin-bottom: 1rem; }
 .table-count { margin: 0.85rem 0 0; font-size: 0.85rem; color: var(--cinza-500); }
+.table-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.table-pagination__botoes { display: flex; align-items: center; gap: 0.7rem; font-size: 0.85rem; color: var(--cinza-500); }
+.table-pagination__botoes button { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+.table-pagination__botoes button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---- dashboard cards ---- */
 .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
