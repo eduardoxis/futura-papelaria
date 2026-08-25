@@ -258,11 +258,33 @@ async function carregarDashboard(container) {
 }
 
 // ---------- PRODUTOS ----------
+// Estado da paginação da tabela admin de produtos. cursores[i] guarda o
+// cursor do Firestore usado pra buscar a página i (cursores[0] = null = primeira
+// página). Evita baixar o catálogo inteiro (pode ter dezenas de milhares de
+// produtos) toda vez que o painel abre.
+const TAMANHO_PAGINA_PRODUTOS = 20;
+let estadoPaginacaoProdutos = {
+  cursores: [null],
+  paginaIndex: 0,
+  temMais: false,
+  ordenarPor: "nome",
+  direcao: "asc",
+  buscaAtiva: false
+};
+
 async function carregarAbaProdutos(container) {
   if (!container) return;
-  cacheProdutos = await listarProdutos({ apenasAtivos: false });
   cacheCategorias = await listarCategorias();
   cacheEtiquetas = await listarEtiquetas();
+
+  estadoPaginacaoProdutos = {
+    cursores: [null],
+    paginaIndex: 0,
+    temMais: false,
+    ordenarPor: "nome",
+    direcao: "asc",
+    buscaAtiva: false
+  };
 
   container.innerHTML = `
     <div class="admin-panel-head">
@@ -277,8 +299,7 @@ async function carregarAbaProdutos(container) {
       <div class="select-icon">
         ${icon("sort")}
         <select id="ordenar-admin-produtos">
-          <option value="">Ordenar: Mais recentes</option>
-          <option value="nome">Nome</option>
+          <option value="nome_asc">Ordenar: Nome</option>
           <option value="preco_asc">Menor preço</option>
           <option value="preco_desc">Maior preço</option>
         </select>
@@ -291,7 +312,14 @@ async function carregarAbaProdutos(container) {
       <thead><tr><th></th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Qtd</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody></tbody>
     </table></div>
-    <p class="table-count" id="contagem-produtos"></p>
+    <div class="table-pagination">
+      <p class="table-count" id="contagem-produtos"></p>
+      <div class="table-pagination__botoes">
+        <button type="button" class="btn-secondary" id="btn-pagina-anterior" disabled>${icon("chevronLeft")} Anterior</button>
+        <span id="label-pagina-produtos">Página 1</span>
+        <button type="button" class="btn-secondary" id="btn-pagina-proxima" disabled>Próxima ${icon("chevronRight")}</button>
+      </div>
+    </div>
     <dialog id="dialog-produto" class="dialog-form"></dialog>
     <dialog id="dialog-importar-json" class="dialog-form">
       <h2>Resultado da importação</h2>
@@ -301,21 +329,32 @@ async function carregarAbaProdutos(container) {
       </div>
     </dialog>`;
 
-  renderizarTabelaProdutos(container, cacheProdutos);
+  await carregarPaginaProdutos(container, 0);
 
+  let debounceBusca;
   container.querySelector("#busca-admin-produtos").addEventListener("input", (e) => {
-    const termo = e.target.value.toLowerCase();
-    const filtrados = cacheProdutos.filter(p => p.nome.toLowerCase().includes(termo));
-    renderizarTabelaProdutos(container, filtrados);
+    clearTimeout(debounceBusca);
+    const termo = e.target.value.trim();
+    debounceBusca = setTimeout(() => buscarProdutosAdmin(container, termo), 300);
   });
 
   container.querySelector("#ordenar-admin-produtos").addEventListener("change", (e) => {
-    const criterio = e.target.value;
-    const lista = [...cacheProdutos];
-    if (criterio === "nome") lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-    if (criterio === "preco_asc") lista.sort((a, b) => a.preco - b.preco);
-    if (criterio === "preco_desc") lista.sort((a, b) => b.preco - a.preco);
-    renderizarTabelaProdutos(container, lista);
+    const [campo, direcao] = e.target.value.split("_");
+    estadoPaginacaoProdutos.ordenarPor = campo === "preco" ? "preco" : "nome";
+    estadoPaginacaoProdutos.direcao = direcao === "desc" ? "desc" : "asc";
+    estadoPaginacaoProdutos.cursores = [null];
+    carregarPaginaProdutos(container, 0);
+  });
+
+  container.querySelector("#btn-pagina-anterior").addEventListener("click", () => {
+    if (estadoPaginacaoProdutos.paginaIndex > 0) {
+      carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex - 1);
+    }
+  });
+  container.querySelector("#btn-pagina-proxima").addEventListener("click", () => {
+    if (estadoPaginacaoProdutos.temMais) {
+      carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex + 1);
+    }
   });
 
   container.querySelector("#btn-novo-produto").addEventListener("click", () => abrirFormularioProduto(container));
@@ -328,6 +367,60 @@ async function carregarAbaProdutos(container) {
     if (!arquivo) return;
     await importarProdutosJson(container, arquivo);
   });
+}
+
+async function carregarPaginaProdutos(container, indice) {
+  const estado = estadoPaginacaoProdutos;
+  estado.buscaAtiva = false;
+  const cursor = estado.cursores[indice] ?? null;
+
+  const { produtos, cursor: novoCursor, temMais } = await listarProdutosPagina({
+    tamanho: TAMANHO_PAGINA_PRODUTOS,
+    cursor,
+    apenasAtivos: false,
+    ordenarPor: estado.ordenarPor,
+    direcao: estado.direcao
+  });
+
+  estado.paginaIndex = indice;
+  estado.temMais = temMais;
+  if (temMais) estado.cursores[indice + 1] = novoCursor;
+
+  cacheProdutos = produtos;
+  renderizarTabelaProdutos(container, produtos);
+  atualizarControlesPaginacao(container);
+}
+
+async function buscarProdutosAdmin(container, termo) {
+  if (!termo) {
+    estadoPaginacaoProdutos.buscaAtiva = false;
+    estadoPaginacaoProdutos.cursores = [null];
+    await carregarPaginaProdutos(container, 0);
+    return;
+  }
+  estadoPaginacaoProdutos.buscaAtiva = true;
+  const { produtos } = await buscarProdutosPorPrefixo(termo, { tamanho: 30 });
+  cacheProdutos = produtos;
+  renderizarTabelaProdutos(container, produtos, { busca: true });
+  atualizarControlesPaginacao(container);
+}
+
+function atualizarControlesPaginacao(container) {
+  const estado = estadoPaginacaoProdutos;
+  const label = container.querySelector("#label-pagina-produtos");
+  const btnAnterior = container.querySelector("#btn-pagina-anterior");
+  const btnProxima = container.querySelector("#btn-pagina-proxima");
+
+  if (estado.buscaAtiva) {
+    label.textContent = "Resultado da busca (até 30)";
+    btnAnterior.disabled = true;
+    btnProxima.disabled = true;
+    return;
+  }
+
+  label.textContent = `Página ${estado.paginaIndex + 1}`;
+  btnAnterior.disabled = estado.paginaIndex === 0;
+  btnProxima.disabled = !estado.temMais;
 }
 
 function normalizarProdutoImportado(item, categoriasValidas) {
@@ -421,10 +514,14 @@ async function importarProdutosJson(container, arquivo) {
   if (validos.length) toast(`${validos.length} produto(s) importado(s).`);
 }
 
-function renderizarTabelaProdutos(container, produtos) {
+function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
   const tbody = container.querySelector("#tabela-produtos tbody");
   const contagem = container.querySelector("#contagem-produtos");
-  if (contagem) contagem.textContent = `Mostrando ${produtos.length} de ${produtos.length} produtos`;
+  if (contagem) {
+    contagem.textContent = busca
+      ? `${produtos.length} resultado(s) encontrado(s)`
+      : `${produtos.length} produto(s) nesta página`;
+  }
 
   tbody.innerHTML = produtos.map(p => `
     <tr data-id="${p.id}">
@@ -457,13 +554,13 @@ function renderizarTabelaProdutos(container, produtos) {
     tr.querySelector('[data-action="duplicar"]')?.addEventListener("click", async () => {
       await duplicarProduto(produto);
       toast("Produto duplicado.");
-      carregarAbaProdutos(container);
+      carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex);
     });
     tr.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
       if (confirm(`Excluir "${produto.nome}"?`)) {
         await excluirProduto(id);
         toast("Produto excluído.");
-        carregarAbaProdutos(container);
+        carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex);
       }
     });
   });
