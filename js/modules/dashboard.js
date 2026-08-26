@@ -1022,6 +1022,8 @@ async function carregarAbaCategorias(container) {
       <p>Cadastre as categorias da loja, com nome e imagem.</p>
     </div>
     <div class="admin-toolbar">
+      <button class="btn-secondary" id="btn-importar-json-categorias">${icon("upload")}Importar JSON</button>
+      <input type="file" id="input-importar-json-categorias" accept="application/json,.json" hidden>
       <button class="btn-primary" id="btn-nova-categoria">${icon("plus")}Nova categoria</button>
     </div>
     <ul class="chip-list chip-list--marcas">
@@ -1033,9 +1035,25 @@ async function carregarAbaCategorias(container) {
           <button data-action="excluir" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
     </ul>
-    <dialog id="dialog-categoria" class="dialog-form"></dialog>`;
+    <dialog id="dialog-categoria" class="dialog-form"></dialog>
+    <dialog id="dialog-importar-json-categorias" class="dialog-form">
+      <h2>Resultado da importação</h2>
+      <div id="resultado-importacao-json-categorias" class="import-result"></div>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" id="btn-fechar-importacao-categorias">Fechar</button>
+      </div>
+    </dialog>`;
 
   container.querySelector("#btn-nova-categoria").addEventListener("click", () => abrirFormularioCategoria(container));
+
+  const inputJsonCategorias = container.querySelector("#input-importar-json-categorias");
+  container.querySelector("#btn-importar-json-categorias").addEventListener("click", () => inputJsonCategorias.click());
+  inputJsonCategorias.addEventListener("change", async () => {
+    const arquivo = inputJsonCategorias.files?.[0];
+    inputJsonCategorias.value = "";
+    if (!arquivo) return;
+    await importarCategoriasJson(container, arquivo);
+  });
 
   container.querySelectorAll(".chip-list--marcas li[data-id]").forEach(li => {
     const id = li.dataset.id;
@@ -1050,6 +1068,62 @@ async function carregarAbaCategorias(container) {
       }
     });
   });
+}
+
+async function importarCategoriasJson(container, arquivo) {
+  const dialog = container.querySelector("#dialog-importar-json-categorias");
+  const resultado = container.querySelector("#resultado-importacao-json-categorias");
+
+  let itens;
+  try {
+    const texto = await arquivo.text();
+    const json = JSON.parse(texto);
+    itens = Array.isArray(json) ? json : (Array.isArray(json.categorias) ? json.categorias : null);
+    if (!itens) throw new Error("formato");
+  } catch {
+    toast("Arquivo JSON inválido. Envie uma lista de categorias (array) ou { \"categorias\": [...] }.", "error");
+    return;
+  }
+
+  if (!itens.length) {
+    toast("O arquivo não tem nenhuma categoria.", "error");
+    return;
+  }
+
+  const nomesExistentes = cacheCategorias.map(c => c.nome.toLowerCase());
+  const validos = [];
+  const invalidos = [];
+
+  itens.forEach((item, i) => {
+    const nome = String(item?.nome || "").trim();
+    if (!nome) {
+      invalidos.push({ linha: i + 1, nome: "(sem nome)", erros: ["nome ausente"] });
+      return;
+    }
+    if (nomesExistentes.includes(nome.toLowerCase())) {
+      invalidos.push({ linha: i + 1, nome, erros: ["categoria já existe"] });
+      return;
+    }
+    nomesExistentes.push(nome.toLowerCase());
+    validos.push({ nome, imagem: String(item?.imagem || "").trim() });
+  });
+
+  for (const dados of validos) {
+    await criarCategoria(dados.nome, "", dados.imagem);
+  }
+
+  resultado.innerHTML = `
+    <p><strong>${validos.length}</strong> categoria(s) importada(s) com sucesso.</p>
+    ${invalidos.length ? `
+      <p><strong>${invalidos.length}</strong> ignorada(s):</p>
+      <ul class="import-result__errors">
+        ${invalidos.map(e => `<li>#${e.linha} "${escHtml(e.nome)}": ${escHtml(e.erros.join(", "))}</li>`).join("")}
+      </ul>` : ""}`;
+
+  dialog.querySelector("#btn-fechar-importacao-categorias").onclick = () => { dialog.close(); carregarAbaCategorias(container); };
+
+  dialog.showModal();
+  if (validos.length) toast(`${validos.length} categoria(s) importada(s).`);
 }
 
 async function abrirFormularioCategoria(container, categoria = null) {
@@ -1140,6 +1214,8 @@ async function carregarAbaMarcas(container) {
       <p>Cadastre as marcas parceiras exibidas na loja, com nome e logo.</p>
     </div>
     <div class="admin-toolbar">
+      <button class="btn-secondary" id="btn-importar-json-marcas">${icon("upload")}Importar JSON</button>
+      <input type="file" id="input-importar-json-marcas" accept="application/json,.json" hidden>
       <button class="btn-primary" id="btn-nova-marca">${icon("plus")}Nova marca</button>
     </div>
     <ul class="chip-list chip-list--marcas">
@@ -1154,9 +1230,25 @@ async function carregarAbaMarcas(container) {
           <button data-action="excluir" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma marca cadastrada.</li>`}
     </ul>
-    <dialog id="dialog-marca" class="dialog-form"></dialog>`;
+    <dialog id="dialog-marca" class="dialog-form"></dialog>
+    <dialog id="dialog-importar-json-marcas" class="dialog-form">
+      <h2>Resultado da importação</h2>
+      <div id="resultado-importacao-json-marcas" class="import-result"></div>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" id="btn-fechar-importacao-marcas">Fechar</button>
+      </div>
+    </dialog>`;
 
   container.querySelector("#btn-nova-marca").addEventListener("click", () => abrirFormularioMarca(container));
+
+  const inputJsonMarcas = container.querySelector("#input-importar-json-marcas");
+  container.querySelector("#btn-importar-json-marcas").addEventListener("click", () => inputJsonMarcas.click());
+  inputJsonMarcas.addEventListener("change", async () => {
+    const arquivo = inputJsonMarcas.files?.[0];
+    inputJsonMarcas.value = "";
+    if (!arquivo) return;
+    await importarMarcasJson(container, arquivo);
+  });
 
   container.querySelectorAll("[data-toggle-visivel]").forEach(chk => {
     chk.addEventListener("change", async () => {
@@ -1179,6 +1271,62 @@ async function carregarAbaMarcas(container) {
       }
     });
   });
+}
+
+async function importarMarcasJson(container, arquivo) {
+  const dialog = container.querySelector("#dialog-importar-json-marcas");
+  const resultado = container.querySelector("#resultado-importacao-json-marcas");
+
+  let itens;
+  try {
+    const texto = await arquivo.text();
+    const json = JSON.parse(texto);
+    itens = Array.isArray(json) ? json : (Array.isArray(json.marcas) ? json.marcas : null);
+    if (!itens) throw new Error("formato");
+  } catch {
+    toast("Arquivo JSON inválido. Envie uma lista de marcas (array) ou { \"marcas\": [...] }.", "error");
+    return;
+  }
+
+  if (!itens.length) {
+    toast("O arquivo não tem nenhuma marca.", "error");
+    return;
+  }
+
+  const nomesExistentes = cacheMarcas.map(m => m.nome.toLowerCase());
+  const validos = [];
+  const invalidos = [];
+
+  itens.forEach((item, i) => {
+    const nome = String(item?.nome || "").trim();
+    if (!nome) {
+      invalidos.push({ linha: i + 1, nome: "(sem nome)", erros: ["nome ausente"] });
+      return;
+    }
+    if (nomesExistentes.includes(nome.toLowerCase())) {
+      invalidos.push({ linha: i + 1, nome, erros: ["marca já existe"] });
+      return;
+    }
+    nomesExistentes.push(nome.toLowerCase());
+    validos.push({ nome, logo: String(item?.logo || "").trim(), visivel: item?.visivel !== false });
+  });
+
+  for (const dados of validos) {
+    await criarMarca(dados);
+  }
+
+  resultado.innerHTML = `
+    <p><strong>${validos.length}</strong> marca(s) importada(s) com sucesso.</p>
+    ${invalidos.length ? `
+      <p><strong>${invalidos.length}</strong> ignorada(s):</p>
+      <ul class="import-result__errors">
+        ${invalidos.map(e => `<li>#${e.linha} "${escHtml(e.nome)}": ${escHtml(e.erros.join(", "))}</li>`).join("")}
+      </ul>` : ""}`;
+
+  dialog.querySelector("#btn-fechar-importacao-marcas").onclick = () => { dialog.close(); carregarAbaMarcas(container); };
+
+  dialog.showModal();
+  if (validos.length) toast(`${validos.length} marca(s) importada(s).`);
 }
 
 async function abrirFormularioMarca(container, marca = null) {
