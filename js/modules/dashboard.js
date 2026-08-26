@@ -682,6 +682,10 @@ async function abrirFormularioProduto(container, produto = null) {
         <label>Código<input name="codigo" autocomplete="off" value="${escHtml(produto?.codigo || generateCode())}"></label>
       </div>
 
+      <label class="chip-list__visivel" id="label-visivel-sem-foto" title="Por padrão, produto sem nenhuma foto cadastrada fica oculto no site. Marque aqui se quiser exibi-lo mesmo assim.">
+        <input type="checkbox" name="visivelSemFoto" ${produto?.visivelSemFoto ? "checked" : ""}> Exibir no site mesmo sem foto
+      </label>
+
       <div class="cores-produto">
         <h4>Variações de cor (opcional)</h4>
         <p class="galeria-produto__ajuda">Cadastre as cores disponíveis para este produto e as fotos de cada uma. O cliente escolherá a cor na página do produto antes de adicionar ao carrinho. Deixe vazio se o produto não tiver variação de cor — nesse caso, use a galeria de imagens abaixo.</p>
@@ -998,6 +1002,11 @@ async function abrirFormularioProduto(container, produto = null) {
     };
     const corPadrao = dados.cores.find(c => c.padrao) || dados.cores[0];
     dados.imagem = dados.imagens[0] || corPadrao?.imagem || "";
+
+    dados.visivelSemFoto = form.visivelSemFoto.checked;
+    if (!dados.imagem && !dados.visivelSemFoto) {
+      dados.status = "oculto";
+    }
 
     if (produto) {
       await atualizarProduto(produto.id, dados);
