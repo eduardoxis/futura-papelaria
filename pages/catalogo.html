@@ -537,7 +537,7 @@ async function render() {
   grade.setAttribute("aria-busy", "true");
 
   try {
-    const { produtos, cursor, temMais } = await buscarProdutosCatalogo({
+    const { produtos, cursor, temMais, total } = await buscarProdutosCatalogo({
       tamanho: POR_PAGINA,
       cursor: cursoresPorPagina[paginaAtual] || null,
       categoria: [...estado.categorias][0] || "",
@@ -556,17 +556,9 @@ async function render() {
     cursoresPorPagina[paginaAtual + 1] = cursor;
     temMaisProximaPagina = temMais;
 
-    const contador = await contarProdutosCatalogo({
-      categoria: [...estado.categorias][0] || "",
-      marcas: [...estado.marcas],
-      faixasPreco: [...estado.faixasPreco],
-      disponibilidade: estado.disponibilidade,
-      termoBusca: estado.termo
-    });
-
-    if (meuToken !== tokenRequisicaoAtual) return;
-
-    document.querySelector("#contador-produtos").textContent = contador;
+    // total já vem de buscarProdutosCatalogo (mesma leitura, sem round-trip
+    // extra ao Firestore repetindo o conjunto restrito inteiro).
+    document.querySelector("#contador-produtos").textContent = total;
     renderizarGrade(grade, produtos);
     desenharPaginacao();
   } catch (erro) {
