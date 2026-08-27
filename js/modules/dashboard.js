@@ -46,24 +46,81 @@ async function enviarImagemComoPNG(file, nomeBase) {
   }
 }
 
+// Mapa aba -> função de carregamento. Cada aba só busca dados do Firestore
+// na PRIMEIRA vez que é aberta (lazy-load) — antes disso, o painel inteiro
+// (9 abas: dashboard, produtos, categorias, marcas, etiquetas, estoque,
+// leads, usuários, clientes) era recarregado por completo toda vez que o
+// admin clicava no botão "Admin", mesmo pra só olhar uma aba. Isso sozinho
+// gerava a maior parte do consumo de leitura do Firestore no painel.
+const abasCarregadas = new Set();
+let painelBotoesLigados = false;
+
+function definirCarregadoresAba(root) {
+  return {
+    dashboard: () => carregarDashboard(root.querySelector("#painel-dashboard")),
+    produtos: () => carregarAbaProdutos(root.querySelector("#painel-produtos")),
+    categorias: () => carregarAbaCategorias(root.querySelector("#painel-categorias")),
+    marcas: () => carregarAbaMarcas(root.querySelector("#painel-marcas")),
+    etiquetas: () => carregarAbaEtiquetas(root.querySelector("#painel-etiquetas")),
+    estoque: () => carregarAbaEstoque(root.querySelector("#painel-estoque")),
+    leads: () => carregarPainelLeads(root.querySelector("#painel-leads")),
+    usuarios: () => carregarAbaUsuarios(root.querySelector("#painel-usuarios")),
+    clientes: () => carregarAbaClientes(root.querySelector("#painel-clientes"))
+  };
+}
+
+/** Força a aba a recarregar na próxima vez que for aberta (usar após uma ação que muda dados de OUTRA aba, ex: excluir categoria usada em produtos). */
+export function invalidarAbaPainel(nomeAba) {
+  abasCarregadas.delete(nomeAba);
+}
+
 export async function iniciarPainelAdmin(root) {
-  await carregarDashboard(root.querySelector("#painel-dashboard"));
-  await carregarAbaProdutos(root.querySelector("#painel-produtos"));
-  await carregarAbaCategorias(root.querySelector("#painel-categorias"));
-  await carregarAbaMarcas(root.querySelector("#painel-marcas"));
-  await carregarAbaEtiquetas(root.querySelector("#painel-etiquetas"));
-  await carregarAbaEstoque(root.querySelector("#painel-estoque"));
-  await carregarPainelLeads(root.querySelector("#painel-leads"));
-  await carregarAbaUsuarios(root.querySelector("#painel-usuarios"));
-  await carregarAbaClientes(root.querySelector("#painel-clientes"));
+  const carregadores = definirCarregadoresAba(root);
+
+  // Sempre garante a aba ativa no momento (padrão: dashboard) carregada.
+  const abaAtiva = root.querySelector("[data-tab-trigger].is-active")?.dataset.tabTrigger || "dashboard";
+  if (!abasCarregadas.has(abaAtiva)) {
+    abasCarregadas.add(abaAtiva);
+    await carregadores[abaAtiva]?.();
+  }
+
+  if (painelBotoesLigados) return;
+  painelBotoesLigados = true;
+  root.querySelectorAll("[data-tab-trigger]").forEach(botao => {
+    botao.addEventListener("click", async () => {
+      const aba = botao.dataset.tabTrigger;
+      if (abasCarregadas.has(aba)) return;
+      abasCarregadas.add(aba);
+      try {
+        await carregadores[aba]?.();
+      } catch (erro) {
+        abasCarregadas.delete(aba); // deixa tentar de novo se falhar
+        console.error(`[painel] falha ao carregar aba "${aba}":`, erro);
+      }
+    });
+  });
 }
 
 // ---------- DASHBOARD ----------
+// Cache curto (2 min) só pros números do dashboard — é uma tela de
+// estatística, não precisa reler produtos/usuários inteiros toda vez que o
+// admin volta pra essa aba dentro da mesma sessão.
+let cacheDashboard = null;
+let cacheDashboardExpiraEm = 0;
+
 async function carregarDashboard(container) {
   if (!container) return;
-  const produtos = await listarProdutos({ apenasAtivos: false });
-  const categorias = await listarCategorias();
-  const usuarios = await listarUsuarios();
+
+  let produtos, categorias, usuarios;
+  if (cacheDashboard && Date.now() < cacheDashboardExpiraEm) {
+    ({ produtos, categorias, usuarios } = cacheDashboard);
+  } else {
+    produtos = await listarProdutos({ apenasAtivos: false });
+    categorias = await listarCategorias();
+    usuarios = await listarUsuarios();
+    cacheDashboard = { produtos, categorias, usuarios };
+    cacheDashboardExpiraEm = Date.now() + 2 * 60 * 1000;
+  }
   const semEstoque = produtos.filter(p => Number(p.quantidade) <= 0).length;
   const maisVistos = [...produtos].sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0)).slice(0, 5);
   const maisCompartilhados = [...produtos].sort((a, b) => (b.compartilhamentos || 0) - (a.compartilhamentos || 0)).slice(0, 5);
