@@ -7,6 +7,64 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { withLoading, beginListener } from "../utils/loadingManager.js";
 
+// ---------- CACHE COM TTL (reduz leituras repetidas do Firestore) ----------
+// Cada página (home, catálogo, produto) importa este módulo de forma
+// independente, então sem isso um único visitante navegando por 3 páginas
+// já dispara 3 leituras completas de "categorias", 3 de "marcas" etc. Como
+// esses dados mudam pouco, cacheamos em sessionStorage por alguns minutos —
+// cai drasticamente o consumo de cota do Firestore sem afetar UX (o admin
+// sempre invalida o cache ao salvar uma mudança, ver invalidarCache abaixo).
+const TTL_PADRAO_MS = 5 * 60 * 1000; // 5 min
+
+function lerCache(chave) {
+  try {
+    const bruto = sessionStorage.getItem(`fcache:${chave}`);
+    if (!bruto) return undefined;
+    const { valor, expiraEm } = JSON.parse(bruto);
+    if (Date.now() > expiraEm) {
+      sessionStorage.removeItem(`fcache:${chave}`);
+      return undefined;
+    }
+    return valor;
+  } catch {
+    return undefined;
+  }
+}
+
+function salvarCache(chave, valor, ttlMs = TTL_PADRAO_MS) {
+  try {
+    sessionStorage.setItem(`fcache:${chave}`, JSON.stringify({ valor, expiraEm: Date.now() + ttlMs }));
+  } catch {
+    // sessionStorage cheio/indisponível (modo privado) — segue sem cache.
+  }
+}
+
+/**
+ * Chame após criar/editar/excluir para a próxima leitura vir atualizada.
+ * Remove tanto a chave exata quanto variantes com argumentos (ex:
+ * "listarProdutosDestaque:[8]"), já que comCache() sufixa a chave com os
+ * argumentos recebidos.
+ */
+export function invalidarCache(chave) {
+  try {
+    Object.keys(sessionStorage)
+      .filter((k) => k === `fcache:${chave}` || k.startsWith(`fcache:${chave}:`))
+      .forEach((k) => sessionStorage.removeItem(k));
+  } catch { /* ignora */ }
+}
+
+/** Envolve uma função assíncrona de leitura com cache em sessionStorage. */
+function comCache(chave, ttlMs, fn) {
+  return async (...args) => {
+    const chaveCompleta = args.length ? `${chave}:${JSON.stringify(args)}` : chave;
+    const emCache = lerCache(chaveCompleta);
+    if (emCache !== undefined) return emCache;
+    const valor = await fn(...args);
+    salvarCache(chaveCompleta, valor, ttlMs);
+    return valor;
+  };
+}
+
 // ---------- CAMPOS DERIVADOS (pra filtrar no catálogo sem baixar tudo) ----------
 /**
  * Bucket de preço fixo — os mesmos 4 intervalos mostrados no filtro do catálogo.
@@ -149,16 +207,16 @@ export function migrarCamposFiltroCatalogo(onProgresso) {
 }
 
 /** Últimos N produtos cadastrados — usado na home ("Recentes"), sem baixar a coleção inteira. */
-export function listarProdutosRecentes(tamanho = 8) {
-  return withLoading("listarProdutosRecentes", async () => {
+export const listarProdutosRecentes = comCache("listarProdutosRecentes", 3 * 60 * 1000, (tamanho = 8) =>
+  withLoading("listarProdutosRecentes", async () => {
     const snap = await getDocs(query(collection(db, "produtos"), orderBy("criadoEm", "desc"), limit(tamanho + 4)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
-  });
-}
+  })
+);
 
 /** Produtos com etiqueta "Mais Vendido" ou "Promoção" — usado na home ("Destaques"). */
-export function listarProdutosDestaque(tamanho = 8) {
-  return withLoading("listarProdutosDestaque", async () => {
+export const listarProdutosDestaque = comCache("listarProdutosDestaque", 3 * 60 * 1000, (tamanho = 8) =>
+  withLoading("listarProdutosDestaque", async () => {
     const snap = await getDocs(query(
       collection(db, "produtos"),
       where("etiquetas", "array-contains-any", ["Mais Vendido", "Promoção"]),
@@ -182,8 +240,8 @@ export function listarProdutosDestaque(tamanho = 8) {
     // esse campo), pega qualquer produto ativo em vez de mostrar vazio.
     const snapTodos = await getDocs(query(collection(db, "produtos"), limit(tamanho + 4)));
     return snapTodos.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
-  });
-}
+  })
+);
 
 /** Produtos de uma categoria (até um teto razoável) — usado no filtro rápido da home. */
 export function listarProdutosPorCategoria(categoria, tamanho = 60) {
@@ -202,9 +260,14 @@ export function obterProduto(id) {
   });
 }
 
+function invalidarCacheVitrinesHome() {
+  invalidarCache("listarProdutosDestaque");
+  invalidarCache("listarProdutosRecentes");
+}
+
 export function criarProduto(dados) {
   return withLoading("criarProduto", async () => {
-    return addDoc(collection(db, "produtos"), {
+    const resultado = await addDoc(collection(db, "produtos"), {
       ...dados,
       faixaPreco: calcularFaixaPreco(dados.preco),
       disponivel: calcularDisponivel(dados.status, dados.quantidade),
@@ -212,6 +275,8 @@ export function criarProduto(dados) {
       compartilhamentos: 0,
       criadoEm: serverTimestamp()
     });
+    invalidarCacheVitrinesHome();
+    return resultado;
   });
 }
 
@@ -226,9 +291,13 @@ export function atualizarProduto(id, dados) {
   return withLoading("atualizarProduto", async () => {
     const ref = doc(db, "produtos", id);
     const precisaRecalcular = "preco" in dados || "status" in dados || "quantidade" in dados;
-    if (!precisaRecalcular) return updateDoc(ref, dados);
+    if (!precisaRecalcular) {
+      const resultado = await updateDoc(ref, dados);
+      invalidarCacheVitrinesHome();
+      return resultado;
+    }
 
-    return runTransaction(db, async (tx) => {
+    const resultado = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       const atual = snap.exists() ? snap.data() : {};
       const preco = "preco" in dados ? dados.preco : atual.preco;
@@ -240,12 +309,16 @@ export function atualizarProduto(id, dados) {
         disponivel: calcularDisponivel(status, quantidade)
       });
     });
+    invalidarCacheVitrinesHome();
+    return resultado;
   });
 }
 
 export function excluirProduto(id) {
   return withLoading("excluirProduto", async () => {
-    return deleteDoc(doc(db, "produtos", id));
+    const resultado = await deleteDoc(doc(db, "produtos", id));
+    invalidarCacheVitrinesHome();
+    return resultado;
   });
 }
 
@@ -407,12 +480,14 @@ export function contarProdutosCatalogo({
 }
 
 // ---------- CATEGORIAS ----------
-export function listarCategorias() {
-  return withLoading("listarCategorias", async () => {
+// Muda pouco (só quando o admin mexe no painel) — cache mais longo (10 min)
+// e invalidado explicitamente nas funções de escrita logo abaixo.
+export const listarCategorias = comCache("listarCategorias", 10 * 60 * 1000, () =>
+  withLoading("listarCategorias", async () => {
     const snap = await getDocs(collection(db, "categorias"));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 export function escutarCategorias(callback) {
   const finalizarPrimeiroSnapshot = beginListener("escutarCategorias");
   return onSnapshot(collection(db, "categorias"), (snap) => {
@@ -425,27 +500,33 @@ export function escutarCategorias(callback) {
 }
 export function criarCategoria(nome, emoji = "", imagem = "") {
   return withLoading("criarCategoria", async () => {
-    return addDoc(collection(db, "categorias"), { nome, emoji, imagem });
+    const resultado = await addDoc(collection(db, "categorias"), { nome, emoji, imagem });
+    invalidarCache("listarCategorias");
+    return resultado;
   });
 }
 export function atualizarCategoria(id, dados) {
   return withLoading("atualizarCategoria", async () => {
-    return updateDoc(doc(db, "categorias", id), dados);
+    const resultado = await updateDoc(doc(db, "categorias", id), dados);
+    invalidarCache("listarCategorias");
+    return resultado;
   });
 }
 export function excluirCategoria(id) {
   return withLoading("excluirCategoria", async () => {
-    return deleteDoc(doc(db, "categorias", id));
+    const resultado = await deleteDoc(doc(db, "categorias", id));
+    invalidarCache("listarCategorias");
+    return resultado;
   });
 }
 
 // ---------- MARCAS ----------
-export function listarMarcas() {
-  return withLoading("listarMarcas", async () => {
+export const listarMarcas = comCache("listarMarcas", 10 * 60 * 1000, () =>
+  withLoading("listarMarcas", async () => {
     const snap = await getDocs(collection(db, "marcas"));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 export function escutarMarcas(callback) {
   const finalizarPrimeiroSnapshot = beginListener("escutarMarcas");
   return onSnapshot(collection(db, "marcas"), (snap) => {
@@ -458,17 +539,23 @@ export function escutarMarcas(callback) {
 }
 export function criarMarca(dados) {
   return withLoading("criarMarca", async () => {
-    return addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
+    const resultado = await addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
+    invalidarCache("listarMarcas");
+    return resultado;
   });
 }
 export function atualizarMarca(id, dados) {
   return withLoading("atualizarMarca", async () => {
-    return updateDoc(doc(db, "marcas", id), dados);
+    const resultado = await updateDoc(doc(db, "marcas", id), dados);
+    invalidarCache("listarMarcas");
+    return resultado;
   });
 }
 export function excluirMarca(id) {
   return withLoading("excluirMarca", async () => {
-    return deleteDoc(doc(db, "marcas", id));
+    const resultado = await deleteDoc(doc(db, "marcas", id));
+    invalidarCache("listarMarcas");
+    return resultado;
   });
 }
 
@@ -496,20 +583,24 @@ export function excluirCliente(id) {
 }
 
 // ---------- ETIQUETAS ----------
-export function listarEtiquetas() {
-  return withLoading("listarEtiquetas", async () => {
+export const listarEtiquetas = comCache("listarEtiquetas", 10 * 60 * 1000, () =>
+  withLoading("listarEtiquetas", async () => {
     const snap = await getDocs(collection(db, "etiquetas"));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 export function criarEtiqueta(nome) {
   return withLoading("criarEtiqueta", async () => {
-    return addDoc(collection(db, "etiquetas"), { nome });
+    const resultado = await addDoc(collection(db, "etiquetas"), { nome });
+    invalidarCache("listarEtiquetas");
+    return resultado;
   });
 }
 export function excluirEtiqueta(id) {
   return withLoading("excluirEtiqueta", async () => {
-    return deleteDoc(doc(db, "etiquetas", id));
+    const resultado = await deleteDoc(doc(db, "etiquetas", id));
+    invalidarCache("listarEtiquetas");
+    return resultado;
   });
 }
 
