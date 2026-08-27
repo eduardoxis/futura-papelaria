@@ -564,25 +564,34 @@ export function excluirMarca(id) {
 }
 
 // ---------- CLIENTES ----------
-export function listarClientes() {
-  return withLoading("listarClientes", async () => {
+// Igual categorias/marcas/etiquetas: cache de 10 min em vez de baixar a
+// coleção inteira toda vez que o admin entra na aba Clientes (antes disso
+// não tinha cache nenhum aqui — era refetch completo a cada troca de aba).
+export const listarClientes = comCache("listarClientes", 10 * 60 * 1000, () =>
+  withLoading("listarClientes", async () => {
     const snap = await getDocs(collection(db, "clientes"));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 export function criarCliente(dados) {
   return withLoading("criarCliente", async () => {
-    return addDoc(collection(db, "clientes"), { ...dados, criadoEm: serverTimestamp() });
+    const resultado = await addDoc(collection(db, "clientes"), { ...dados, criadoEm: serverTimestamp() });
+    invalidarCache("listarClientes");
+    return resultado;
   });
 }
 export function atualizarCliente(id, dados) {
   return withLoading("atualizarCliente", async () => {
-    return updateDoc(doc(db, "clientes", id), dados);
+    const resultado = await updateDoc(doc(db, "clientes", id), dados);
+    invalidarCache("listarClientes");
+    return resultado;
   });
 }
 export function excluirCliente(id) {
   return withLoading("excluirCliente", async () => {
-    return deleteDoc(doc(db, "clientes", id));
+    const resultado = await deleteDoc(doc(db, "clientes", id));
+    invalidarCache("listarClientes");
+    return resultado;
   });
 }
 
