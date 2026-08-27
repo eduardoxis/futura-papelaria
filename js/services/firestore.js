@@ -455,7 +455,11 @@ export function buscarProdutosCatalogo({
     const pagina = ordenados.slice(offset, offset + tamanho);
     const temMais = offset + tamanho < ordenados.length;
 
-    return { produtos: pagina, cursor: temMais ? offset + tamanho : null, temMais };
+    // total já sai de graça daqui (mesma lista filtrada, antes de paginar) —
+    // evita repetir buscarConjuntoRestrito só pra contar (era 2x a mesma
+    // leitura completa da coleção a cada render, quando não há filtro de
+    // categoria/marca ativo).
+    return { produtos: pagina, cursor: temMais ? offset + tamanho : null, temMais, total: ordenados.length };
   });
 }
 
