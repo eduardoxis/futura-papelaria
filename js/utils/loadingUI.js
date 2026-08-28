@@ -59,20 +59,38 @@ function garantirEstilos() {
     }
     #${OVERLAY_ID}.ativo { display: flex; }
     #${OVERLAY_ID} .loading-global-spinner {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: 3px solid rgba(37, 99, 235, .25);
-      border-top-color: #2563eb;
-      animation: loadingGlobalSpin .7s linear infinite;
+      position: relative;
+      width: 50px;
+      height: 50px;
     }
-    @keyframes loadingGlobalSpin {
-      to { transform: rotate(360deg); }
+    #${OVERLAY_ID} .loading-global-spinner span {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 9px;
+      height: 9px;
+      margin-left: -4.5px;
+      border-radius: 50%;
+      background: #2563eb;
+      transform-origin: 4.5px 25px;
+      animation: loadingGlobalDotsFade 1s linear infinite;
+    }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(1)  { transform: rotate(0deg);   animation-delay: -0.875s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(2)  { transform: rotate(45deg);  animation-delay: -0.75s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(3)  { transform: rotate(90deg);  animation-delay: -0.625s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(4)  { transform: rotate(135deg); animation-delay: -0.5s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(5)  { transform: rotate(180deg); animation-delay: -0.375s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(6)  { transform: rotate(225deg); animation-delay: -0.25s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(7)  { transform: rotate(270deg); animation-delay: -0.125s; }
+    #${OVERLAY_ID} .loading-global-spinner span:nth-child(8)  { transform: rotate(315deg); animation-delay: 0s; }
+    @keyframes loadingGlobalDotsFade {
+      0%   { opacity: 1; }
+      100% { opacity: 0.15; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       #${BAR_ID} .loading-global-bar-fill,
-      #${OVERLAY_ID} .loading-global-spinner {
+      #${OVERLAY_ID} .loading-global-spinner span {
         animation-duration: 2.2s;
       }
     }
@@ -100,7 +118,7 @@ function garantirElementos() {
     overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.setAttribute("aria-hidden", "true");
-    overlay.innerHTML = `<div class="loading-global-spinner" role="status" aria-label="Carregando"></div>`;
+    overlay.innerHTML = `<div class="loading-global-spinner" role="status" aria-label="Carregando">${Array.from({ length: 8 }, () => "<span></span>").join("")}</div>`;
     document.body.appendChild(overlay);
   }
 
