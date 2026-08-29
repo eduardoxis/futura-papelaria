@@ -1,9 +1,9 @@
 // js/app.js
 import {
   listarEtiquetas, listarProdutosPagina, listarProdutosDestaque,
-  listarProdutosRecentes, listarProdutosPorCategoria, obterProduto, escutarCategorias, escutarMarcas,
+  listarProdutosRecentes, listarProdutosPorCategoria, obterProduto, listarCategorias, listarMarcas,
   criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
-  atualizarPerfilUsuario, obterPerfilUsuario
+  atualizarPerfilUsuario
 } from "./services/firestore.js";
 import { renderizarGrade, obterFavoritos, alternarFavorito } from "./modules/products.js";
 import { buscarProdutos } from "./modules/search.js";
@@ -14,7 +14,6 @@ import {
 import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos, registrarErroCliente } from "./utils/utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha, atualizarNomeAuth } from "./services/auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./utils/modal.js";
-import { iniciarPainelAdmin } from "./modules/dashboard.js";
 import { iniciarOrcamento } from "./modules/orcamento.js";
 import { ICONS, icon } from "./utils/icons.js";
 import { STORE_CONFIG } from "../firebase/firebase-config.js";
@@ -39,6 +38,31 @@ iniciarLoadingGlobal();
 })();
 
 let filtrosAtivos = {};
+let moduloPainelAdmin;
+
+async function iniciarPainelAdminSobDemanda(root) {
+  moduloPainelAdmin ||= import("./modules/dashboard.js");
+  const { iniciarPainelAdmin } = await moduloPainelAdmin;
+  return iniciarPainelAdmin(root);
+}
+
+/** Executa uma busca somente quando a seção estiver perto da área visível. */
+function carregarAoAproximar(alvo, tarefa) {
+  if (!alvo) return;
+  let iniciado = false;
+  const executar = () => {
+    if (iniciado) return;
+    iniciado = true;
+    Promise.resolve(tarefa()).catch((erro) => console.error("Falha ao carregar seção:", erro));
+  };
+  if (!("IntersectionObserver" in window)) { executar(); return; }
+  const observer = new IntersectionObserver((entradas) => {
+    if (!entradas.some(e => e.isIntersecting)) return;
+    observer.disconnect();
+    executar();
+  }, { rootMargin: "500px 0px" });
+  observer.observe(alvo);
+}
 
 function iconeParaCategoria(nome = "") {
   const n = nome.toLowerCase();
@@ -102,8 +126,8 @@ function corTextoParaCategoria(nome = "") {
 
 function conteudoIconeCategoria(c) {
   if (c.imagem) {
-    const { src, pos } = imgPos(c.imagem);
-    return `<img class="category-card__img" src="${src}" style="object-position:${pos}" alt="" loading="lazy">`;
+    const { src, pos } = imgPos(c.imagem, 192);
+    return `<img class="category-card__img" src="${src}" style="object-position:${pos}" alt="" loading="lazy" decoding="async" width="96" height="96">`;
   }
   const custom = (c.emoji || "").trim();
   if (!custom) return icon(iconeParaCategoria(c.nome));
@@ -135,19 +159,21 @@ async function iniciar() {
   // Firestore (nada de baixar o catálogo inteiro pra montar 3 vitrines de
   // 8 a 10 itens). Não é mais "ao vivo" (onSnapshot); atualiza a cada
   // carregamento de página, o que é suficiente para uma vitrine.
-  listarProdutosPagina({ tamanho: 10 }).then(({ produtos }) => {
-    renderizarGrade(document.querySelector("#grade-produtos"), produtos);
+  const gradeProdutos = document.querySelector("#grade-produtos");
+  carregarAoAproximar(gradeProdutos, async () => {
+    const { produtos } = await listarProdutosPagina({ tamanho: 10 });
+    renderizarGrade(gradeProdutos, produtos);
   });
-  listarProdutosDestaque(8).then((destaques) => {
-    const container = document.querySelector("#grade-destaques");
-    if (container) renderizarGrade(container, destaques);
+  const gradeDestaques = document.querySelector("#grade-destaques");
+  carregarAoAproximar(gradeDestaques, async () => {
+    renderizarGrade(gradeDestaques, await listarProdutosDestaque(8));
   });
-  listarProdutosRecentes(8).then((recentes) => {
-    const container = document.querySelector("#grade-recentes");
-    if (container) renderizarGrade(container, recentes);
+  const gradeRecentes = document.querySelector("#grade-recentes");
+  carregarAoAproximar(gradeRecentes, async () => {
+    renderizarGrade(gradeRecentes, await listarProdutosRecentes(8));
   });
 
-  escutarCategorias((categorias) => {
+  listarCategorias().then((categorias) => {
     renderizarFiltros(categorias);
     const catUrl = getQueryParam("categoria");
     if (catUrl && !window.__categoriaAplicadaDaUrl) {
@@ -327,10 +353,11 @@ function configurarLinksEstaticos() {
 
   const marcasEl = document.querySelector("#marcas-parceiras");
   if (marcasEl) {
-    escutarMarcas((marcas) => {
+    carregarAoAproximar(marcasEl, async () => {
+      const marcas = await listarMarcas();
       const lista = [...marcas].filter(m => m.visivel !== false).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
       marcasEl.innerHTML = lista
-        .map(m => `<span class="brands__badge"><img src="${m.logo || "/assets/images/placeholder.svg"}" alt="${escHtml(m.nome)}" loading="lazy"></span>`)
+        .map(m => `<span class="brands__badge"><img src="${imgPos(m.logo, 240).src || "/assets/images/placeholder.svg"}" alt="${escHtml(m.nome)}" loading="lazy" decoding="async"></span>`)
         .join("") || "";
     });
   }
@@ -346,10 +373,10 @@ function configurarCarrinhoUI() {
   function renderCarrinho() {
     const carrinho = obterCarrinho();
     const lista = document.querySelector("#itens-carrinho");
-    const { subtotal, total } = calcularTotais();
+    const { subtotal, total } = calcularTotais(carrinho);
     lista.innerHTML = carrinho.map(item => `
       <div class="cart-item" data-chave="${escHtml(item.chave || item.id)}">
-        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
+        <img src="${imgPos(item.imagem, 160).src || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy" decoding="async">
         <div>
           <div class="cart-item__name">${escHtml(item.nome)}</div>
           <div class="cart-item__brand">${escHtml(item.marca)}${item.cor ? ` • Cor: ${escHtml(item.cor)}` : ""}</div>
@@ -413,7 +440,7 @@ function configurarCarrinhoUI() {
       ? ((nome && !pareceEmail(nome)) ? nome : nomeDoPerfil)
       : (nome && !pareceEmail(nome) ? nome : "");
     if (usuarioAtual) {
-      const { total } = calcularTotais();
+      const { total } = calcularTotais(carrinho);
       criarPedido({
         usuarioId: usuarioAtual.uid,
         nomeCliente: nomeParaPedido,
@@ -452,7 +479,7 @@ function configurarLogin() {
           btnAdmin.addEventListener("click", async () => {
             const modal = document.querySelector("#modal-admin");
             abrirModal(modal);
-            await iniciarPainelAdmin(modal);
+            await iniciarPainelAdminSobDemanda(modal);
           });
         }
       }
@@ -463,7 +490,10 @@ function configurarLogin() {
       btnAdmin?.setAttribute("hidden", "");
     }
 
-    btnSair?.addEventListener("click", sair);
+    if (btnSair && !btnSair.dataset.bound) {
+      btnSair.dataset.bound = "1";
+      btnSair.addEventListener("click", sair);
+    }
 
     // Veio de outra página (produto/catálogo) pedindo pra abrir um modal
     // específico — ex: /?abrir=login vindo do botão "Entrar" da produto.html.
@@ -477,7 +507,7 @@ function configurarLogin() {
       } else if (abrir === "admin" && usuario && ehAdmin()) {
         const modal = document.querySelector("#modal-admin");
         abrirModal(modal);
-        iniciarPainelAdmin(modal);
+        iniciarPainelAdminSobDemanda(modal);
       }
       if (abrir) {
         const url = new URL(window.location.href);
@@ -726,7 +756,7 @@ async function renderizarFavoritos() {
   const produtos = (await Promise.all(ids.map(id => obterProduto(id)))).filter(Boolean);
   container.innerHTML = produtos.length ? produtos.map(p => `
     <div class="favorito-card" data-id="${p.id}">
-      <img src="${imgPos(p.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(p.nome)}" loading="lazy">
+      <img src="${imgPos(p.imagem, 240).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(p.nome)}" loading="lazy" decoding="async">
       <div class="favorito-card__info">
         <strong>${escHtml(p.nome)}</strong>
         <span>${formatBRL(p.preco)}</span>
@@ -818,7 +848,7 @@ function configurarMenuConta() {
   document.querySelector("#btn-abrir-pagamento")?.addEventListener("click", async () => {
     abrirSubModalConta("#modal-pagamento");
     if (usuarioAtual) {
-      const perfil = await obterPerfilUsuario(usuarioAtual.uid);
+      const perfil = perfilAtual;
       const form = document.querySelector("#form-pagamento");
       if (perfil?.formaPagamentoPreferida && form) {
         const input = form.querySelector(`input[value="${perfil.formaPagamentoPreferida}"]`);
@@ -835,7 +865,7 @@ function configurarMenuConta() {
   document.querySelector("#btn-abrir-configuracoes")?.addEventListener("click", async () => {
     abrirSubModalConta("#modal-configuracoes");
     if (usuarioAtual) {
-      const perfil = await obterPerfilUsuario(usuarioAtual.uid);
+      const perfil = perfilAtual;
       const toggle = document.querySelector("#toggle-notificacoes");
       if (toggle) toggle.checked = !!perfil?.notificacoesPromocoes;
     }
