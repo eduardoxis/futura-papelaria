@@ -103,6 +103,37 @@ export async function iniciarPainelAdmin(root) {
 }
 
 // ---------- DASHBOARD ----------
+const formatadorNumeroDashboard = new Intl.NumberFormat("pt-BR");
+
+function formatarNumeroDashboard(valor) {
+  return formatadorNumeroDashboard.format(Number(valor) || 0);
+}
+
+function renderizarRankingDashboard(produtos, campo) {
+  if (!Array.isArray(produtos) || !produtos.length) {
+    return `<li class="dashboard-ranking-empty">Sem dados ainda</li>`;
+  }
+
+  return produtos.map(produto => {
+    const imagem = imgPos(produto.imagem, 72);
+    return `
+      <li class="dashboard-ranking-item">
+        <img
+          class="dashboard-ranking-thumb"
+          src="${escHtml(imagem.src || "/assets/images/placeholder.svg")}"
+          style="object-position:${imagem.pos}"
+          alt=""
+          width="38"
+          height="38"
+          loading="lazy"
+          decoding="async"
+        >
+        <span class="dashboard-ranking-name" title="${escHtml(produto.nome || "Produto sem nome")}">${escHtml(produto.nome || "Produto sem nome")}</span>
+        <strong class="dashboard-ranking-value">${formatarNumeroDashboard(produto[campo])}</strong>
+      </li>`;
+  }).join("");
+}
+
 async function carregarDashboard(container) {
   if (!container) return;
 
@@ -112,67 +143,147 @@ async function carregarDashboard(container) {
   } = await obterResumoDashboard();
 
   container.innerHTML = `
-    <div class="admin-panel-head">
-      <h1>Dashboard</h1>
-      <p>Visão geral do desempenho da sua loja.</p>
-    </div>
-    <div class="dash-grid">
-      <div class="stat-card"><span>${totalProdutos}</span><label>Produtos</label></div>
-      <div class="stat-card"><span>${totalCategorias}</span><label>Categorias</label></div>
-      <div class="stat-card"><span>${totalEstoque}</span><label>Itens em estoque</label></div>
-      <div class="stat-card stat-card--warn"><span>${semEstoque}</span><label>Sem estoque</label></div>
-      <div class="stat-card"><span>${totalUsuarios}</span><label>Usuários</label></div>
-    </div>
-    <div class="dash-lists">
-      <div class="dash-list">
-        <h4>Produtos mais vistos</h4>
-        <ol>${maisVistos.map(p => `<li>${escHtml(p.nome)} <span>${p.visualizacoes || 0}</span></li>`).join("") || "<li>Sem dados ainda</li>"}</ol>
+    <div class="dashboard-shell">
+      <div class="admin-panel-head admin-panel-head--dashboard">
+        <span class="dashboard-title-icon">${icon("trendingUp")}</span>
+        <div>
+          <h1>Dashboard</h1>
+          <p>Visão geral do desempenho da sua loja.</p>
+        </div>
       </div>
-      <div class="dash-list">
-        <h4>Produtos mais compartilhados</h4>
-        <ol>${maisCompartilhados.map(p => `<li>${escHtml(p.nome)} <span>${p.compartilhamentos || 0}</span></li>`).join("") || "<li>Sem dados ainda</li>"}</ol>
-      </div>
-    </div>
-    <div class="dash-list" id="bloco-migracao-imagens">
-      <h4>Imagens antigas (base64)</h4>
-      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
-        Converte produtos, categorias e marcas que ainda tenham imagem salva direto no Firestore
-        para WebP hospedado no Cloudinary.
-      </p>
-      <button class="btn-secondary" id="btn-migrar-imagens">${icon("archive")}Migrar imagens antigas</button>
-      <p id="status-migracao" style="margin-top:0.6rem;font-size:0.82rem;color:var(--cinza-500);"></p>
-    </div>
-    <div class="dash-list" id="bloco-migracao-filtros">
-      <h4>Filtros do catálogo (preço/disponibilidade)</h4>
-      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
-        Preenche os campos que o catálogo público usa pra filtrar por faixa de preço e
-        disponibilidade sem baixar o catálogo inteiro. Rode isto UMA VEZ depois de atualizar
-        o site — produtos novos e edições de preço/estoque já ficam corretos sozinhos depois disso.
-      </p>
-      <button class="btn-secondary" id="btn-migrar-filtros">${icon("archive")}Preparar produtos para o catálogo</button>
-      <p id="status-migracao-filtros" style="margin-top:0.6rem;font-size:0.82rem;color:var(--cinza-500);"></p>
-    </div>
-    <div class="dash-list" id="bloco-relatorio-vendas">
-      <h4>Relatório de vendas</h4>
-      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
-        Calcula total vendido, ticket médio e produtos mais vendidos num período, direto no servidor.
-      </p>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:end;margin-bottom:0.75rem;">
-        <label style="font-size:0.8rem;color:var(--cinza-500);">De<br><input type="date" id="relatorio-inicio"></label>
-        <label style="font-size:0.8rem;color:var(--cinza-500);">Até<br><input type="date" id="relatorio-fim"></label>
-        <button class="btn-secondary" id="btn-gerar-relatorio">${icon("archive")}Gerar relatório</button>
-        <button class="btn-secondary" id="btn-baixar-relatorio-csv" style="display:none;">${icon("archive")}Baixar CSV</button>
-      </div>
-      <div id="resultado-relatorio"></div>
-    </div>
-    <div class="dash-list" id="bloco-erros-recentes">
-      <h4>Erros recentes do sistema</h4>
-      <p style="margin:0 0 0.75rem;color:var(--cinza-500);font-size:0.85rem;">
-        Falhas de upload, relatório ou pedidos registradas automaticamente (últimos 20).
-      </p>
-      <button class="btn-secondary" id="btn-carregar-erros">${icon("archive")}Carregar erros recentes</button>
-      <div id="lista-erros-recentes" style="margin-top:0.75rem;"></div>
+
+      <section class="dashboard-stat-grid" aria-label="Resumo da loja">
+        <article class="dashboard-stat-card dashboard-stat-card--blue">
+          <span class="dashboard-stat-icon">${icon("box")}</span>
+          <div class="dashboard-stat-content">
+            <strong>${formatarNumeroDashboard(totalProdutos)}</strong>
+            <span>Produtos</span>
+            <small>Total cadastrado</small>
+          </div>
+        </article>
+        <article class="dashboard-stat-card dashboard-stat-card--purple">
+          <span class="dashboard-stat-icon">${icon("tag")}</span>
+          <div class="dashboard-stat-content">
+            <strong>${formatarNumeroDashboard(totalCategorias)}</strong>
+            <span>Categorias</span>
+            <small>Organização do catálogo</small>
+          </div>
+        </article>
+        <article class="dashboard-stat-card dashboard-stat-card--green">
+          <span class="dashboard-stat-icon">${icon("archive")}</span>
+          <div class="dashboard-stat-content">
+            <strong>${formatarNumeroDashboard(totalEstoque)}</strong>
+            <span>Itens em estoque</span>
+            <small>Soma das unidades</small>
+          </div>
+        </article>
+        <article class="dashboard-stat-card dashboard-stat-card--red">
+          <span class="dashboard-stat-icon">${icon("inboxEmpty")}</span>
+          <div class="dashboard-stat-content">
+            <strong>${formatarNumeroDashboard(semEstoque)}</strong>
+            <span>Sem estoque</span>
+            <small>Disponibilidade atual</small>
+          </div>
+        </article>
+        <article class="dashboard-stat-card dashboard-stat-card--blue">
+          <span class="dashboard-stat-icon">${icon("users")}</span>
+          <div class="dashboard-stat-content">
+            <strong>${formatarNumeroDashboard(totalUsuarios)}</strong>
+            <span>Usuários</span>
+            <small>Contas cadastradas</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="dashboard-ranking-grid" aria-label="Destaques de produtos">
+        <article class="dashboard-card dashboard-ranking-card">
+          <header class="dashboard-card-head">
+            <span class="dashboard-card-head__icon dashboard-card-head__icon--blue">${icon("star")}</span>
+            <h2>Produtos mais vistos</h2>
+          </header>
+          <ol class="dashboard-ranking-list">${renderizarRankingDashboard(maisVistos, "visualizacoes")}</ol>
+          <button class="dashboard-card-link" type="button" data-dashboard-tab="produtos">
+            Ver todos os produtos ${icon("chevronRight")}
+          </button>
+        </article>
+        <article class="dashboard-card dashboard-ranking-card">
+          <header class="dashboard-card-head">
+            <span class="dashboard-card-head__icon dashboard-card-head__icon--purple">${icon("messageSquare")}</span>
+            <h2>Produtos mais compartilhados</h2>
+          </header>
+          <ol class="dashboard-ranking-list">${renderizarRankingDashboard(maisCompartilhados, "compartilhamentos")}</ol>
+          <button class="dashboard-card-link" type="button" data-dashboard-tab="produtos">
+            Ver todos os produtos compartilhados ${icon("chevronRight")}
+          </button>
+        </article>
+      </section>
+
+      <section class="dashboard-action-stack" aria-label="Ferramentas de manutenção">
+        <article class="dashboard-action-card" id="bloco-migracao-imagens">
+          <span class="dashboard-action-icon dashboard-action-icon--blue">${icon("upload")}</span>
+          <div class="dashboard-action-copy">
+            <h2>Imagens antigas (base64)</h2>
+            <p>Converte imagens antigas do Firestore para WebP hospedado no Cloudinary.</p>
+            <p class="dashboard-action-status" id="status-migracao" aria-live="polite"></p>
+          </div>
+          <button class="btn-secondary dashboard-action-button dashboard-action-button--blue" id="btn-migrar-imagens">
+            ${icon("upload")}Migrar imagens antigas
+          </button>
+        </article>
+        <article class="dashboard-action-card" id="bloco-migracao-filtros">
+          <span class="dashboard-action-icon dashboard-action-icon--green">${icon("filter")}</span>
+          <div class="dashboard-action-copy">
+            <h2>Filtros do catálogo (preço/disponibilidade)</h2>
+            <p>Preenche os campos usados para filtrar preço e disponibilidade sem baixar o catálogo inteiro.</p>
+            <p class="dashboard-action-status" id="status-migracao-filtros" aria-live="polite"></p>
+          </div>
+          <button class="btn-secondary dashboard-action-button dashboard-action-button--green" id="btn-migrar-filtros">
+            ${icon("filter")}Preparar produtos para o catálogo
+          </button>
+        </article>
+      </section>
+
+      <section class="dashboard-bottom-grid" aria-label="Relatórios e acompanhamento">
+        <article class="dashboard-card dashboard-tool-card" id="bloco-relatorio-vendas">
+          <header class="dashboard-card-head dashboard-card-head--spaced">
+            <span class="dashboard-card-head__icon dashboard-card-head__icon--purple">${icon("clipboardList")}</span>
+            <div>
+              <h2>Relatório de vendas</h2>
+              <p>Calcula total vendido, ticket médio e produtos mais vendidos no período.</p>
+            </div>
+          </header>
+          <div class="dashboard-report-form">
+            <label class="dashboard-date-field">De<input type="date" id="relatorio-inicio"></label>
+            <label class="dashboard-date-field">Até<input type="date" id="relatorio-fim"></label>
+            <button class="btn-secondary dashboard-tool-button" id="btn-gerar-relatorio">${icon("clipboardList")}Gerar relatório</button>
+            <button class="btn-secondary dashboard-tool-button" id="btn-baixar-relatorio-csv" style="display:none;">${icon("download")}Baixar CSV</button>
+          </div>
+          <div class="dashboard-tool-result" id="resultado-relatorio" aria-live="polite"></div>
+        </article>
+        <article class="dashboard-card dashboard-tool-card" id="bloco-erros-recentes">
+          <header class="dashboard-card-head dashboard-card-head--spaced">
+            <span class="dashboard-card-head__icon dashboard-card-head__icon--orange">${icon("bell")}</span>
+            <div>
+              <h2>Erros recentes do sistema</h2>
+              <p>Falhas de upload, relatório ou pedidos registradas automaticamente (últimos 20).</p>
+            </div>
+          </header>
+          <div class="dashboard-tool-actions">
+            <button class="btn-secondary dashboard-action-button dashboard-action-button--orange" id="btn-carregar-erros">
+              ${icon("refresh")}Carregar erros recentes
+            </button>
+          </div>
+          <div class="dashboard-tool-result" id="lista-erros-recentes" aria-live="polite"></div>
+        </article>
+      </section>
     </div>`;
+
+  container.querySelectorAll("[data-dashboard-tab]").forEach(botao => {
+    botao.addEventListener("click", () => {
+      const aba = botao.dataset.dashboardTab;
+      container.closest("#modal-admin")?.querySelector(`[data-tab-trigger="${aba}"]`)?.click();
+    });
+  });
 
   container.querySelector("#btn-migrar-filtros")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;
