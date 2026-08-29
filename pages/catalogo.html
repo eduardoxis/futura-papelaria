@@ -6,6 +6,8 @@
 <title>Catálogo completo — Papelaria Futura</title>
 <meta name="description" content="Catálogo completo da Papelaria Futura: filtre por categoria, marca, preço e disponibilidade.">
 <link rel="icon" href="/assets/icons/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/modal.css">
@@ -55,10 +57,6 @@
     padding: 0.3rem 0; cursor: pointer;
   }
   .filter-option input { width: 15px; height: 15px; accent-color: var(--azul-700); flex-shrink: 0; }
-  .filter-option__count {
-    margin-left: auto; font-size: 0.78rem; color: var(--cinza-400);
-    background: var(--cinza-050); border-radius: 999px; padding: 0.05rem 0.5rem;
-  }
   .filter-group__ver-mais {
     background: none; color: var(--azul-700); font-size: 0.83rem;
     font-weight: 600; padding: 0.3rem 0 0;
@@ -111,7 +109,7 @@
 <header class="site-header">
   <div class="container header-top">
     <a href="/" class="logo">
-      <img src="/assets/images/logo.png" alt="Papelaria Futura" class="logo__mark">
+      <img src="/assets/images/logo.webp" alt="Papelaria Futura" class="logo__mark" width="235" height="248" decoding="async">
       <span class="logo__text">Papelaria<br>Futura</span>
     </a>
 
@@ -288,8 +286,8 @@
 </aside>
 
 <script type="module">
-import { listarCategorias, listarMarcas, buscarProdutosCatalogo, contarProdutosCatalogo } from "../js/services/firestore.js";
-import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce, registrarErroCliente } from "../js/utils/utils.js";
+import { listarCategorias, listarMarcas, buscarProdutosCatalogo } from "../js/services/firestore.js";
+import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce, registrarErroCliente, imgPos } from "../js/utils/utils.js";
 import { renderizarGrade } from "../js/modules/products.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
@@ -331,14 +329,11 @@ let CATEGORIAS = [];
 let MARCAS = [];
 let mostrarTodasMarcas = false;
 
-// Paginação por cursor: cada página guarda o cursor do Firestore pra
-// conseguir voltar sem refazer a consulta do zero (não dá pra "pular" pra
-// uma página arbitrária como antes — em 10k+ produtos isso exigiria
-// carregar tudo só pra contar. Anterior/Próxima continua correto e rápido).
+// Cada página guarda um cursor do Firestore (consulta simples) ou um offset
+// numérico (filtros complexos atendidos pelo conjunto-base em cache).
 let paginaAtual = 1;
 let cursoresPorPagina = { 1: null };
 let temMaisProximaPagina = false;
-let carregando = false;
 // Token de requisição: em vez de simplesmente IGNORAR uma nova busca
 // enquanto a anterior ainda está em andamento (o que fazia o filtro mais
 // recente do usuário "sumir" quando o Firestore demorava um pouco mais),
@@ -411,24 +406,11 @@ function reiniciarPaginacao() {
   cursoresPorPagina = { 1: null };
 }
 
-/**
- * Conta cada opção de filtro com o RESTANTE dos filtros já ativos aplicado
- * (mas sem o próprio campo que está sendo contado) — é o que dá o número
- * certo do lado de cada checkbox sem baixar produto nenhum, via count()
- * do Firestore (1 leitura agregada por opção, não N).
- */
-async function desenharFiltrosLaterais() {
-  const filtroBase = {
-    termoBusca: estado.termo,
-    categoria: [...estado.categorias][0] || "",
-    marca: "", faixaPreco: "", disponibilidade: ""
-  };
-
+function desenharFiltrosLaterais() {
   document.querySelector("#filtros-categorias").innerHTML = CATEGORIAS.map(c => `
     <label class="filter-option">
       <input type="checkbox" name="categoria" value="${escHtml(c.nome)}" ${estado.categorias.has(c.nome) ? "checked" : ""}>
       <span>${escHtml(c.nome)}</span>
-      <span class="filter-option__count" data-count-categoria="${escHtml(c.nome)}">…</span>
     </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma categoria cadastrada.</p>`;
 
   const marcasParaMostrar = mostrarTodasMarcas ? MARCAS : MARCAS.slice(0, MARCAS_VISIVEIS_INICIAL);
@@ -436,7 +418,6 @@ async function desenharFiltrosLaterais() {
     <label class="filter-option">
       <input type="checkbox" name="marca" value="${escHtml(m.nome)}" ${estado.marcas.has(m.nome) ? "checked" : ""}>
       <span>${escHtml(m.nome)}</span>
-      <span class="filter-option__count" data-count-marca="${escHtml(m.nome)}">…</span>
     </label>`).join("") || `<p style="font-size:0.85rem;color:var(--cinza-400)">Nenhuma marca cadastrada.</p>`;
 
   const btnVerMais = document.querySelector("#btn-ver-mais-marcas");
@@ -489,23 +470,7 @@ async function desenharFiltrosLaterais() {
     desenharFiltrosLaterais();
   };
 
-  // Contagens carregam depois, em paralelo, sem travar a UI dos filtros.
-  const idContagem = ++idContagemAtual;
-  const promessasCategoria = CATEGORIAS.map(async c => {
-    const n = await contarProdutosCatalogo({ ...filtroBase, categoria: c.nome });
-    if (idContagem !== idContagemAtual) return;
-    const el = document.querySelector(`[data-count-categoria="${CSS.escape(c.nome)}"]`);
-    if (el) el.textContent = n;
-  });
-  const promessasMarca = marcasParaMostrar.map(async m => {
-    const n = await contarProdutosCatalogo({ ...filtroBase, marca: m.nome });
-    if (idContagem !== idContagemAtual) return;
-    const el = document.querySelector(`[data-count-marca="${CSS.escape(m.nome)}"]`);
-    if (el) el.textContent = n;
-  });
-  await Promise.all([...promessasCategoria, ...promessasMarca]).catch(() => {});
 }
-let idContagemAtual = 0;
 
 function desenharPaginacao() {
   const nav = document.querySelector("#paginacao");
@@ -532,7 +497,6 @@ async function render() {
   // substitui o antigo "if (carregando) return" — que descartava buscas
   // novas em vez de refletir o filtro mais recente do usuário.
   const meuToken = ++tokenRequisicaoAtual;
-  carregando = true;
   const grade = document.querySelector("#grade-catalogo");
   grade.setAttribute("aria-busy", "true");
 
@@ -571,7 +535,6 @@ async function render() {
   } finally {
     // Só a requisição mais recente controla o estado visual de "carregando".
     if (meuToken === tokenRequisicaoAtual) {
-      carregando = false;
       grade.removeAttribute("aria-busy");
     }
   }
@@ -596,10 +559,10 @@ function configurarCarrinhoUI() {
   function renderCarrinho() {
     const carrinho = obterCarrinho();
     const lista = document.querySelector("#itens-carrinho");
-    const { subtotal, total } = calcularTotais();
+    const { subtotal, total } = calcularTotais(carrinho);
     lista.innerHTML = carrinho.map(item => `
       <div class="cart-item" data-chave="${escHtml(item.chave || item.id)}">
-        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
+        <img src="${imgPos(item.imagem, 160).src || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy" decoding="async">
         <div>
           <div class="cart-item__name">${escHtml(item.nome)}</div>
           <div class="cart-item__brand">${escHtml(item.marca)}${item.cor ? ` • Cor: ${escHtml(item.cor)}` : ""}</div>
@@ -706,8 +669,7 @@ function configurarNomeConvidado() {
 
 async function iniciar() {
   configurarNomeConvidado();
-  CATEGORIAS = await listarCategorias();
-  MARCAS = await listarMarcas();
+  [CATEGORIAS, MARCAS] = await Promise.all([listarCategorias(), listarMarcas()]);
 
   const selectCategoria = document.querySelector("#filtro-categoria");
   selectCategoria.innerHTML = `<option value="">Todas as categorias</option>` +
@@ -721,7 +683,7 @@ async function iniciar() {
     render();
   });
 
-  await desenharFiltrosLaterais();
+  desenharFiltrosLaterais();
   await render();
 
   atualizarBadgeCarrinho();
