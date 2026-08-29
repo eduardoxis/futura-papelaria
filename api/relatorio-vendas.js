@@ -28,6 +28,7 @@ export default async function handler(req, res) {
     const snap = await db.collection("pedidos")
       .where("criadoEm", ">=", inicio)
       .where("criadoEm", "<=", fim)
+      .select("total", "status", "itens")
       .get();
 
     const pedidos = snap.docs.map(d => d.data());
