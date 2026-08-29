@@ -271,7 +271,8 @@ button {
   position: relative; flex: 1 1 380px; min-width: 260px; max-width: 560px; min-height: 220px;
   display: grid; place-items: center;
 }
-.hero__art-img { width: 100%; height: auto; max-width: 100%; border-radius: var(--raio-lg); object-fit: contain; }
+.hero__art picture { display: block; width: 100%; }
+.hero__art-img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: var(--raio-lg); object-fit: contain; }
 .btn-secondary {
   display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0.65rem 1.3rem; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
@@ -356,6 +357,18 @@ button {
 
 .product-card__image { position: relative; aspect-ratio: 411 / 732; background: var(--branco); }
 .product-card__image img { width: 100%; height: 100%; object-fit: contain; padding: 0.9rem; box-sizing: border-box; }
+
+/* Isola pintura/layout de cada card e adia seções distantes da tela. */
+.product-card { contain: layout paint style; }
+@supports (content-visibility: auto) {
+  main > .section,
+  main > .container,
+  .related-section,
+  .site-footer {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 640px;
+  }
+}
 .product-card__tags { position: absolute; top: 0.5rem; left: 0.5rem; display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .tag-badge {
   background: var(--azul-700); color: var(--branco);
