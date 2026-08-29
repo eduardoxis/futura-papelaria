@@ -6,6 +6,8 @@
 <title id="titulo-pagina">Produto — Papelaria Futura</title>
 <meta name="description" id="meta-descricao" content="Confira este produto na Papelaria Futura.">
 <link rel="icon" href="/assets/icons/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/modal.css">
@@ -77,7 +79,7 @@
 <header class="site-header">
   <div class="container header-top">
     <a href="/" class="logo">
-      <img src="/assets/images/logo.png" alt="Papelaria Futura" class="logo__mark">
+      <img src="/assets/images/logo.webp" alt="Papelaria Futura" class="logo__mark" width="235" height="248" decoding="async">
       <span class="logo__text">Papelaria<br>Futura</span>
     </a>
 
@@ -228,11 +230,11 @@ function renderizarGaleriaHtml(imgs, nomeProduto) {
     <div class="product-detail__thumbs" id="galeria-thumbs">
       ${imgs.map((img, i) => `
         <button type="button" class="product-detail__thumb ${i === 0 ? "is-active" : ""}" data-thumb="${i}">
-          <img src="${imgPos(img).src}" style="object-position:${imgPos(img).pos}" alt="${escHtml(nomeProduto)} - imagem ${i + 1}">
+          <img src="${imgPos(img, 180).src}" style="object-position:${imgPos(img).pos}" alt="${escHtml(nomeProduto)} - imagem ${i + 1}" loading="lazy" decoding="async">
         </button>`).join("")}
     </div>` : ""}
     <div class="product-detail__image">
-      <img id="imagem-principal" src="${imgPos(imgs[0]).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(imgs[0]).pos}" alt="${escHtml(nomeProduto)}">
+      <img id="imagem-principal" src="${imgPos(imgs[0], 960).src || "/assets/images/placeholder.svg"}" style="object-position:${imgPos(imgs[0]).pos}" alt="${escHtml(nomeProduto)}" decoding="async" fetchpriority="high">
     </div>`;
 }
 
@@ -401,7 +403,7 @@ async function iniciarProduto() {
     const thumbsEl = document.querySelector("#galeria-thumbs");
     thumbsEl?.querySelectorAll("[data-thumb]").forEach(btn => {
       btn.addEventListener("click", () => {
-        const { src, pos } = imgPos(imagens[Number(btn.dataset.thumb)]);
+        const { src, pos } = imgPos(imagens[Number(btn.dataset.thumb)], 960);
         const principal = document.querySelector("#imagem-principal");
         principal.src = src;
         principal.style.objectPosition = pos;
@@ -504,10 +506,10 @@ function configurarCarrinhoUI() {
   function renderCarrinho() {
     const carrinho = obterCarrinho();
     const lista = document.querySelector("#itens-carrinho");
-    const { subtotal, total } = calcularTotais();
+    const { subtotal, total } = calcularTotais(carrinho);
     lista.innerHTML = carrinho.map(item => `
       <div class="cart-item" data-chave="${escHtml(item.chave || item.id)}">
-        <img src="${item.imagem || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy">
+        <img src="${imgPos(item.imagem, 160).src || "/assets/images/placeholder.svg"}" alt="${escHtml(item.nome)}" loading="lazy" decoding="async">
         <div>
           <div class="cart-item__name">${escHtml(item.nome)}</div>
           <div class="cart-item__brand">${escHtml(item.marca)}${item.cor ? ` • Cor: ${escHtml(item.cor)}` : ""}</div>
