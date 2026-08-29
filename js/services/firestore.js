@@ -2,10 +2,10 @@
 import { db } from "../../firebase/firebase-config.js";
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
-  query, where, orderBy, limit, startAfter, serverTimestamp, increment, onSnapshot,
-  runTransaction, getCountFromServer
+  query, where, orderBy, limit, startAfter, serverTimestamp, increment,
+  runTransaction, getCountFromServer, getAggregateFromServer, sum
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { withLoading, beginListener } from "../utils/loadingManager.js";
+import { withLoading } from "../utils/loadingManager.js";
 
 // ---------- CACHE COM TTL (reduz leituras repetidas do Firestore) ----------
 // Cada página (home, catálogo, produto) importa este módulo de forma
@@ -15,8 +15,14 @@ import { withLoading, beginListener } from "../utils/loadingManager.js";
 // cai drasticamente o consumo de cota do Firestore sem afetar UX (o admin
 // sempre invalida o cache ao salvar uma mudança, ver invalidarCache abaixo).
 const TTL_PADRAO_MS = 5 * 60 * 1000; // 5 min
+const cacheMemoria = new Map();
+const requisicoesPendentes = new Map();
 
 function lerCache(chave) {
+  const emMemoria = cacheMemoria.get(chave);
+  if (emMemoria && Date.now() <= emMemoria.expiraEm) return emMemoria.valor;
+  if (emMemoria) cacheMemoria.delete(chave);
+
   try {
     const bruto = sessionStorage.getItem(`fcache:${chave}`);
     if (!bruto) return undefined;
@@ -25,6 +31,7 @@ function lerCache(chave) {
       sessionStorage.removeItem(`fcache:${chave}`);
       return undefined;
     }
+    cacheMemoria.set(chave, { valor, expiraEm });
     return valor;
   } catch {
     return undefined;
@@ -32,8 +39,10 @@ function lerCache(chave) {
 }
 
 function salvarCache(chave, valor, ttlMs = TTL_PADRAO_MS) {
+  const expiraEm = Date.now() + ttlMs;
+  cacheMemoria.set(chave, { valor, expiraEm });
   try {
-    sessionStorage.setItem(`fcache:${chave}`, JSON.stringify({ valor, expiraEm: Date.now() + ttlMs }));
+    sessionStorage.setItem(`fcache:${chave}`, JSON.stringify({ valor, expiraEm }));
   } catch {
     // sessionStorage cheio/indisponível (modo privado) — segue sem cache.
   }
@@ -46,6 +55,9 @@ function salvarCache(chave, valor, ttlMs = TTL_PADRAO_MS) {
  * argumentos recebidos.
  */
 export function invalidarCache(chave) {
+  for (const k of cacheMemoria.keys()) {
+    if (k === chave || k.startsWith(`${chave}:`)) cacheMemoria.delete(k);
+  }
   try {
     Object.keys(sessionStorage)
       .filter((k) => k === `fcache:${chave}` || k.startsWith(`fcache:${chave}:`))
@@ -59,9 +71,20 @@ function comCache(chave, ttlMs, fn) {
     const chaveCompleta = args.length ? `${chave}:${JSON.stringify(args)}` : chave;
     const emCache = lerCache(chaveCompleta);
     if (emCache !== undefined) return emCache;
-    const valor = await fn(...args);
-    salvarCache(chaveCompleta, valor, ttlMs);
-    return valor;
+
+    // Se duas partes da página pedirem o mesmo dado ao mesmo tempo, ambas
+    // aguardam a mesma Promise. Sem isso, o cache só era preenchido depois da
+    // resposta e as duas consultas idênticas chegavam ao Firestore.
+    if (requisicoesPendentes.has(chaveCompleta)) return requisicoesPendentes.get(chaveCompleta);
+
+    const requisicao = Promise.resolve(fn(...args))
+      .then((valor) => {
+        salvarCache(chaveCompleta, valor, ttlMs);
+        return valor;
+      })
+      .finally(() => requisicoesPendentes.delete(chaveCompleta));
+    requisicoesPendentes.set(chaveCompleta, requisicao);
+    return requisicao;
   };
 }
 
@@ -81,6 +104,8 @@ export function calcularFaixaPreco(preco) {
 function calcularDisponivel(status, quantidade) {
   return status !== "sem_estoque" && status !== "oculto" && Number(quantidade) > 0;
 }
+
+const STATUS_PUBLICOS = ["disponivel", "sem_estoque", "esgotado"];
 
 // ---------- PRODUTOS ----------
 export function listarProdutos({ apenasAtivos = true } = {}) {
@@ -111,6 +136,7 @@ export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = 
     const col = collection(db, "produtos");
     const clausulas = [orderBy(ordenarPor, direcao)];
     if (categoria) clausulas.unshift(where("categoria", "==", categoria));
+    if (apenasAtivos) clausulas.unshift(where("status", "in", STATUS_PUBLICOS));
     // Buscamos 1 a mais do que o pedido só pra saber se existe próxima página,
     // sem precisar de uma segunda consulta count().
     clausulas.push(limit(tamanho + 1));
@@ -144,28 +170,14 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
     const fim = termoNormalizado + "\uf8ff";
     const snap = await getDocs(query(
       col,
+      where("status", "in", STATUS_PUBLICOS),
       orderBy("nome"),
       where("nome", ">=", termoNormalizado),
       where("nome", "<=", fim),
       limit(tamanho)
     ));
-    const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
+    const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { produtos, cursor: snap.docs.at(-1) || null, temMais: snap.docs.length === tamanho };
-  });
-}
-
-export function escutarProdutos(callback, { apenasAtivos = true } = {}) {
-  // Loading cobre só até o primeiro snapshot chegar; atualizações
-  // seguintes em tempo real não reacendem o loading global.
-  const finalizarPrimeiroSnapshot = beginListener("escutarProdutos");
-  return onSnapshot(collection(db, "produtos"), (snap) => {
-    let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
-    callback(produtos);
-    finalizarPrimeiroSnapshot();
-  }, (erro) => {
-    finalizarPrimeiroSnapshot();
-    console.error("[escutarProdutos] erro no listener:", erro);
   });
 }
 
@@ -209,8 +221,13 @@ export function migrarCamposFiltroCatalogo(onProgresso) {
 /** Últimos N produtos cadastrados — usado na home ("Recentes"), sem baixar a coleção inteira. */
 export const listarProdutosRecentes = comCache("listarProdutosRecentes", 3 * 60 * 1000, (tamanho = 8) =>
   withLoading("listarProdutosRecentes", async () => {
-    const snap = await getDocs(query(collection(db, "produtos"), orderBy("criadoEm", "desc"), limit(tamanho + 4)));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+    const snap = await getDocs(query(
+      collection(db, "produtos"),
+      where("status", "in", STATUS_PUBLICOS),
+      orderBy("criadoEm", "desc"),
+      limit(tamanho)
+    ));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   })
 );
 
@@ -226,12 +243,7 @@ export const listarProdutosDestaque = comCache("listarProdutosDestaque", 3 * 60 
     if (produtos.length) return produtos;
 
     try {
-      const snapRecentes = await getDocs(query(
-        collection(db, "produtos"),
-        orderBy("criadoEm", "desc"),
-        limit(tamanho + 4)
-      ));
-      const recentes = snapRecentes.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+      const recentes = await listarProdutosRecentes(tamanho);
       if (recentes.length) return recentes;
     } catch { /* segue pro fallback final abaixo */ }
 
@@ -244,25 +256,35 @@ export const listarProdutosDestaque = comCache("listarProdutosDestaque", 3 * 60 
 );
 
 /** Produtos de uma categoria (até um teto razoável) — usado no filtro rápido da home. */
-export function listarProdutosPorCategoria(categoria, tamanho = 60) {
-  return withLoading("listarProdutosPorCategoria", async () => {
+export const listarProdutosPorCategoria = comCache("listarProdutosPorCategoria", 2 * 60 * 1000, (categoria, tamanho = 60) =>
+  withLoading("listarProdutosPorCategoria", async () => {
     if (!categoria) return [];
-    const snap = await getDocs(query(collection(db, "produtos"), where("categoria", "==", categoria), limit(tamanho)));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto");
-  });
-}
+    const snap = await getDocs(query(
+      collection(db, "produtos"),
+      where("categoria", "==", categoria),
+      where("status", "in", STATUS_PUBLICOS),
+      limit(tamanho)
+    ));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  })
+);
 
-export function obterProduto(id) {
-  return withLoading("obterProduto", async () => {
+export const obterProduto = comCache("obterProduto", 2 * 60 * 1000, (id) =>
+  withLoading("obterProduto", async () => {
     const ref = doc(db, "produtos", id);
     const snap = await getDoc(ref);
     return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-  });
-}
+  })
+);
 
 function invalidarCacheVitrinesHome() {
   invalidarCache("listarProdutosDestaque");
   invalidarCache("listarProdutosRecentes");
+  invalidarCache("listarProdutosPorCategoria");
+  invalidarCache("obterProduto");
+  invalidarCache("catalogoBase");
+  invalidarCache("contarCatalogoServidor");
+  invalidarCache("resumoDashboard");
 }
 
 export function criarProduto(dados) {
@@ -330,15 +352,19 @@ export function duplicarProduto(produto) {
 }
 
 export function incrementarVisualizacao(id) {
-  return withLoading("incrementarVisualizacao", async () => {
-    return updateDoc(doc(db, "produtos", id), { visualizacoes: increment(1) });
-  });
+  // Uma visualização por produto/dispositivo a cada 6 horas evita que
+  // recarregamentos e navegação de ida/volta virem escritas de analytics.
+  const chave = `futura:view:${id}`;
+  try {
+    const ultima = Number(localStorage.getItem(chave)) || 0;
+    if (Date.now() - ultima < 6 * 60 * 60 * 1000) return Promise.resolve();
+    localStorage.setItem(chave, String(Date.now()));
+  } catch { /* segue sem persistência quando o storage não está disponível */ }
+  return updateDoc(doc(db, "produtos", id), { visualizacoes: increment(1) });
 }
 
 export function incrementarCompartilhamento(id) {
-  return withLoading("incrementarCompartilhamento", async () => {
-    return updateDoc(doc(db, "produtos", id), { compartilhamentos: increment(1) });
-  });
+  return updateDoc(doc(db, "produtos", id), { compartilhamentos: increment(1) });
 }
 
 export function ajustarEstoque(id, delta, motivo = "") {
@@ -359,6 +385,9 @@ export function ajustarEstoque(id, delta, motivo = "") {
       motivo,
       data: serverTimestamp()
     });
+    invalidarCache("resumoDashboard");
+    invalidarCache("catalogoBase");
+    invalidarCache("obterProduto");
   });
 }
 
@@ -387,27 +416,34 @@ export function ajustarEstoque(id, delta, motivo = "") {
  * acontecem aqui no navegador depois. Isso evita ficar pedindo um índice
  * novo pra cada combinação de filtros que o cliente escolher.
  */
-async function buscarConjuntoRestrito({ categoria, marcas }) {
+const buscarConjuntoRestritoCacheado = comCache("catalogoBase", 2 * 60 * 1000, async (categoria, marcasOrdenadas) => {
   const col = collection(db, "produtos");
-  const clausulas = [where("status", "!=", "oculto")];
+  const clausulas = [where("status", "in", STATUS_PUBLICOS)];
 
   if (categoria) clausulas.push(where("categoria", "==", categoria));
-  else if (marcas.length === 1) clausulas.push(where("marca", "==", marcas[0]));
+  else if (marcasOrdenadas.length === 1) clausulas.push(where("marca", "==", marcasOrdenadas[0]));
+  else if (marcasOrdenadas.length > 1 && marcasOrdenadas.length <= 10) clausulas.push(where("marca", "in", marcasOrdenadas));
 
   const snap = await getDocs(query(col, ...clausulas));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+});
+
+function buscarConjuntoRestrito({ categoria, marcas }) {
+  return buscarConjuntoRestritoCacheado(categoria, [...marcas].sort());
 }
 
 function aplicarFiltrosClientSide(produtos, { categoria, marcas, faixasPreco, disponibilidade, termo }) {
   let lista = produtos;
+  const conjuntoMarcas = marcas.length ? new Set(marcas) : null;
+  const conjuntoFaixas = faixasPreco.length ? new Set(faixasPreco) : null;
   if (categoria) lista = lista.filter(p => p.categoria === categoria);
-  if (marcas.length) lista = lista.filter(p => marcas.includes(p.marca));
-  if (faixasPreco.length) lista = lista.filter(p => faixasPreco.includes(p.faixaPreco));
+  if (conjuntoMarcas) lista = lista.filter(p => conjuntoMarcas.has(p.marca));
+  if (conjuntoFaixas) lista = lista.filter(p => conjuntoFaixas.has(p.faixaPreco));
   if (disponibilidade === "em_estoque") lista = lista.filter(p => p.disponivel === true);
   else if (disponibilidade === "sem_estoque") lista = lista.filter(p => p.disponivel === false);
   if (termo) {
     const termoNormalizado = normalizarTexto(termo);
-    lista = lista.filter(p => normalizarTexto(p.nome).includes(termoNormalizado));
+    lista = lista.filter(p => nomeNormalizado(p).includes(termoNormalizado));
   }
   return lista;
 }
@@ -417,9 +453,12 @@ function ordenarProdutos(produtos, ordenar) {
   if (ordenar === "preco_asc") lista.sort((a, b) => (Number(a.preco) || 0) - (Number(b.preco) || 0));
   else if (ordenar === "preco_desc") lista.sort((a, b) => (Number(b.preco) || 0) - (Number(a.preco) || 0));
   else if (ordenar === "recentes") lista.sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
-  else lista.sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+  else lista.sort((a, b) => COLATOR_NOMES.compare(String(a.nome), String(b.nome)));
   return lista;
 }
+
+const COLATOR_NOMES = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
+const cacheNomesNormalizados = new WeakMap();
 
 /**
  * Remove acentos e caixa pra comparar texto de forma tolerante
@@ -432,6 +471,46 @@ function normalizarTexto(txt) {
     .toLowerCase();
 }
 
+function nomeNormalizado(produto) {
+  if (!produto || typeof produto !== "object") return "";
+  if (!cacheNomesNormalizados.has(produto)) cacheNomesNormalizados.set(produto, normalizarTexto(produto.nome));
+  return cacheNomesNormalizados.get(produto);
+}
+
+async function buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, ordenar }) {
+  const col = collection(db, "produtos");
+  const filtros = [where("status", "in", STATUS_PUBLICOS)];
+  if (categoria) filtros.push(where("categoria", "==", categoria));
+  if (marcas.length === 1) filtros.push(where("marca", "==", marcas[0]));
+
+  const campoOrdem = ordenar === "preco_asc" || ordenar === "preco_desc"
+    ? "preco"
+    : ordenar === "recentes" ? "criadoEm" : "nome";
+  const direcao = ordenar === "preco_desc" || ordenar === "recentes" ? "desc" : "asc";
+  const clausulas = [...filtros, orderBy(campoOrdem, direcao), limit(tamanho + 1)];
+  if (cursor) clausulas.push(startAfter(cursor));
+
+  const [snap, total] = await Promise.all([
+    getDocs(query(col, ...clausulas)),
+    contarCatalogoServidor(categoria, marcas[0] || "")
+  ]);
+  const docs = snap.docs.slice(0, tamanho);
+  return {
+    produtos: docs.map(d => ({ id: d.id, ...d.data() })),
+    cursor: docs.at(-1) || cursor,
+    temMais: snap.docs.length > tamanho,
+    total
+  };
+}
+
+const contarCatalogoServidor = comCache("contarCatalogoServidor", 5 * 60 * 1000, async (categoria, marca) => {
+  const filtros = [where("status", "in", STATUS_PUBLICOS)];
+  if (categoria) filtros.push(where("categoria", "==", categoria));
+  if (marca) filtros.push(where("marca", "==", marca));
+  const snap = await getCountFromServer(query(collection(db, "produtos"), ...filtros));
+  return snap.data().count;
+});
+
 export function buscarProdutosCatalogo({
   tamanho = 24,
   cursor = null,
@@ -443,6 +522,14 @@ export function buscarProdutosCatalogo({
   ordenar = "nome" // "nome" | "preco_asc" | "preco_desc" | "recentes"
 } = {}) {
   return withLoading("buscarProdutosCatalogo", async () => {
+    // O caminho comum (sem busca textual nem filtros que exigem pós-processamento)
+    // traz somente uma página do Firestore. Filtros complexos reutilizam um
+    // conjunto-base cacheado por dois minutos, em vez de reler tudo a cada clique.
+    const podePaginarNoServidor = !faixasPreco.length && !disponibilidade && !termoBusca.trim() && marcas.length <= 1;
+    if (podePaginarNoServidor) {
+      return buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, ordenar });
+    }
+
     const brutos = await buscarConjuntoRestrito({ categoria, marcas });
     const filtrados = aplicarFiltrosClientSide(brutos, {
       categoria, marcas, faixasPreco, disponibilidade, termo: termoBusca.trim()
@@ -463,26 +550,6 @@ export function buscarProdutosCatalogo({
   });
 }
 
-/**
- * Conta quantos produtos batem com um conjunto de filtros. Usa o mesmo
- * conjunto restrito + filtro client-side de buscarProdutosCatalogo, então
- * não pede índice novo nenhum além dos dois que já existem.
- */
-export function contarProdutosCatalogo({
-  categoria = "", marca = "", marcas = [], faixaPreco = "", faixasPreco = [], disponibilidade = "", termoBusca = ""
-} = {}) {
-  return withLoading("contarProdutosCatalogo", async () => {
-    const listaMarcas = marca ? [marca] : marcas;
-    const listaFaixas = faixaPreco ? [faixaPreco] : faixasPreco;
-
-    const brutos = await buscarConjuntoRestrito({ categoria, marcas: listaMarcas });
-    const filtrados = aplicarFiltrosClientSide(brutos, {
-      categoria, marcas: listaMarcas, faixasPreco: listaFaixas, disponibilidade, termo: termoBusca.trim()
-    });
-    return filtrados.length;
-  });
-}
-
 // ---------- CATEGORIAS ----------
 // Muda pouco (só quando o admin mexe no painel) — cache mais longo (10 min)
 // e invalidado explicitamente nas funções de escrita logo abaixo.
@@ -492,20 +559,11 @@ export const listarCategorias = comCache("listarCategorias", 10 * 60 * 1000, () 
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   })
 );
-export function escutarCategorias(callback) {
-  const finalizarPrimeiroSnapshot = beginListener("escutarCategorias");
-  return onSnapshot(collection(db, "categorias"), (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    finalizarPrimeiroSnapshot();
-  }, (erro) => {
-    finalizarPrimeiroSnapshot();
-    console.error("[escutarCategorias] erro no listener:", erro);
-  });
-}
 export function criarCategoria(nome, emoji = "", imagem = "") {
   return withLoading("criarCategoria", async () => {
     const resultado = await addDoc(collection(db, "categorias"), { nome, emoji, imagem });
     invalidarCache("listarCategorias");
+    invalidarCache("resumoDashboard");
     return resultado;
   });
 }
@@ -520,6 +578,7 @@ export function excluirCategoria(id) {
   return withLoading("excluirCategoria", async () => {
     const resultado = await deleteDoc(doc(db, "categorias", id));
     invalidarCache("listarCategorias");
+    invalidarCache("resumoDashboard");
     return resultado;
   });
 }
@@ -531,16 +590,6 @@ export const listarMarcas = comCache("listarMarcas", 10 * 60 * 1000, () =>
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   })
 );
-export function escutarMarcas(callback) {
-  const finalizarPrimeiroSnapshot = beginListener("escutarMarcas");
-  return onSnapshot(collection(db, "marcas"), (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    finalizarPrimeiroSnapshot();
-  }, (erro) => {
-    finalizarPrimeiroSnapshot();
-    console.error("[escutarMarcas] erro no listener:", erro);
-  });
-}
 export function criarMarca(dados) {
   return withLoading("criarMarca", async () => {
     const resultado = await addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
@@ -629,7 +678,7 @@ export function salvarLeadPerdido(lead) {
 }
 export function listarLeadsPerdidos() {
   return withLoading("listarLeadsPerdidos", async () => {
-    const snap = await getDocs(query(collection(db, "leadsPerdidos"), orderBy("data", "desc")));
+    const snap = await getDocs(query(collection(db, "leadsPerdidos"), orderBy("data", "desc"), limit(200)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
@@ -647,9 +696,13 @@ export function criarPedido(dados) {
 }
 export function listarPedidosUsuario(usuarioId) {
   return withLoading("listarPedidosUsuario", async () => {
-    const snap = await getDocs(query(collection(db, "pedidos"), where("usuarioId", "==", usuarioId)));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
+    const snap = await getDocs(query(
+      collection(db, "pedidos"),
+      where("usuarioId", "==", usuarioId),
+      orderBy("criadoEm", "desc"),
+      limit(50)
+    ));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
 
@@ -706,3 +759,39 @@ export function listarUltimoAlertaEstoque() {
     return { id: doc.id, ...doc.data() };
   });
 }
+
+// ---------- RESUMO DO DASHBOARD ----------
+// Agregações e listas limitadas substituem a leitura integral de produtos,
+// categorias e usuários que acontecia toda vez que o painel era aberto.
+export const obterResumoDashboard = comCache("resumoDashboard", 2 * 60 * 1000, () =>
+  withLoading("obterResumoDashboard", async () => {
+    const produtosRef = collection(db, "produtos");
+    const [
+      contagemProdutos,
+      estoque,
+      contagemSemEstoque,
+      contagemCategorias,
+      contagemUsuarios,
+      vistosSnap,
+      compartilhadosSnap
+    ] = await Promise.all([
+      getCountFromServer(produtosRef),
+      getAggregateFromServer(produtosRef, { total: sum("quantidade") }),
+      getCountFromServer(query(produtosRef, where("quantidade", "<=", 0))),
+      getCountFromServer(collection(db, "categorias")),
+      getCountFromServer(collection(db, "usuarios")),
+      getDocs(query(produtosRef, orderBy("visualizacoes", "desc"), limit(5))),
+      getDocs(query(produtosRef, orderBy("compartilhamentos", "desc"), limit(5)))
+    ]);
+
+    return {
+      totalProdutos: contagemProdutos.data().count,
+      totalEstoque: Number(estoque.data().total) || 0,
+      semEstoque: contagemSemEstoque.data().count,
+      totalCategorias: contagemCategorias.data().count,
+      totalUsuarios: contagemUsuarios.data().count,
+      maisVistos: vistosSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      maisCompartilhados: compartilhadosSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    };
+  })
+);
