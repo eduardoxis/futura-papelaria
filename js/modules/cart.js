@@ -4,6 +4,7 @@ import { salvarLeadPerdido } from "../services/firestore.js";
 import { STORE_CONFIG } from "../../firebase/firebase-config.js";
 
 const CART_KEY = "papelaria_carrinho";
+const LEAD_KEY = "papelaria_ultimo_lead";
 let leadSalvo = false;
 
 export function obterCarrinho() {
@@ -72,8 +73,7 @@ export function limparCarrinho() {
   atualizarBadgeCarrinho();
 }
 
-export function calcularTotais() {
-  const carrinho = obterCarrinho();
+export function calcularTotais(carrinho = obterCarrinho()) {
   const quantidadeItens = carrinho.reduce((acc, i) => acc + i.quantidade, 0);
   const subtotal = carrinho.reduce((acc, i) => acc + i.quantidade * i.preco, 0);
   return { quantidadeItens, subtotal, total: subtotal };
@@ -89,7 +89,7 @@ export function atualizarBadgeCarrinho() {
 
 export function montarMensagemWhatsApp(nomeCliente = "") {
   const carrinho = obterCarrinho();
-  const { total } = calcularTotais();
+  const { total } = calcularTotais(carrinho);
   let msg = "Olá!\nTenho interesse nestes produtos:\n\n";
   carrinho.forEach(item => {
     const corStr = item.cor ? ` (Cor: ${item.cor})` : "";
@@ -130,13 +130,27 @@ export function falarSobreProduto(produto) {
 export async function registrarLeadPerdidoSeNecessario({ nome = "", telefone = "" } = {}) {
   const carrinho = obterCarrinho();
   if (leadSalvo || carrinho.length === 0) return;
+  const assinatura = carrinho.map(i => `${i.chave || i.id}:${i.quantidade}`).sort().join("|");
+  try {
+    const ultimo = JSON.parse(localStorage.getItem(LEAD_KEY) || "null");
+    if (ultimo?.assinatura === assinatura && Date.now() < ultimo.expiraEm) return;
+  } catch { /* storage indisponível/corrompido: segue normalmente */ }
   if (!podeExecutar("lead-perdido", 3, 5 * 60_000)) return;
-  const { total } = calcularTotais();
+  const { total } = calcularTotais(carrinho);
   leadSalvo = true;
-  await salvarLeadPerdido({
-    nome,
-    telefone,
-    produtos: carrinho.map(i => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
-    valor: total
-  });
+  try {
+    localStorage.setItem(LEAD_KEY, JSON.stringify({ assinatura, expiraEm: Date.now() + 30 * 60_000 }));
+  } catch { /* segue sem deduplicação persistente */ }
+  try {
+    await salvarLeadPerdido({
+      nome,
+      telefone,
+      produtos: carrinho.map(i => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
+      valor: total
+    });
+  } catch (erro) {
+    leadSalvo = false;
+    try { localStorage.removeItem(LEAD_KEY); } catch { /* ignora */ }
+    throw erro;
+  }
 }
