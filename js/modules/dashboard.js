@@ -1,13 +1,14 @@
 // js/modules/dashboard.js
 import {
-  listarProdutos, listarProdutosPagina, buscarProdutosPorPrefixo, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
+  listarProdutosPagina, buscarProdutosPorPrefixo, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
   listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
   listarMarcas, criarMarca, atualizarMarca, excluirMarca,
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
-  ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo, listarUltimoAlertaEstoque
+  ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo, listarUltimoAlertaEstoque,
+  obterResumoDashboard
 } from "../services/firestore.js";
-import { formatBRL, escHtml, generateCode, converterParaWebP, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "../utils/utils.js";
+import { formatBRL, escHtml, generateCode, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "../utils/utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "../services/cloudinary.js";
 import { carregarPainelLeads } from "../modules/leads.js";
 import { ICONS, icon } from "../utils/icons.js";
@@ -102,28 +103,13 @@ export async function iniciarPainelAdmin(root) {
 }
 
 // ---------- DASHBOARD ----------
-// Cache curto (2 min) só pros números do dashboard — é uma tela de
-// estatística, não precisa reler produtos/usuários inteiros toda vez que o
-// admin volta pra essa aba dentro da mesma sessão.
-let cacheDashboard = null;
-let cacheDashboardExpiraEm = 0;
-
 async function carregarDashboard(container) {
   if (!container) return;
 
-  let produtos, categorias, usuarios;
-  if (cacheDashboard && Date.now() < cacheDashboardExpiraEm) {
-    ({ produtos, categorias, usuarios } = cacheDashboard);
-  } else {
-    produtos = await listarProdutos({ apenasAtivos: false });
-    categorias = await listarCategorias();
-    usuarios = await listarUsuarios();
-    cacheDashboard = { produtos, categorias, usuarios };
-    cacheDashboardExpiraEm = Date.now() + 2 * 60 * 1000;
-  }
-  const semEstoque = produtos.filter(p => Number(p.quantidade) <= 0).length;
-  const maisVistos = [...produtos].sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0)).slice(0, 5);
-  const maisCompartilhados = [...produtos].sort((a, b) => (b.compartilhamentos || 0) - (a.compartilhamentos || 0)).slice(0, 5);
+  const {
+    totalProdutos, totalCategorias, totalEstoque, semEstoque,
+    totalUsuarios, maisVistos, maisCompartilhados
+  } = await obterResumoDashboard();
 
   container.innerHTML = `
     <div class="admin-panel-head">
@@ -131,11 +117,11 @@ async function carregarDashboard(container) {
       <p>Visão geral do desempenho da sua loja.</p>
     </div>
     <div class="dash-grid">
-      <div class="stat-card"><span>${produtos.length}</span><label>Produtos</label></div>
-      <div class="stat-card"><span>${categorias.length}</span><label>Categorias</label></div>
-      <div class="stat-card"><span>${produtos.reduce((a, p) => a + Number(p.quantidade || 0), 0)}</span><label>Itens em estoque</label></div>
+      <div class="stat-card"><span>${totalProdutos}</span><label>Produtos</label></div>
+      <div class="stat-card"><span>${totalCategorias}</span><label>Categorias</label></div>
+      <div class="stat-card"><span>${totalEstoque}</span><label>Itens em estoque</label></div>
       <div class="stat-card stat-card--warn"><span>${semEstoque}</span><label>Sem estoque</label></div>
-      <div class="stat-card"><span>${usuarios.length}</span><label>Usuários</label></div>
+      <div class="stat-card"><span>${totalUsuarios}</span><label>Usuários</label></div>
     </div>
     <div class="dash-lists">
       <div class="dash-list">
