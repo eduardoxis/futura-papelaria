@@ -23,19 +23,20 @@ export function alternarFavorito(id) {
   return lista.includes(id);
 }
 
-export function cartaoProduto(produto) {
+export function cartaoProduto(produto, favoritos = null) {
   const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
   const etiquetasHtml = (produto.etiquetas || [])
     .map(e => `<span class="tag-badge">${escHtml(e)}</span>`)
     .join("");
-  const favoritado = obterFavoritos().includes(produto.id);
+  const favoritado = favoritos instanceof Set ? favoritos.has(produto.id) : obterFavoritos().includes(produto.id);
+  const imagem = imgPos(produto.imagem, 480).src || "/assets/images/placeholder.svg";
 
   return `
     <div class="product-card ${semEstoque ? "is-out" : ""}" data-id="${produto.id}">
       <button class="product-card__fav ${favoritado ? "is-active" : ""}" data-fav-id="${produto.id}" aria-label="Favoritar produto" aria-pressed="${favoritado}">${icon("heart")}</button>
       <a class="product-card__link" href="/pages/produto.html?id=${produto.id}">
         <div class="product-card__image">
-          <img src="${imgPos(produto.imagem).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(produto.nome)}" loading="lazy">
+          <img src="${imagem}" style="object-position:center center" alt="${escHtml(produto.nome)}" loading="lazy" decoding="async" width="411" height="732">
           ${etiquetasHtml ? `<div class="product-card__tags">${etiquetasHtml}</div>` : ""}
           ${semEstoque ? `<span class="badge-outofstock">Sem estoque</span>` : ""}
         </div>
@@ -62,7 +63,9 @@ export function renderizarGrade(container, produtos) {
     container.innerHTML = `<div class="empty-state">Nenhum produto encontrado. Tente ajustar sua busca ou filtros.</div>`;
     return;
   }
-  container.innerHTML = produtos.map(cartaoProduto).join("");
+  const favoritos = new Set(obterFavoritos());
+  container.__produtosPorId = new Map(produtos.map(produto => [produto.id, produto]));
+  container.innerHTML = produtos.map(produto => cartaoProduto(produto, favoritos)).join("");
 
   if (!container.dataset.acoesLigadas) {
     container.dataset.acoesLigadas = "1";
@@ -80,7 +83,7 @@ export function renderizarGrade(container, produtos) {
       if (!btnAdd && !btnAsk) return;
       e.preventDefault();
       const id = (btnAdd || btnAsk).dataset.addId || (btnAdd || btnAsk).dataset.askId;
-      const produto = produtos.find(p => p.id === id);
+      const produto = container.__produtosPorId?.get(id);
       if (!produto) return;
       if (btnAdd) container.dispatchEvent(new CustomEvent("adicionar-carrinho", { detail: produto, bubbles: true }));
       if (btnAsk) container.dispatchEvent(new CustomEvent("falar-produto", { detail: produto, bubbles: true }));
