@@ -3,13 +3,24 @@
 // Grava um erro do lado do cliente em "logsErros" (Firestore), pro admin
 // conseguir ver depois no Dashboard. Import dinâmico pra não criar
 // dependência circular com módulos que já importam utils.js.
+let logsEnviadosNestaPagina = 0;
 export async function registrarErroCliente(origem, erro, extra = {}) {
   try {
+    if (logsEnviadosNestaPagina >= 5) return;
+    const mensagem = String(erro?.message || erro || "Erro desconhecido");
+    let hash = 0;
+    for (const caractere of `${origem}:${mensagem}`) hash = ((hash << 5) - hash + caractere.charCodeAt(0)) | 0;
+    const chave = `futura:erro:${hash}`;
+    const ultimoEnvio = Number(localStorage.getItem(chave)) || 0;
+    if (Date.now() - ultimoEnvio < 30 * 60_000) return;
+    localStorage.setItem(chave, String(Date.now()));
+    logsEnviadosNestaPagina += 1;
+
     const { db } = await import("../../firebase/firebase-config.js");
     const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
     await addDoc(collection(db, "logsErros"), {
       origem,
-      mensagem: String(erro?.message || erro || "Erro desconhecido"),
+      mensagem,
       extra,
       criadoEm: serverTimestamp()
     });
@@ -30,14 +41,25 @@ export function escHtml(str = "") {
 // Extrai a posição de enquadramento salva na própria URL da imagem (ex: "...jpg#pos=30,70").
 // Guardamos isso no fragmento (#) da URL porque o fragmento nunca é enviado ao servidor,
 // então não interfere no carregamento da imagem nem exige mudar o formato salvo no Firestore.
-export function imgPos(url = "") {
-  const src = String(url || "");
-  const m = src.match(/#pos=([\d.]+),([\d.]+)$/);
+export function imgPos(url = "", largura = 720) {
+  const original = String(url || "");
+  const m = original.match(/#pos=([\d.]+),([\d.]+)$/);
+  let src = original.replace(/#pos=[\d.]+,[\d.]+$/, "");
+
+  // O Cloudinary redimensiona e escolhe o formato mais leve na borda. O
+  // Firestore continua guardando só a URL original, sem criar variantes.
+  if (/^https:\/\/res\.cloudinary\.com\//.test(src) && src.includes("/image/upload/")) {
+    const larguraSegura = Math.max(64, Math.min(1600, Math.round(Number(largura) || 720)));
+    src = src.replace("/image/upload/", `/image/upload/f_auto,q_auto:eco,c_limit,w_${larguraSegura}/`);
+  }
+
   return { src, pos: m ? `${m[1]}% ${m[2]}%` : "50% 50%" };
 }
 
+const FORMATADOR_BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
 export function formatBRL(value = 0) {
-  return Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return FORMATADOR_BRL.format(Number(value) || 0);
 }
 
 export function formatDate(date) {
