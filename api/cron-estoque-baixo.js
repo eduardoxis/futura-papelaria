@@ -26,15 +26,20 @@ export default async function handler(req, res) {
   try {
     const db = obterDbAdmin();
     const snap = await db.collection("produtos")
+      .where("status", "==", "disponivel")
       .where("quantidade", "<=", LIMITE_ESTOQUE_BAIXO)
+      .select("nome", "quantidade")
       .get();
 
     const produtosBaixos = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p.status !== "oculto" && p.status !== "sem_estoque");
+      .filter(p => Number(p.quantidade) >= 0);
 
     if (produtosBaixos.length) {
-      await db.collection("alertasEstoque").add({
+      // ID determinístico: uma repetição do cron no mesmo dia atualiza o
+      // alerta em vez de criar documentos duplicados.
+      const idDia = new Date().toISOString().slice(0, 10);
+      await db.collection("alertasEstoque").doc(idDia).set({
         criadoEm: new Date(),
         limite: LIMITE_ESTOQUE_BAIXO,
         total: produtosBaixos.length,
@@ -43,7 +48,7 @@ export default async function handler(req, res) {
           nome: p.nome || "",
           quantidade: Number(p.quantidade) || 0
         }))
-      });
+      }, { merge: true });
     }
 
     res.status(200).json({ ok: true, alertas: produtosBaixos.length });
