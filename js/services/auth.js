@@ -6,7 +6,7 @@ import {
   setPersistence, browserLocalPersistence, browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { toast } from "../utils/utils.js";
+import { toast, podeExecutarPersistente } from "../utils/utils.js";
 import { withLoading, beginListener } from "../utils/loadingManager.js";
 
 export let usuarioAtual = null;
@@ -40,13 +40,25 @@ export function ehAdmin() {
 export function entrar(email, senha, manterLogin = true) {
   return withLoading("entrar", async () => {
     try {
+      // Camada de proteção de interface: evita que um mesmo e-mail dispare
+      // dezenas de requisições seguidas. O Firebase continua aplicando sua
+      // própria proteção no servidor contra abuso de autenticação.
+      const chaveLimite = `login:${String(email || "").trim().toLowerCase()}`;
+      if (!podeExecutarPersistente(chaveLimite, 5, 15 * 60_000)) {
+        const erro = new Error("Muitas tentativas de login. Aguarde 15 minutos e tente novamente.");
+        toast(erro.message, "error");
+        throw erro;
+      }
       // "Manter conectado" marcado -> sessão sobrevive ao fechar o navegador
       // (browserLocalPersistence). Desmarcado -> some ao fechar a aba/janela
       // (browserSessionPersistence), útil em computador compartilhado.
       await setPersistence(auth, manterLogin ? browserLocalPersistence : browserSessionPersistence);
       const { user } = await signInWithEmailAndPassword(auth, email, senha);
+      // Login concluído: remove o histórico de tentativas daquele e-mail.
+      localStorage.removeItem(`ratelimit_${chaveLimite}`);
       return user;
     } catch (err) {
+      if (err?.message?.startsWith("Muitas tentativas de login")) throw err;
       toast(traduzErroAuth(err.code), "error");
       throw err;
     }
