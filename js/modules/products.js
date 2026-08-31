@@ -1,6 +1,7 @@
 // js/modules/products.js
 import { escHtml, formatBRL, imgPos } from "../utils/utils.js";
 import { incrementarCompartilhamento } from "../services/firestore.js";
+import { salvarFavoritosNuvem } from "../services/contaSync.js";
 import { icon } from "../utils/icons.js";
 
 const CHAVE_FAVORITOS = "futura_favoritos";
@@ -12,6 +13,11 @@ export function obterFavoritos() {
 
 function salvarFavoritos(lista) {
   localStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(lista));
+  salvarFavoritosNuvem(lista).catch(() => {});
+}
+
+export function aplicarFavoritosSincronizados(lista) {
+  localStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(Array.isArray(lista) ? lista : []));
 }
 
 export function alternarFavorito(id) {

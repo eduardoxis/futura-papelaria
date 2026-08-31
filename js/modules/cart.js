@@ -1,6 +1,7 @@
 // js/modules/cart.js
 import { formatBRL, escHtml, podeExecutar } from "../utils/utils.js";
 import { salvarLeadPerdido } from "../services/firestore.js";
+import { salvarCarrinhoNuvem } from "../services/contaSync.js";
 import { STORE_CONFIG } from "../../firebase/firebase-config.js";
 
 const CART_KEY = "papelaria_carrinho";
@@ -18,7 +19,14 @@ export function obterCarrinho() {
 function salvarCarrinho(carrinho) {
   localStorage.setItem(CART_KEY, JSON.stringify(carrinho));
   atualizarBadgeCarrinho();
+  salvarCarrinhoNuvem(carrinho).catch(() => {});
   leadSalvo = false; // qualquer mudança reabre a possibilidade de novo lead
+}
+
+export function aplicarCarrinhoSincronizado(carrinho) {
+  localStorage.setItem(CART_KEY, JSON.stringify(Array.isArray(carrinho) ? carrinho : []));
+  atualizarBadgeCarrinho();
+  window.dispatchEvent(new Event("carrinho-atualizado"));
 }
 
 /**
@@ -69,8 +77,7 @@ export function removerDoCarrinho(chave) {
 }
 
 export function limparCarrinho() {
-  localStorage.removeItem(CART_KEY);
-  atualizarBadgeCarrinho();
+  salvarCarrinho([]);
 }
 
 export function calcularTotais(carrinho = obterCarrinho()) {

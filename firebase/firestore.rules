@@ -59,6 +59,15 @@ service cloud.firestore {
       allow update, delete: if ehAdmin();
     }
 
+    // Carrinho e favoritos pertencem à conta: qualquer dispositivo com a
+    // mesma sessão autenticada vê e atualiza o mesmo documento.
+    match /carrinhos/{uid} {
+      allow read, write: if autenticado() && request.auth.uid == uid;
+    }
+    match /favoritos/{uid} {
+      allow read, write: if autenticado() && request.auth.uid == uid;
+    }
+
     // ---------- ENDEREÇOS ----------
     match /enderecos/{id} {
       allow create: if autenticado() && request.resource.data.usuarioId == request.auth.uid;

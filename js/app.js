@@ -5,12 +5,13 @@ import {
   criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
   atualizarPerfilUsuario
 } from "./services/firestore.js";
-import { renderizarGrade, obterFavoritos, alternarFavorito } from "./modules/products.js";
+import { renderizarGrade, obterFavoritos, alternarFavorito, aplicarFavoritosSincronizados } from "./modules/products.js";
 import { buscarProdutos } from "./modules/search.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
-  finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario
+  finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario, aplicarCarrinhoSincronizado
 } from "./modules/cart.js";
+import { iniciarSincronizacaoConta } from "./services/contaSync.js";
 import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos, registrarErroCliente } from "./utils/utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha, atualizarNomeAuth } from "./services/auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./utils/modal.js";
@@ -459,6 +460,12 @@ function configurarCarrinhoUI() {
 function configurarLogin() {
   let jaAbriuViaParam = false;
   ouvirEstadoAuth((usuario) => {
+    iniciarSincronizacaoConta(usuario?.uid, {
+      carrinhoLocal: obterCarrinho,
+      favoritosLocais: obterFavoritos,
+      aplicarCarrinho: aplicarCarrinhoSincronizado,
+      aplicarFavoritos: aplicarFavoritosSincronizados
+    });
     const btnAdmin = document.querySelector("#abrir-admin");
     const btnEntrar = document.querySelector("#btn-entrar");
     const btnSair = document.querySelector("#btn-sair");
