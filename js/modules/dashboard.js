@@ -446,10 +446,14 @@ async function carregarAbaProdutos(container) {
       <p>Adicione, edite e gerencie os produtos da sua loja.</p>
     </div>
     <div class="admin-toolbar">
-      <div class="input-icon">
-        ${icon("search")}
-        <input type="text" id="busca-admin-produtos" placeholder="Pesquisar produtos..." autocomplete="off">
-      </div>
+      <form class="admin-search" id="form-busca-admin-produtos" role="search">
+        <div class="input-icon">
+          ${icon("search")}
+          <input type="search" id="busca-admin-produtos" placeholder="Pesquisar produtos..." autocomplete="off">
+        </div>
+        <button type="submit" class="btn-secondary" id="btn-pesquisar-produtos">${icon("search")}Pesquisar</button>
+        <button type="button" class="btn-link" id="btn-limpar-busca-produtos" hidden>Limpar</button>
+      </form>
       <div class="select-icon">
         ${icon("sort")}
         <select id="ordenar-admin-produtos">
@@ -485,11 +489,20 @@ async function carregarAbaProdutos(container) {
 
   await carregarPaginaProdutos(container, 0);
 
-  let debounceBusca;
-  container.querySelector("#busca-admin-produtos").addEventListener("input", (e) => {
-    clearTimeout(debounceBusca);
-    const termo = e.target.value.trim();
-    debounceBusca = setTimeout(() => buscarProdutosAdmin(container, termo), 300);
+  const inputBusca = container.querySelector("#busca-admin-produtos");
+  const btnLimparBusca = container.querySelector("#btn-limpar-busca-produtos");
+  container.querySelector("#form-busca-admin-produtos").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await buscarProdutosAdmin(container, inputBusca.value.trim());
+  });
+  inputBusca.addEventListener("input", () => {
+    btnLimparBusca.hidden = !inputBusca.value.trim();
+  });
+  btnLimparBusca.addEventListener("click", async () => {
+    inputBusca.value = "";
+    btnLimparBusca.hidden = true;
+    await buscarProdutosAdmin(container, "");
+    inputBusca.focus();
   });
 
   container.querySelector("#ordenar-admin-produtos").addEventListener("change", (e) => {

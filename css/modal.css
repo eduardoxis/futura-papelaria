@@ -369,6 +369,12 @@
 
 /* ---- toolbar / tables ---- */
 .admin-toolbar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.1rem; align-items: stretch; }
+.admin-search { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: stretch; }
+.admin-search .input-icon { min-width: min(280px, 100%); }
+.admin-search .btn-secondary { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+.admin-search .btn-secondary .icon { width: 15px; height: 15px; }
+.btn-link { border: 0; background: transparent; color: var(--azul-700); cursor: pointer; padding: 0.65rem 0.25rem; font: inherit; }
+.btn-link:hover { text-decoration: underline; }
 .admin-toolbar .select-icon { flex: 0 0 auto; min-width: 190px; }
 .admin-toolbar select { appearance: none; cursor: pointer; }
 .admin-toolbar .btn-primary { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }

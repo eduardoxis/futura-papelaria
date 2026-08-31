@@ -155,29 +155,42 @@ export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = 
 }
 
 /**
- * Busca por "começa com" usando range query nativa do Firestore
- * (orderBy + where >= termo + where <= termo+\uf8ff). Não é busca por
- * substring (não acha "Duplo" digitando "duplo" no meio do nome) —
- * é o limite do que dá pra fazer sem um serviço de busca dedicado
- * (Algolia/Typesense) mantendo custo de leitura baixo em catálogos grandes.
+ * Busca administrativa por início do nome. São feitas consultas para as
+ * capitalizações mais comuns, porque o Firestore compara texto respeitando
+ * maiúsculas/minúsculas. Não limita por status: o painel também precisa
+ * encontrar produtos ocultos e esgotados.
  */
 export function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
   return withLoading("buscarProdutosPorPrefixo", async () => {
-    const termoNormalizado = termo.trim();
-    if (!termoNormalizado) return { produtos: [], cursor: null, temMais: false };
+    const termoLimpo = termo.trim();
+    if (!termoLimpo) return { produtos: [], cursor: null, temMais: false };
 
+    const variantes = [...new Set([
+      termoLimpo,
+      termoLimpo.toLowerCase(),
+      termoLimpo.toUpperCase(),
+      termoLimpo.charAt(0).toUpperCase() + termoLimpo.slice(1).toLowerCase()
+    ])];
     const col = collection(db, "produtos");
-    const fim = termoNormalizado + "\uf8ff";
-    const snap = await getDocs(query(
+    const resultados = await Promise.all(variantes.map(inicio => getDocs(query(
       col,
-      where("status", "in", STATUS_PUBLICOS),
       orderBy("nome"),
-      where("nome", ">=", termoNormalizado),
-      where("nome", "<=", fim),
+      where("nome", ">=", inicio),
+      where("nome", "<=", inicio + "\uf8ff"),
       limit(tamanho)
-    ));
-    const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    return { produtos, cursor: snap.docs.at(-1) || null, temMais: snap.docs.length === tamanho };
+    ))));
+    const porId = new Map();
+    resultados.flatMap(snap => snap.docs).forEach(docProduto => {
+      porId.set(docProduto.id, { id: docProduto.id, ...docProduto.data() });
+    });
+    const produtos = [...porId.values()]
+      .sort((a, b) => COLATOR_NOMES.compare(String(a.nome), String(b.nome)))
+      .slice(0, tamanho);
+    return {
+      produtos,
+      cursor: null,
+      temMais: resultados.some(snap => snap.docs.length === tamanho)
+    };
   });
 }
 
