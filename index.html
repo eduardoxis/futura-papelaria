@@ -437,9 +437,9 @@
 </div>
 
 <!-- MODAL FORMAS DE PAGAMENTO -->
-<div class="modal modal--sheet" id="modal-pagamento">
-  <div class="modal__panel modal__panel--sheet">
-    <div class="sheet__handle"></div>
+<div class="modal modal--payment" id="modal-pagamento">
+  <div class="modal__panel modal__panel--payment">
+    <div class="payment__handle" aria-hidden="true"></div>
     <div class="modal__head">
       <div class="modal__head-title">
         <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
@@ -450,13 +450,28 @@
       </div>
       <button class="modal__close" data-modal-close aria-label="Fechar"></button>
     </div>
-    <div class="modal__body sheet__body">
-      <p class="modal__note">Não processamos pagamentos no site — o pedido é fechado por WhatsApp. Aqui você só define sua preferência, pra já vir junto na mensagem.</p>
-      <form id="form-pagamento" class="stacked-form">
-        <label class="radio-option"><input type="radio" name="forma" value="Pix"><span><strong>Pix</strong><small>Chave enviada na confirmação</small></span></label>
-        <label class="radio-option"><input type="radio" name="forma" value="Cartão na entrega"><span><strong>Cartão na entrega</strong><small>Maquininha na hora da entrega/retirada</small></span></label>
-        <label class="radio-option"><input type="radio" name="forma" value="Dinheiro"><span><strong>Dinheiro</strong><small>Pagamento em espécie</small></span></label>
-        <button type="submit" class="btn-primary">Salvar preferência</button>
+    <div class="modal__body payment__body">
+      <p class="payment__note">Não processamos pagamentos no site — o pedido é fechado por WhatsApp. Aqui você só define sua preferência, pra já vir junto na mensagem.</p>
+      <form id="form-pagamento" class="payment-options">
+        <label class="payment-option">
+          <input type="radio" name="forma" value="Pix">
+          <span class="payment-option__radio" aria-hidden="true"></span>
+          <span class="payment-option__copy"><strong>Pix</strong><small>Chave enviada na confirmação</small></span>
+          <span class="payment-option__icon" data-icon="grid"></span>
+        </label>
+        <label class="payment-option">
+          <input type="radio" name="forma" value="Cartão na entrega">
+          <span class="payment-option__radio" aria-hidden="true"></span>
+          <span class="payment-option__copy"><strong>Cartão na entrega</strong><small>Maquininha na hora da entrega/retirada</small></span>
+          <span class="payment-option__icon" data-icon="creditCard"></span>
+        </label>
+        <label class="payment-option">
+          <input type="radio" name="forma" value="Dinheiro">
+          <span class="payment-option__radio" aria-hidden="true"></span>
+          <span class="payment-option__copy"><strong>Dinheiro</strong><small>Pagamento em espécie</small></span>
+          <span class="payment-option__icon" data-icon="dollarSign"></span>
+        </label>
+        <button type="submit" class="btn-primary payment-options__save">Salvar preferência</button>
       </form>
     </div>
   </div>
