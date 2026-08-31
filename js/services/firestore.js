@@ -540,7 +540,15 @@ export function buscarProdutosCatalogo({
     // conjunto-base cacheado por dois minutos, em vez de reler tudo a cada clique.
     const podePaginarNoServidor = !faixasPreco.length && !disponibilidade && !termoBusca.trim() && marcas.length <= 1;
     if (podePaginarNoServidor) {
-      return buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, ordenar });
+      try {
+        return await buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, ordenar });
+      } catch (erro) {
+        // Um índice composto pode ainda estar em criação ou não ter sido
+        // publicado no Firebase. Nesse caso o catálogo continua acessível
+        // usando a consulta simples e ordenação no navegador.
+        if (erro?.code !== "failed-precondition") throw erro;
+        cursor = null;
+      }
     }
 
     const brutos = await buscarConjuntoRestrito({ categoria, marcas });
