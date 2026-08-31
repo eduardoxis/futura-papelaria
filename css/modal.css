@@ -22,7 +22,7 @@
 }
 .modal.is-open .modal__panel { transform: scale(1) translateY(0); }
 
-.modal__panel--admin { width: min(1200px, 100%); }
+.modal__panel--admin { width: min(1568px, 100%); }
 
 .modal__head {
   display: flex; align-items: center; justify-content: space-between;
@@ -369,16 +369,23 @@
 
 /* ---- toolbar / tables ---- */
 .admin-toolbar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.1rem; align-items: stretch; }
-.admin-search { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: stretch; }
-.admin-search .input-icon { min-width: min(280px, 100%); }
+.admin-search { display: flex; flex: 1 1 430px; gap: 0.75rem; flex-wrap: nowrap; align-items: stretch; min-width: 0; }
+.admin-search .input-icon { min-width: 0; flex: 1 1 280px; }
 .admin-search .btn-secondary { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
 .admin-search .btn-secondary .icon { width: 15px; height: 15px; }
 .btn-link { border: 0; background: transparent; color: var(--azul-700); cursor: pointer; padding: 0.65rem 0.25rem; font: inherit; }
 .btn-link:hover { text-decoration: underline; }
 .admin-toolbar .select-icon { flex: 0 0 auto; min-width: 190px; }
+.admin-toolbar #btn-importar-json { min-width: 245px; justify-content: center; }
+.admin-toolbar #btn-novo-produto { min-width: 160px; justify-content: center; }
 .admin-toolbar select { appearance: none; cursor: pointer; }
 .admin-toolbar .btn-primary { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
 .admin-toolbar .btn-primary .icon { width: 15px; height: 15px; }
+
+@media (max-width: 760px) {
+  .admin-search { flex-basis: 100%; }
+  .admin-toolbar .select-icon, .admin-toolbar #btn-importar-json, .admin-toolbar #btn-novo-produto { flex: 1 1 auto; min-width: 0; }
+}
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--cinza-100); border-radius: var(--raio-md); }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 560px; }
