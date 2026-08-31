@@ -726,6 +726,22 @@ export function listarPedidosUsuario(usuarioId) {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
+export function listarPedidosAdmin() {
+  return withLoading("listarPedidosAdmin", async () => {
+    const snap = await getDocs(query(collection(db, "pedidos"), orderBy("criadoEm", "desc"), limit(100)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
+}
+export function atualizarStatusPedido(id, status) {
+  return withLoading("atualizarStatusPedido", () => updateDoc(doc(db, "pedidos", id), { status }));
+}
+
+export function listarHistoricoEstoque() {
+  return withLoading("listarHistoricoEstoque", async () => {
+    const snap = await getDocs(query(collection(db, "historicoEstoque"), orderBy("data", "desc"), limit(100)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
+}
 
 // ---------- ENDEREÇOS ----------
 export function listarEnderecos(usuarioId) {

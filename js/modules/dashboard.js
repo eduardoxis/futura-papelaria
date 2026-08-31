@@ -6,7 +6,7 @@ import {
   listarMarcas, criarMarca, atualizarMarca, excluirMarca,
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
   ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo, listarUltimoAlertaEstoque,
-  obterResumoDashboard
+  obterResumoDashboard, listarPedidosAdmin, atualizarStatusPedido, listarHistoricoEstoque
 } from "../services/firestore.js";
 import { formatBRL, escHtml, generateCode, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "../utils/utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "../services/cloudinary.js";
@@ -64,10 +64,36 @@ function definirCarregadoresAba(root) {
     marcas: () => carregarAbaMarcas(root.querySelector("#painel-marcas")),
     etiquetas: () => carregarAbaEtiquetas(root.querySelector("#painel-etiquetas")),
     estoque: () => carregarAbaEstoque(root.querySelector("#painel-estoque")),
+    pedidos: () => carregarAbaPedidos(root.querySelector("#painel-pedidos")),
+    historico: () => carregarAbaHistorico(root.querySelector("#painel-historico")),
     leads: () => carregarPainelLeads(root.querySelector("#painel-leads")),
     usuarios: () => carregarAbaUsuarios(root.querySelector("#painel-usuarios")),
     clientes: () => carregarAbaClientes(root.querySelector("#painel-clientes"))
   };
+}
+
+function formatarData(data) {
+  return data?.seconds ? new Date(data.seconds * 1000).toLocaleString("pt-BR") : "—";
+}
+
+async function carregarAbaPedidos(container) {
+  const pedidos = await listarPedidosAdmin();
+  container.innerHTML = `<div class="admin-panel-head"><h1>Pedidos</h1><p>Acompanhe e atualize os pedidos da loja.</p></div>
+    <div class="table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Status</th></tr></thead><tbody>
+    ${pedidos.map(p => `<tr><td>${formatarData(p.criadoEm)}</td><td>${escHtml(p.nomeCliente || p.usuarioId || "Cliente")}</td><td>${(p.itens || []).length}</td><td>${formatBRL(p.total)}</td><td><select data-pedido-status="${p.id}"><option ${p.status === "pendente" ? "selected" : ""} value="pendente">Novo</option><option ${p.status === "separacao" ? "selected" : ""} value="separacao">Em separação</option><option ${p.status === "pronto" ? "selected" : ""} value="pronto">Pronto</option><option ${p.status === "entregue" ? "selected" : ""} value="entregue">Entregue</option></select></td></tr>`).join("") || `<tr><td colspan="5">Nenhum pedido encontrado.</td></tr>`}
+    </tbody></table></div>`;
+  container.querySelectorAll("[data-pedido-status]").forEach(select => select.addEventListener("change", async () => {
+    await atualizarStatusPedido(select.dataset.pedidoStatus, select.value);
+    toast("Status do pedido atualizado.");
+  }));
+}
+
+async function carregarAbaHistorico(container) {
+  const historico = await listarHistoricoEstoque();
+  container.innerHTML = `<div class="admin-panel-head"><h1>Histórico de estoque</h1><p>Últimas alterações de quantidade registradas no painel.</p></div>
+    <div class="table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Produto</th><th>Alteração</th><th>Motivo</th></tr></thead><tbody>
+    ${historico.map(h => `<tr><td>${formatarData(h.data)}</td><td>${escHtml(h.produtoId)}</td><td>${Number(h.delta) > 0 ? "+" : ""}${Number(h.delta) || 0}</td><td>${escHtml(h.motivo || "Ajuste manual")}</td></tr>`).join("") || `<tr><td colspan="4">Nenhuma alteração registrada.</td></tr>`}
+    </tbody></table></div>`;
 }
 
 /** Força a aba a recarregar na próxima vez que for aberta (usar após uma ação que muda dados de OUTRA aba, ex: excluir categoria usada em produtos). */
