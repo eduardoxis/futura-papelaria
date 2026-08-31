@@ -89,13 +89,6 @@
       <button type="submit" class="search-bar__btn" aria-label="Pesquisar"><span data-icon="search"></span></button>
     </form>
 
-    <div class="select-pill">
-      <select id="filtro-categoria" aria-label="Filtrar por categoria">
-        <option value="">Todas as categorias</option>
-      </select>
-      <span class="select-pill__chevron" data-icon="chevronRight"></span>
-    </div>
-
     <div class="header-actions">
       <button id="btn-entrar" class="header-action" data-modal-target="#modal-login" aria-label="Entrar">
         <span data-icon="user"></span><span>Entrar</span>
@@ -487,16 +480,6 @@ document.querySelector("#form-busca-produto").addEventListener("submit", (e) => 
   window.location.href = `/pages/catalogo.html${termo ? `?q=${encodeURIComponent(termo)}` : ""}`;
 });
 
-async function configurarCategoriaHeader() {
-  const categorias = await listarCategorias();
-  const select = document.querySelector("#filtro-categoria");
-  select.innerHTML = `<option value="">Todas as categorias</option>` +
-    categorias.map(c => `<option value="${escHtml(c.nome)}">${escHtml(c.nome)}</option>`).join("");
-  select.addEventListener("change", () => {
-    if (select.value) window.location.href = `/pages/catalogo.html?categoria=${encodeURIComponent(select.value)}`;
-  });
-}
-
 function configurarCarrinhoUI() {
   const drawer = document.querySelector("#cart-drawer");
   const overlay = document.querySelector("#cart-overlay");
@@ -608,7 +591,6 @@ function configurarLogin() {
   document.querySelector("#btn-sair")?.addEventListener("click", sair);
 }
 
-configurarCategoriaHeader();
 configurarCarrinhoUI();
 configurarLogin();
 atualizarBadgeCarrinho();
