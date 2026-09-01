@@ -690,11 +690,9 @@ export function excluirEtiqueta(id) {
 // ---------- LEADS PERDIDOS ----------
 export function salvarLeadPerdido(lead) {
   return withLoading("salvarLeadPerdido", async () => {
-    return addDoc(collection(db, "leadsPerdidos"), {
-      ...lead,
-      status: "lead_perdido",
-      data: serverTimestamp()
-    });
+    const resp = await fetch("/api/lead-perdido", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(lead) });
+    if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).erro || "Falha ao registrar lead.");
+    return resp.json();
   });
 }
 export function listarLeadsPerdidos() {

@@ -21,7 +21,9 @@ service cloud.firestore {
     // impede que alguém leia o documento cru de um produto oculto por engenharia reversa.
     match /produtos/{produtoId} {
       allow get: if resource.data.status != 'oculto' || ehAdmin();
-      allow list: if true; // o app filtra "oculto" no client; para ocultar de verdade no banco, use uma Cloud Function
+      // Consultas públicas precisam filtrar por um status visível; assim um
+      // produto oculto não é exposto apenas por manipular o front-end.
+      allow list: if resource.data.status in ['disponivel', 'sem_estoque', 'esgotado'] || ehAdmin();
       allow create, update, delete: if ehAdmin();
     }
 
@@ -62,10 +64,16 @@ service cloud.firestore {
     // Carrinho e favoritos pertencem à conta: qualquer dispositivo com a
     // mesma sessão autenticada vê e atualiza o mesmo documento.
     match /carrinhos/{uid} {
-      allow read, write: if autenticado() && request.auth.uid == uid;
+      allow read: if autenticado() && request.auth.uid == uid;
+      allow write: if autenticado() && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['itens', 'atualizadoEm']) &&
+        request.resource.data.itens is list && request.resource.data.itens.size() <= 100;
     }
     match /favoritos/{uid} {
-      allow read, write: if autenticado() && request.auth.uid == uid;
+      allow read: if autenticado() && request.auth.uid == uid;
+      allow write: if autenticado() && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['itens', 'atualizadoEm']) &&
+        request.resource.data.itens is list && request.resource.data.itens.size() <= 500;
     }
 
     // ---------- ENDEREÇOS ----------
@@ -95,7 +103,7 @@ service cloud.firestore {
     // Client e as functions gravam aqui quando algo falha (upload, relatório,
     // criação de pedido). Ninguém além do admin lista ou lê os logs.
     match /logsErros/{id} {
-      allow create: if request.resource.data.keys().hasAll(['origem', 'mensagem', 'criadoEm']);
+      allow create: if false;
       allow read, delete: if ehAdmin();
       allow update: if false;
     }
@@ -117,8 +125,7 @@ service cloud.firestore {
     // Qualquer visitante (mesmo sem login) pode CRIAR um lead ao abandonar o carrinho,
     // mas ninguém além do admin pode listar/editar — evita vazar dados de outros clientes.
     match /leadsPerdidos/{id} {
-      allow create: if request.resource.data.keys().hasAll(['produtos', 'valor', 'status']) &&
-        request.resource.data.status == 'lead_perdido';
+      allow create: if false;
       allow read, update, delete: if ehAdmin();
     }
   }
