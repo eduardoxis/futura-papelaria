@@ -23,19 +23,6 @@ export function ouvirEstadoAuth(callback) {
         const ref = doc(db, "usuarios", user.uid);
         const snap = await getDoc(ref);
         perfilAtual = snap.exists() ? snap.data() : { cargos: ["cliente"] };
-        // Administradores sempre ficam conectados neste navegador. O Firebase
-        // renova os tokens automaticamente em segundo plano; a sessão só sai
-        // quando o próprio admin clica em "Sair", troca de navegador ou o
-        // acesso é revogado no Firebase.
-        if (perfilAtual?.cargos?.includes("admin")) {
-          try {
-            await setPersistence(auth, browserLocalPersistence);
-          } catch (erro) {
-            // Em navegadores que bloqueiam armazenamento persistente, a
-            // autenticação continua funcionando na sessão atual.
-            console.warn("Não foi possível persistir a sessão administrativa:", erro);
-          }
-        }
       } else {
         perfilAtual = null;
       }
@@ -67,6 +54,20 @@ export function entrar(email, senha, manterLogin = true) {
       // (browserSessionPersistence), útil em computador compartilhado.
       await setPersistence(auth, manterLogin ? browserLocalPersistence : browserSessionPersistence);
       const { user } = await signInWithEmailAndPassword(auth, email, senha);
+      // Para administradores, a sessão fica neste navegador mesmo que o
+      // checkbox tenha sido desmarcado por engano. Fazemos isso apenas após o
+      // login — nunca dentro do observador de autenticação, evitando mudar a
+      // sessão enquanto o app está salvando um produto.
+      try {
+        const perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
+        if (perfilSnap.data()?.cargos?.includes("admin")) {
+          await setPersistence(auth, browserLocalPersistence);
+        }
+      } catch (erroPersistencia) {
+        // A sessão recém-autenticada continua válida mesmo se a leitura do
+        // perfil falhar temporariamente. Nunca desconectamos o administrador.
+        console.warn("Não foi possível confirmar a persistência administrativa:", erroPersistencia);
+      }
       // Login concluído: remove o histórico de tentativas daquele e-mail.
       localStorage.removeItem(`ratelimit_${chaveLimite}`);
       return user;

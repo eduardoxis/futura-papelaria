@@ -1207,19 +1207,22 @@ async function abrirFormularioProduto(container, produto = null) {
     const btnSalvar = form.querySelector('button[type="submit"]');
     const nomeProduto = form.nome.value.trim() || "produto";
 
+    // Uma falha de rede, de imagem ou do banco não pode fechar o formulário
+    // nem deixar o administrador sem ação para tentar novamente.
+    btnSalvar.disabled = true;
+    try {
+
     const pendentes = cores.length === 0 ? galeria.filter(g => g.file) : [];
     if (pendentes.length) {
       btnSalvar.disabled = true;
       for (let i = 0; i < pendentes.length; i++) {
         btnSalvar.textContent = `Enviando imagem ${i + 1}/${pendentes.length}...`;
         const url = await enviarImagem(pendentes[i].file, `${nomeProduto}-${i + 1}`);
-        if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
+        if (!url) return;
         const posSalva = imgPos(pendentes[i].previewUrl || "").pos;
         pendentes[i].url = posSalva !== "50% 50%" ? `${url}#pos=${posSalva.replace(/%/g, "").replace(" ", ",")}` : url;
         if (pendentes[i].previewUrl) URL.revokeObjectURL(pendentes[i].previewUrl);
       }
-      btnSalvar.disabled = false;
-      btnSalvar.textContent = "Salvar";
     }
 
     const imagensPendentesCores = cores.flatMap(c => c.imagens.filter(img => img.file).map(img => ({ img, corNome: c.nome })));
@@ -1229,13 +1232,11 @@ async function abrirFormularioProduto(container, produto = null) {
         const { img, corNome } = imagensPendentesCores[i];
         btnSalvar.textContent = `Enviando foto ${i + 1}/${imagensPendentesCores.length}...`;
         const url = await enviarImagem(img.file, `${nomeProduto}-${corNome || "cor"}-${i + 1}`);
-        if (!url) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; return; }
+        if (!url) return;
         const posSalva = imgPos(img.previewUrl || "").pos;
         img.url = posSalva !== "50% 50%" ? `${url}#pos=${posSalva.replace(/%/g, "").replace(" ", ",")}` : url;
         if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
       }
-      btnSalvar.disabled = false;
-      btnSalvar.textContent = "Salvar";
     }
 
     const dados = {
@@ -1272,6 +1273,17 @@ async function abrirFormularioProduto(container, produto = null) {
     }
     dialog.close();
     carregarAbaProdutos(container);
+    } catch (erro) {
+      console.error("Erro ao salvar produto:", erro);
+      toast(erro?.message || "Não foi possível salvar o produto. Confira os dados e tente novamente.", "error");
+    } finally {
+      // Se o modal foi fechado após salvar, não há nada para reativar. Caso
+      // contrário, o conteúdo digitado continua intacto para nova tentativa.
+      if (dialog.open) {
+        btnSalvar.disabled = false;
+        btnSalvar.textContent = "Salvar";
+      }
+    }
   });
 }
 
