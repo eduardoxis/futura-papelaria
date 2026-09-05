@@ -107,6 +107,41 @@ function calcularDisponivel(status, quantidade) {
 
 const STATUS_PUBLICOS = ["disponivel", "sem_estoque", "esgotado"];
 
+// Índice leve de busca para o painel. O Firestore não faz pesquisa por texto
+// livre; por isso salvamos os prefixos das palavras relevantes do produto.
+// Ex.: "Caneta Gel Azul" gera "c", "ca", "can...", "g", "ge", "gel".
+// Assim a busca encontra tanto nome quanto marca, categoria e código sem
+// baixar a coleção inteira para o navegador.
+function normalizarTermoBusca(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
+function criarTokensBusca(dados = {}) {
+  const campos = [dados.nome, dados.marca, dados.categoria, dados.codigo];
+  const tokens = new Set();
+  campos.forEach(campo => {
+    const palavras = normalizarTermoBusca(campo).split(/[^a-z0-9]+/).filter(Boolean);
+    palavras.forEach(palavra => {
+      // O limite evita que um nome excessivamente longo infle o documento.
+      const ate = Math.min(palavra.length, 40);
+      for (let i = 1; i <= ate; i += 1) tokens.add(palavra.slice(0, i));
+    });
+  });
+  return [...tokens];
+}
+
+function produtoCombinaComBusca(produto, termo) {
+  const palavras = normalizarTermoBusca(termo).split(/\s+/).filter(Boolean);
+  if (!palavras.length) return true;
+  const texto = [produto.nome, produto.marca, produto.categoria, produto.codigo]
+    .map(normalizarTermoBusca).join(" ");
+  return palavras.every(palavra => texto.split(/[^a-z0-9]+/).some(item => item.startsWith(palavra)));
+}
+
 // ---------- PRODUTOS ----------
 export function listarProdutos({ apenasAtivos = true } = {}) {
   return withLoading("listarProdutos", async () => {
@@ -155,23 +190,45 @@ export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = 
 }
 
 /**
- * Busca administrativa por início do nome. São feitas consultas para as
- * capitalizações mais comuns, porque o Firestore compara texto respeitando
- * maiúsculas/minúsculas. Não limita por status: o painel também precisa
- * encontrar produtos ocultos e esgotados.
+ * Busca administrativa por nome, marca, categoria e código. Produtos novos
+ * usam buscaTokens; o fallback mantém compatibilidade com os cadastros antigos.
+ * Não limita por status: o painel também precisa encontrar ocultos e esgotados.
  */
 export function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
   return withLoading("buscarProdutosPorPrefixo", async () => {
-    const termoLimpo = termo.trim();
+    const termoLimpo = normalizarTermoBusca(termo);
     if (!termoLimpo) return { produtos: [], cursor: null, temMais: false };
 
+    const primeiraPalavra = termoLimpo.split(/\s+/)[0];
+    const col = collection(db, "produtos");
+
+    // Caminho rápido para produtos novos e para os antigos já preparados.
+    // O filtro final permite digitar mais de uma palavra sem novas leituras.
+    const indexados = await getDocs(query(
+      col,
+      where("buscaTokens", "array-contains", primeiraPalavra),
+      limit(tamanho * 3)
+    ));
+    const encontradosIndexados = indexados.docs
+      .map(docProduto => ({ id: docProduto.id, ...docProduto.data() }))
+      .filter(produto => produtoCombinaComBusca(produto, termoLimpo));
+
+    if (encontradosIndexados.length) {
+      const produtos = encontradosIndexados
+        .sort((a, b) => COLATOR_NOMES.compare(String(a.nome), String(b.nome)))
+        .slice(0, tamanho);
+      return { produtos, cursor: null, temMais: indexados.docs.length >= tamanho * 3 };
+    }
+
+    // Compatibilidade temporária: produtos cadastrados antes do índice ainda
+    // respondem se o termo estiver no início do nome. O botão "Preparar busca"
+    // do painel converte todos os antigos para a busca completa uma única vez.
     const variantes = [...new Set([
       termoLimpo,
       termoLimpo.toLowerCase(),
       termoLimpo.toUpperCase(),
       termoLimpo.charAt(0).toUpperCase() + termoLimpo.slice(1).toLowerCase()
     ])];
-    const col = collection(db, "produtos");
     const resultados = await Promise.all(variantes.map(inicio => getDocs(query(
       col,
       orderBy("nome"),
@@ -191,6 +248,31 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
       cursor: null,
       temMais: resultados.some(snap => snap.docs.length === tamanho)
     };
+  });
+}
+
+/** Preenche o índice de busca nos produtos importados/cadastrados antes dele. */
+export function migrarIndiceBuscaProdutos(onProgresso) {
+  return withLoading("migrarIndiceBuscaProdutos", async () => {
+    const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const snap = await getDocs(collection(db, "produtos"));
+    const pendentes = snap.docs.filter(docProduto => {
+      const atual = docProduto.data().buscaTokens;
+      return !Array.isArray(atual) || atual.length === 0;
+    });
+    const TAMANHO_LOTE = 400;
+    let feitos = 0;
+    for (let inicio = 0; inicio < pendentes.length; inicio += TAMANHO_LOTE) {
+      const lote = pendentes.slice(inicio, inicio + TAMANHO_LOTE);
+      const batch = writeBatch(db);
+      lote.forEach(docProduto => batch.update(docProduto.ref, {
+        buscaTokens: criarTokensBusca(docProduto.data())
+      }));
+      await batch.commit();
+      feitos += lote.length;
+      onProgresso?.(feitos, pendentes.length);
+    }
+    return { total: pendentes.length };
   });
 }
 
@@ -304,6 +386,7 @@ export function criarProduto(dados) {
   return withLoading("criarProduto", async () => {
     const resultado = await addDoc(collection(db, "produtos"), {
       ...dados,
+      buscaTokens: criarTokensBusca(dados),
       faixaPreco: calcularFaixaPreco(dados.preco),
       disponivel: calcularDisponivel(dados.status, dados.quantidade),
       visualizacoes: 0,
@@ -326,7 +409,8 @@ export function atualizarProduto(id, dados) {
   return withLoading("atualizarProduto", async () => {
     const ref = doc(db, "produtos", id);
     const precisaRecalcular = "preco" in dados || "status" in dados || "quantidade" in dados;
-    if (!precisaRecalcular) {
+    const precisaAtualizarBusca = ["nome", "marca", "categoria", "codigo"].some(campo => campo in dados);
+    if (!precisaRecalcular && !precisaAtualizarBusca) {
       const resultado = await updateDoc(ref, dados);
       invalidarCacheVitrinesHome();
       return resultado;
@@ -340,8 +424,13 @@ export function atualizarProduto(id, dados) {
       const quantidade = "quantidade" in dados ? dados.quantidade : atual.quantidade;
       tx.update(ref, {
         ...dados,
-        faixaPreco: calcularFaixaPreco(preco),
-        disponivel: calcularDisponivel(status, quantidade)
+        ...(precisaRecalcular ? {
+          faixaPreco: calcularFaixaPreco(preco),
+          disponivel: calcularDisponivel(status, quantidade)
+        } : {}),
+        ...(precisaAtualizarBusca ? {
+          buscaTokens: criarTokensBusca({ ...atual, ...dados })
+        } : {})
       });
     });
     invalidarCacheVitrinesHome();

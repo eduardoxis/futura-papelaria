@@ -5,7 +5,7 @@ import {
   listarEtiquetas, criarEtiqueta, excluirEtiqueta,
   listarMarcas, criarMarca, atualizarMarca, excluirMarca,
   listarClientes, criarCliente, atualizarCliente, excluirCliente,
-  ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo, listarUltimoAlertaEstoque,
+  ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo, migrarIndiceBuscaProdutos, listarUltimoAlertaEstoque,
   obterResumoDashboard, listarPedidosAdmin, atualizarStatusPedido, listarHistoricoEstoque
 } from "../services/firestore.js";
 import { formatBRL, escHtml, generateCode, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "../utils/utils.js";
@@ -451,6 +451,9 @@ let estadoPaginacaoProdutos = {
   direcao: "asc",
   buscaAtiva: false
 };
+// Cada leitura recebe um token. Quando uma busca antiga termina depois de o
+// usuário limpar o campo, ela é descartada e não pode redesenhar a tabela.
+let tokenRequisicaoProdutos = 0;
 
 async function carregarAbaProdutos(container) {
   if (!container) return;
@@ -490,6 +493,7 @@ async function carregarAbaProdutos(container) {
       </div>
       <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
       <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
+      <button class="btn-secondary" id="btn-preparar-busca" title="Atualiza os produtos antigos para a busca completa">${icon("search")}Preparar busca</button>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
     </div>
     <div class="table-wrap"><table class="admin-table" id="tabela-produtos">
@@ -519,12 +523,29 @@ async function carregarAbaProdutos(container) {
   const btnLimparBusca = container.querySelector("#btn-limpar-busca-produtos");
   container.querySelector("#form-busca-admin-produtos").addEventListener("submit", async (e) => {
     e.preventDefault();
+    clearTimeout(atrasoBusca);
     await buscarProdutosAdmin(container, inputBusca.value.trim());
   });
-  inputBusca.addEventListener("input", () => {
-    btnLimparBusca.hidden = !inputBusca.value.trim();
-  });
+  let atrasoBusca;
+  const agendarBusca = () => {
+    const termo = inputBusca.value.trim();
+    btnLimparBusca.hidden = !termo;
+    clearTimeout(atrasoBusca);
+    // Ao limpar, voltamos à lista normal imediatamente.
+    if (!termo) {
+      buscarProdutosAdmin(container, "");
+      return;
+    }
+    // Pesquisa enquanto digita, sem disparar uma leitura para cada tecla.
+    atrasoBusca = setTimeout(() => {
+      buscarProdutosAdmin(container, inputBusca.value.trim());
+    }, 300);
+  };
+  inputBusca.addEventListener("input", agendarBusca);
+  // Alguns navegadores disparam somente "search" ao usar o X nativo do campo.
+  inputBusca.addEventListener("search", agendarBusca);
   btnLimparBusca.addEventListener("click", async () => {
+    clearTimeout(atrasoBusca);
     inputBusca.value = "";
     btnLimparBusca.hidden = true;
     await buscarProdutosAdmin(container, "");
@@ -560,9 +581,30 @@ async function carregarAbaProdutos(container) {
     if (!arquivo) return;
     await importarProdutosJson(container, arquivo);
   });
+
+  container.querySelector("#btn-preparar-busca").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    try {
+      const resultado = await migrarIndiceBuscaProdutos((feitos, total) => {
+        btn.textContent = `Preparando ${feitos}/${total}...`;
+      });
+      toast(resultado.total
+        ? `Busca preparada para ${resultado.total} produto(s).`
+        : "A busca já está pronta para todos os produtos.");
+    } catch (erro) {
+      console.error("Falha ao preparar busca de produtos:", erro);
+      toast("Não foi possível preparar a busca. Tente novamente.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+    }
+  });
 }
 
 async function carregarPaginaProdutos(container, indice) {
+  const meuToken = ++tokenRequisicaoProdutos;
   const estado = estadoPaginacaoProdutos;
   estado.buscaAtiva = false;
   const cursor = estado.cursores[indice] ?? null;
@@ -574,6 +616,7 @@ async function carregarPaginaProdutos(container, indice) {
     ordenarPor: estado.ordenarPor,
     direcao: estado.direcao
   });
+  if (meuToken !== tokenRequisicaoProdutos) return;
 
   estado.paginaIndex = indice;
   estado.temMais = temMais;
@@ -585,6 +628,7 @@ async function carregarPaginaProdutos(container, indice) {
 }
 
 async function buscarProdutosAdmin(container, termo) {
+  const meuToken = ++tokenRequisicaoProdutos;
   if (!termo) {
     estadoPaginacaoProdutos.buscaAtiva = false;
     estadoPaginacaoProdutos.cursores = [null];
@@ -592,10 +636,20 @@ async function buscarProdutosAdmin(container, termo) {
     return;
   }
   estadoPaginacaoProdutos.buscaAtiva = true;
-  const { produtos } = await buscarProdutosPorPrefixo(termo, { tamanho: 30 });
-  cacheProdutos = produtos;
-  renderizarTabelaProdutos(container, produtos, { busca: true });
-  atualizarControlesPaginacao(container);
+  try {
+    const { produtos } = await buscarProdutosPorPrefixo(termo, { tamanho: 30 });
+    if (meuToken !== tokenRequisicaoProdutos) return;
+    cacheProdutos = produtos;
+    renderizarTabelaProdutos(container, produtos, { busca: true });
+    atualizarControlesPaginacao(container);
+  } catch (erro) {
+    if (meuToken !== tokenRequisicaoProdutos) return;
+    console.error("Falha ao pesquisar produtos:", erro);
+    cacheProdutos = [];
+    renderizarTabelaProdutos(container, [], { busca: true });
+    atualizarControlesPaginacao(container);
+    toast("Não foi possível pesquisar agora. Tente novamente.", "error");
+  }
 }
 
 function atualizarControlesPaginacao(container) {
@@ -732,13 +786,21 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
     </tr>`).join("") || `<tr><td colspan="7">
       <div class="empty-state">
         ${icon("gridEmpty", "empty-state__icon")}
-        <strong>Nenhum produto cadastrado</strong>
-        <p>Comece adicionando seu primeiro produto à sua loja.</p>
-        <button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>
+        <strong>${busca ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}</strong>
+        <p>${busca ? "Tente outro nome, marca, categoria ou código." : "Comece adicionando seu primeiro produto à sua loja."}</p>
+        ${busca
+          ? `<button type="button" class="btn-secondary" id="btn-limpar-busca-vazia">${icon("close")}Limpar busca</button>`
+          : `<button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>`}
       </div>
     </td></tr>`;
 
   tbody.querySelector("#btn-primeiro-produto")?.addEventListener("click", () => abrirFormularioProduto(container));
+  tbody.querySelector("#btn-limpar-busca-vazia")?.addEventListener("click", async () => {
+    const input = container.querySelector("#busca-admin-produtos");
+    if (input) input.value = "";
+    container.querySelector("#btn-limpar-busca-produtos").hidden = true;
+    await buscarProdutosAdmin(container, "");
+  });
 
   tbody.querySelectorAll("tr").forEach(tr => {
     const id = tr.dataset.id;
