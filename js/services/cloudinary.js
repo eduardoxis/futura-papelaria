@@ -21,22 +21,26 @@ export function enviarImagemParaCloudinary(blob, nomeArquivo = "produto") {
     }
 
     const { auth } = await import("../../firebase/firebase-config.js");
-    const idToken = await auth.currentUser?.getIdToken();
-    if (!idToken) throw new Error("Faça login como admin para enviar imagens.");
+    if (!auth.currentUser) throw new Error("Faça login como admin para enviar imagens.");
 
-    const assinaturaResp = await fetch("/api/cloudinary-signature", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ tamanho: blob.size, tipo: blob.type })
-    });
+    const pedirAssinatura = async (forcarRenovacao = false) => {
+      const idToken = await auth.currentUser?.getIdToken(forcarRenovacao);
+      if (!idToken) throw new Error("Não foi possível validar sua sessão de administrador.");
+      return fetch("/api/cloudinary-signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ tamanho: blob.size, tipo: blob.type })
+      });
+    };
+
+    let assinaturaResp = await pedirAssinatura();
     if (assinaturaResp.status === 401) {
-      // Sessão expirada (token velho por inatividade) — desloga e manda
-      // pro login em vez de deixar o usuário preso num erro sem saída.
-      const { sair } = await import("./auth.js");
-      const { toast } = await import("../utils/utils.js");
-      toast("Sua sessão expirou. Faça login novamente.", "error");
-      await sair();
-      throw new Error("Sessão expirada. Faça login novamente.");
+      // Um token pode ter expirado entre a leitura e a chamada. Em vez de
+      // expulsar o administrador, renovamos o token e repetimos uma vez.
+      assinaturaResp = await pedirAssinatura(true);
+    }
+    if (assinaturaResp.status === 401) {
+      throw new Error("Não foi possível validar sua sessão agora. Recarregue a página e tente novamente.");
     }
     if (!assinaturaResp.ok) {
       const erro = await assinaturaResp.json().catch(() => null);

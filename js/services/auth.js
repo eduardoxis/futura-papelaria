@@ -23,6 +23,19 @@ export function ouvirEstadoAuth(callback) {
         const ref = doc(db, "usuarios", user.uid);
         const snap = await getDoc(ref);
         perfilAtual = snap.exists() ? snap.data() : { cargos: ["cliente"] };
+        // Administradores sempre ficam conectados neste navegador. O Firebase
+        // renova os tokens automaticamente em segundo plano; a sessão só sai
+        // quando o próprio admin clica em "Sair", troca de navegador ou o
+        // acesso é revogado no Firebase.
+        if (perfilAtual?.cargos?.includes("admin")) {
+          try {
+            await setPersistence(auth, browserLocalPersistence);
+          } catch (erro) {
+            // Em navegadores que bloqueiam armazenamento persistente, a
+            // autenticação continua funcionando na sessão atual.
+            console.warn("Não foi possível persistir a sessão administrativa:", erro);
+          }
+        }
       } else {
         perfilAtual = null;
       }
