@@ -493,7 +493,7 @@ async function carregarAbaProdutos(container) {
       </div>
       <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
       <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
-      <button class="btn-secondary" id="btn-preparar-busca" title="Atualiza os produtos antigos para a busca completa">${icon("search")}Preparar busca</button>
+      <button class="btn-secondary" id="btn-preparar-busca" title="Atualiza uma única vez os produtos antigos para a busca completa">${icon("search")}Atualizar busca antiga</button>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
     </div>
     <div class="table-wrap"><table class="admin-table" id="tabela-produtos">
@@ -593,6 +593,11 @@ async function carregarAbaProdutos(container) {
       toast(resultado.total
         ? `Busca preparada para ${resultado.total} produto(s).`
         : "A busca já está pronta para todos os produtos.");
+      // Se a ação veio de um resultado vazio, refaz imediatamente a mesma
+      // busca. Assim o administrador já vê o produto encontrado, sem precisar
+      // apagar e digitar o termo outra vez.
+      const termoAtual = inputBusca.value.trim();
+      if (termoAtual) await buscarProdutosAdmin(container, termoAtual);
     } catch (erro) {
       console.error("Falha ao preparar busca de produtos:", erro);
       toast("Não foi possível preparar a busca. Tente novamente.", "error");
@@ -789,7 +794,10 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
         <strong>${busca ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}</strong>
         <p>${busca ? "Tente outro nome, marca, categoria ou código." : "Comece adicionando seu primeiro produto à sua loja."}</p>
         ${busca
-          ? `<button type="button" class="btn-secondary" id="btn-limpar-busca-vazia">${icon("close")}Limpar busca</button>`
+          ? `<div class="empty-state__actions">
+              <button type="button" class="btn-secondary" id="btn-limpar-busca-vazia">${icon("close")}Limpar busca</button>
+              <button type="button" class="btn-secondary" id="btn-preparar-busca-vazia">${icon("search")}Atualizar busca antiga</button>
+            </div>`
           : `<button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>`}
       </div>
     </td></tr>`;
@@ -800,6 +808,13 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
     if (input) input.value = "";
     container.querySelector("#btn-limpar-busca-produtos").hidden = true;
     await buscarProdutosAdmin(container, "");
+  });
+  // Produtos importados antes do campo buscaTokens não permitem procurar
+  // palavras no meio do nome (ex.: "MINI" em "Grampeador MINI"). Mantemos
+  // a migração opcional e explícita: ela roda uma vez e evita baixar o
+  // catálogo inteiro em cada busca futura.
+  tbody.querySelector("#btn-preparar-busca-vazia")?.addEventListener("click", () => {
+    container.querySelector("#btn-preparar-busca")?.click();
   });
 
   tbody.querySelectorAll("tr").forEach(tr => {
