@@ -200,30 +200,49 @@ export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = 
  * usam buscaTokens; o fallback mantém compatibilidade com os cadastros antigos.
  * Não limita por status: o painel também precisa encontrar ocultos e esgotados.
  */
-export function buscarProdutosPorPrefixo(termo, { tamanho = 20 } = {}) {
+export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null } = {}) {
   return withLoading("buscarProdutosPorPrefixo", async () => {
-    const termoLimpo = normalizarTermoBusca(termo);
+    const termoOriginal = String(termo || "").trim();
+    const termoLimpo = normalizarTermoBusca(termoOriginal);
     if (!termoLimpo) return { produtos: [], cursor: null, temMais: false };
 
     const primeiraPalavra = termoLimpo.split(/\s+/)[0];
     const col = collection(db, "produtos");
 
+    // Código é uma identificação exata: tentamos este caminho primeiro para
+    // devolver o produto certo com o menor número de documentos lidos.
+    const porCodigo = cursor ? null : await getDocs(query(
+      col, where("codigo", "==", termoOriginal), limit(1)
+    ));
+    const encontradosPorCodigo = (porCodigo?.docs || [])
+      .map(docProduto => ({ id: docProduto.id, ...docProduto.data() }))
+      .filter(produto => normalizarTermoBusca(produto.codigo) === termoLimpo);
+    if (encontradosPorCodigo.length) {
+      return { produtos: encontradosPorCodigo.slice(0, tamanho), cursor: null, temMais: false };
+    }
+
     // Caminho rápido para produtos novos e para os antigos já preparados.
     // O filtro final permite digitar mais de uma palavra sem novas leituras.
-    const indexados = await getDocs(query(
-      col,
+    const clausulasIndexados = [
       where("buscaTokens", "array-contains", primeiraPalavra),
-      limit(tamanho * 3)
-    ));
+      limit(tamanho + 1)
+    ];
+    if (cursor) clausulasIndexados.splice(1, 0, startAfter(cursor));
+    const indexados = await getDocs(query(col, ...clausulasIndexados));
+    const docsIndexados = indexados.docs.slice(0, tamanho);
     const encontradosIndexados = indexados.docs
       .map(docProduto => ({ id: docProduto.id, ...docProduto.data() }))
-      .filter(produto => produtoCombinaComBusca(produto, termoLimpo));
+      .filter(produto => produtoCombinaComBusca(produto, termoLimpo))
+      .slice(0, tamanho);
 
-    if (encontradosIndexados.length) {
+    if (encontradosIndexados.length || cursor) {
       const produtos = encontradosIndexados
         .sort((a, b) => COLATOR_NOMES.compare(String(a.nome), String(b.nome)))
-        .slice(0, tamanho);
-      return { produtos, cursor: null, temMais: indexados.docs.length >= tamanho * 3 };
+      return {
+        produtos,
+        cursor: docsIndexados.at(-1) || cursor,
+        temMais: indexados.docs.length > tamanho
+      };
     }
 
     // Compatibilidade temporária: produtos cadastrados antes do índice ainda

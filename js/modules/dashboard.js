@@ -449,7 +449,11 @@ let estadoPaginacaoProdutos = {
   temMais: false,
   ordenarPor: "nome",
   direcao: "asc",
-  buscaAtiva: false
+  buscaAtiva: false,
+  termoBusca: "",
+  buscaCursores: [null],
+  buscaPaginaIndex: 0,
+  buscaTemMais: false
 };
 // Cada leitura recebe um token. Quando uma busca antiga termina depois de o
 // usuário limpar o campo, ela é descartada e não pode redesenhar a tabela.
@@ -466,7 +470,11 @@ async function carregarAbaProdutos(container) {
     temMais: false,
     ordenarPor: "nome",
     direcao: "asc",
-    buscaAtiva: false
+    buscaAtiva: false,
+    termoBusca: "",
+    buscaCursores: [null],
+    buscaPaginaIndex: 0,
+    buscaTemMais: false
   };
 
   container.innerHTML = `
@@ -493,7 +501,6 @@ async function carregarAbaProdutos(container) {
       </div>
       <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
       <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
-      <button class="btn-secondary" id="btn-preparar-busca" title="Atualiza uma única vez os produtos antigos para a busca completa">${icon("search")}Atualizar busca antiga</button>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
     </div>
     <div class="table-wrap"><table class="admin-table" id="tabela-produtos">
@@ -561,11 +568,23 @@ async function carregarAbaProdutos(container) {
   });
 
   container.querySelector("#btn-pagina-anterior").addEventListener("click", () => {
+    if (estadoPaginacaoProdutos.buscaAtiva) {
+      if (estadoPaginacaoProdutos.buscaPaginaIndex > 0) {
+        buscarProdutosAdmin(container, estadoPaginacaoProdutos.termoBusca, estadoPaginacaoProdutos.buscaPaginaIndex - 1);
+      }
+      return;
+    }
     if (estadoPaginacaoProdutos.paginaIndex > 0) {
       carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex - 1);
     }
   });
   container.querySelector("#btn-pagina-proxima").addEventListener("click", () => {
+    if (estadoPaginacaoProdutos.buscaAtiva) {
+      if (estadoPaginacaoProdutos.buscaTemMais) {
+        buscarProdutosAdmin(container, estadoPaginacaoProdutos.termoBusca, estadoPaginacaoProdutos.buscaPaginaIndex + 1);
+      }
+      return;
+    }
     if (estadoPaginacaoProdutos.temMais) {
       carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex + 1);
     }
@@ -582,30 +601,29 @@ async function carregarAbaProdutos(container) {
     await importarProdutosJson(container, arquivo);
   });
 
-  container.querySelector("#btn-preparar-busca").addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
-    const textoOriginal = btn.innerHTML;
-    btn.disabled = true;
-    try {
-      const resultado = await migrarIndiceBuscaProdutos((feitos, total) => {
-        btn.textContent = `Preparando ${feitos}/${total}...`;
-      });
-      toast(resultado.total
-        ? `Busca preparada para ${resultado.total} produto(s).`
-        : "A busca já está pronta para todos os produtos.");
-      // Se a ação veio de um resultado vazio, refaz imediatamente a mesma
-      // busca. Assim o administrador já vê o produto encontrado, sem precisar
-      // apagar e digitar o termo outra vez.
-      const termoAtual = inputBusca.value.trim();
-      if (termoAtual) await buscarProdutosAdmin(container, termoAtual);
-    } catch (erro) {
-      console.error("Falha ao preparar busca de produtos:", erro);
-      toast("Não foi possível preparar a busca. Tente novamente.", "error");
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = textoOriginal;
-    }
-  });
+}
+
+async function prepararBuscaAntiga(container) {
+  const btn = container.querySelector("#btn-preparar-busca-vazia");
+  if (!btn) return;
+  const textoOriginal = btn.innerHTML;
+  btn.disabled = true;
+  try {
+    const resultado = await migrarIndiceBuscaProdutos((feitos, total) => {
+      btn.textContent = `Atualizando ${feitos}/${total}...`;
+    });
+    toast(resultado.total
+      ? `Busca atualizada para ${resultado.total} produto(s).`
+      : "A busca já está atualizada para todos os produtos.");
+    const termoAtual = container.querySelector("#busca-admin-produtos")?.value.trim();
+    if (termoAtual) await buscarProdutosAdmin(container, termoAtual);
+  } catch (erro) {
+    console.error("Falha ao atualizar busca de produtos:", erro);
+    toast("Não foi possível atualizar a busca. Tente novamente.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
 }
 
 async function carregarPaginaProdutos(container, indice) {
@@ -632,18 +650,35 @@ async function carregarPaginaProdutos(container, indice) {
   atualizarControlesPaginacao(container);
 }
 
-async function buscarProdutosAdmin(container, termo) {
+async function buscarProdutosAdmin(container, termo, indiceBusca = 0) {
   const meuToken = ++tokenRequisicaoProdutos;
   if (!termo) {
     estadoPaginacaoProdutos.buscaAtiva = false;
+    estadoPaginacaoProdutos.termoBusca = "";
+    estadoPaginacaoProdutos.buscaCursores = [null];
+    estadoPaginacaoProdutos.buscaPaginaIndex = 0;
+    estadoPaginacaoProdutos.buscaTemMais = false;
     estadoPaginacaoProdutos.cursores = [null];
     await carregarPaginaProdutos(container, 0);
     return;
   }
+  if (termo !== estadoPaginacaoProdutos.termoBusca) {
+    estadoPaginacaoProdutos.termoBusca = termo;
+    estadoPaginacaoProdutos.buscaCursores = [null];
+    estadoPaginacaoProdutos.buscaPaginaIndex = 0;
+    estadoPaginacaoProdutos.buscaTemMais = false;
+    indiceBusca = 0;
+  }
   estadoPaginacaoProdutos.buscaAtiva = true;
   try {
-    const { produtos } = await buscarProdutosPorPrefixo(termo, { tamanho: 30 });
+    const { produtos, cursor, temMais } = await buscarProdutosPorPrefixo(termo, {
+      tamanho: 30,
+      cursor: estadoPaginacaoProdutos.buscaCursores[indiceBusca] ?? null
+    });
     if (meuToken !== tokenRequisicaoProdutos) return;
+    estadoPaginacaoProdutos.buscaPaginaIndex = indiceBusca;
+    estadoPaginacaoProdutos.buscaTemMais = temMais;
+    if (temMais) estadoPaginacaoProdutos.buscaCursores[indiceBusca + 1] = cursor;
     cacheProdutos = produtos;
     renderizarTabelaProdutos(container, produtos, { busca: true });
     atualizarControlesPaginacao(container);
@@ -664,9 +699,9 @@ function atualizarControlesPaginacao(container) {
   const btnProxima = container.querySelector("#btn-pagina-proxima");
 
   if (estado.buscaAtiva) {
-    label.textContent = "Resultado da busca (até 30)";
-    btnAnterior.disabled = true;
-    btnProxima.disabled = true;
+    label.textContent = `Busca — página ${estado.buscaPaginaIndex + 1} (até 30 itens)`;
+    btnAnterior.disabled = estado.buscaPaginaIndex === 0;
+    btnProxima.disabled = !estado.buscaTemMais;
     return;
   }
 
@@ -796,8 +831,9 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
         ${busca
           ? `<div class="empty-state__actions">
               <button type="button" class="btn-secondary" id="btn-limpar-busca-vazia">${icon("close")}Limpar busca</button>
-              <button type="button" class="btn-secondary" id="btn-preparar-busca-vazia">${icon("search")}Atualizar busca antiga</button>
-            </div>`
+              <button type="button" class="btn-secondary" id="btn-preparar-busca-vazia">${icon("search")}Encontrar produtos antigos</button>
+            </div>
+            <small class="empty-state__hint">Use esta opção uma única vez se o produto foi importado antes da busca completa.</small>`
           : `<button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>`}
       </div>
     </td></tr>`;
@@ -810,11 +846,10 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
     await buscarProdutosAdmin(container, "");
   });
   // Produtos importados antes do campo buscaTokens não permitem procurar
-  // palavras no meio do nome (ex.: "MINI" em "Grampeador MINI"). Mantemos
-  // a migração opcional e explícita: ela roda uma vez e evita baixar o
-  // catálogo inteiro em cada busca futura.
+  // palavras no meio do nome (ex.: "MINI" em "Grampeador MINI"). A ação
+  // aparece apenas quando necessária e prepara o índice uma única vez.
   tbody.querySelector("#btn-preparar-busca-vazia")?.addEventListener("click", () => {
-    container.querySelector("#btn-preparar-busca")?.click();
+    prepararBuscaAntiga(container);
   });
 
   tbody.querySelectorAll("tr").forEach(tr => {
