@@ -146,7 +146,12 @@ function produtoCombinaComBusca(produto, termo) {
 export function listarProdutos({ apenasAtivos = true } = {}) {
   return withLoading("listarProdutos", async () => {
     const col = collection(db, "produtos");
-    const snap = await getDocs(col);
+    // A regra pública do Firestore só permite listar produtos visíveis.
+    // A consulta precisa declarar este filtro para o Firestore conseguir
+    // provar que um item "oculto" nunca será retornado.
+    const snap = await getDocs(apenasAtivos
+      ? query(col, where("status", "in", STATUS_PUBLICOS))
+      : col);
     let produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (apenasAtivos) produtos = produtos.filter(p => p.status !== "oculto");
     return produtos;
@@ -329,12 +334,18 @@ export const listarProdutosRecentes = comCache("listarProdutosRecentes", 3 * 60 
 /** Produtos com etiqueta "Mais Vendido" ou "Promoção" — usado na home ("Destaques"). */
 export const listarProdutosDestaque = comCache("listarProdutosDestaque", 3 * 60 * 1000, (tamanho = 8) =>
   withLoading("listarProdutosDestaque", async () => {
+    // A leitura pública sempre é limitada a produtos visíveis. Filtramos as
+    // etiquetas no navegador para não combinar dois filtros disjuntivos
+    // (array-contains-any + in), combinação que o Firestore não aceita.
     const snap = await getDocs(query(
       collection(db, "produtos"),
-      where("etiquetas", "array-contains-any", ["Mais Vendido", "Promoção"]),
-      limit(tamanho + 4)
+      where("status", "in", STATUS_PUBLICOS),
+      limit(Math.max(tamanho + 16, 24))
     ));
-    const produtos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+    const produtos = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => Array.isArray(p.etiquetas) && p.etiquetas.some(etiqueta => ["Mais Vendido", "Promoção"].includes(etiqueta)))
+      .slice(0, tamanho);
     if (produtos.length) return produtos;
 
     try {
@@ -345,7 +356,11 @@ export const listarProdutosDestaque = comCache("listarProdutosDestaque", 3 * 60 
     // Último fallback: se nada tiver etiqueta de destaque nem campo
     // criadoEm válido pra ordenar (ex: produtos importados em lote sem
     // esse campo), pega qualquer produto ativo em vez de mostrar vazio.
-    const snapTodos = await getDocs(query(collection(db, "produtos"), limit(tamanho + 4)));
+    const snapTodos = await getDocs(query(
+      collection(db, "produtos"),
+      where("status", "in", STATUS_PUBLICOS),
+      limit(tamanho + 4)
+    ));
     return snapTodos.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
   })
 );
