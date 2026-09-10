@@ -19,6 +19,7 @@ import { iniciarOrcamento } from "./modules/orcamento.js";
 import { ICONS, icon } from "./utils/icons.js";
 import { STORE_CONFIG } from "../firebase/firebase-config.js";
 import { iniciarLoadingGlobal } from "./utils/loadingUI.js";
+import { observarAtualizacaoPublica } from "./services/public-sync.js";
 
 iniciarLoadingGlobal();
 
@@ -186,6 +187,16 @@ async function iniciar() {
   configurarLinksEstaticos();
   configurarEventosCategorias();
   iniciarOrcamento();
+
+  // "F5" automático para visitantes após um CRUD público no painel.
+  // O painel aberto é preservado para não interromper o administrador.
+  let recargaPublicaAgendada = false;
+  observarAtualizacaoPublica(() => {
+    if (document.querySelector("#modal-admin.is-open") || recargaPublicaAgendada) return;
+    recargaPublicaAgendada = true;
+    toast("A loja foi atualizada.");
+    window.setTimeout(() => window.location.reload(), 700);
+  });
 
   document.querySelector("#btn-sair-conta")?.addEventListener("click", () => {
     sair();

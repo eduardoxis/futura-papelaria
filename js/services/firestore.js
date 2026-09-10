@@ -6,6 +6,7 @@ import {
   runTransaction, getCountFromServer, getAggregateFromServer, sum
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { withLoading } from "../utils/loadingManager.js";
+import { sinalizarAtualizacaoPublica } from "./public-sync.js";
 
 // ---------- CACHE COM TTL (reduz leituras repetidas do Firestore) ----------
 // Cada página (home, catálogo, produto) importa este módulo de forma
@@ -397,6 +398,16 @@ function invalidarCacheVitrinesHome() {
   invalidarCache("resumoDashboard");
 }
 
+async function notificarMudancaPublica() {
+  // A alteração principal já foi salva; se a regra nova ainda não tiver sido
+  // publicada, não desfazemos um CRUD bem-sucedido por causa da notificação.
+  try {
+    await sinalizarAtualizacaoPublica();
+  } catch (erro) {
+    console.warn("Não foi possível avisar o site sobre a atualização:", erro);
+  }
+}
+
 export function criarProduto(dados) {
   return withLoading("criarProduto", async () => {
     const resultado = await addDoc(collection(db, "produtos"), {
@@ -409,6 +420,7 @@ export function criarProduto(dados) {
       criadoEm: serverTimestamp()
     });
     invalidarCacheVitrinesHome();
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -428,6 +440,7 @@ export function atualizarProduto(id, dados) {
     if (!precisaRecalcular && !precisaAtualizarBusca) {
       const resultado = await updateDoc(ref, dados);
       invalidarCacheVitrinesHome();
+      await notificarMudancaPublica();
       return resultado;
     }
 
@@ -449,6 +462,7 @@ export function atualizarProduto(id, dados) {
       });
     });
     invalidarCacheVitrinesHome();
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -457,6 +471,7 @@ export function excluirProduto(id) {
   return withLoading("excluirProduto", async () => {
     const resultado = await deleteDoc(doc(db, "produtos", id));
     invalidarCacheVitrinesHome();
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -505,6 +520,7 @@ export function ajustarEstoque(id, delta, motivo = "") {
     invalidarCache("resumoDashboard");
     invalidarCache("catalogoBase");
     invalidarCache("obterProduto");
+    await notificarMudancaPublica();
   });
 }
 
@@ -689,6 +705,7 @@ export function criarCategoria(nome, emoji = "", imagem = "") {
     const resultado = await addDoc(collection(db, "categorias"), { nome, emoji, imagem });
     invalidarCache("listarCategorias");
     invalidarCache("resumoDashboard");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -696,6 +713,7 @@ export function atualizarCategoria(id, dados) {
   return withLoading("atualizarCategoria", async () => {
     const resultado = await updateDoc(doc(db, "categorias", id), dados);
     invalidarCache("listarCategorias");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -704,6 +722,7 @@ export function excluirCategoria(id) {
     const resultado = await deleteDoc(doc(db, "categorias", id));
     invalidarCache("listarCategorias");
     invalidarCache("resumoDashboard");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -719,6 +738,7 @@ export function criarMarca(dados) {
   return withLoading("criarMarca", async () => {
     const resultado = await addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
     invalidarCache("listarMarcas");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -726,6 +746,7 @@ export function atualizarMarca(id, dados) {
   return withLoading("atualizarMarca", async () => {
     const resultado = await updateDoc(doc(db, "marcas", id), dados);
     invalidarCache("listarMarcas");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -733,6 +754,7 @@ export function excluirMarca(id) {
   return withLoading("excluirMarca", async () => {
     const resultado = await deleteDoc(doc(db, "marcas", id));
     invalidarCache("listarMarcas");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -780,6 +802,7 @@ export function criarEtiqueta(nome) {
   return withLoading("criarEtiqueta", async () => {
     const resultado = await addDoc(collection(db, "etiquetas"), { nome });
     invalidarCache("listarEtiquetas");
+    await notificarMudancaPublica();
     return resultado;
   });
 }
@@ -787,6 +810,7 @@ export function excluirEtiqueta(id) {
   return withLoading("excluirEtiqueta", async () => {
     const resultado = await deleteDoc(doc(db, "etiquetas", id));
     invalidarCache("listarEtiquetas");
+    await notificarMudancaPublica();
     return resultado;
   });
 }

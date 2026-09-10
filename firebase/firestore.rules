@@ -40,6 +40,12 @@ service cloud.firestore {
       allow read: if true;
       allow write: if ehAdmin();
     }
+    // Sinal leve de alteração pública. Não contém dados do catálogo.
+    match /publicacoes/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if ehAdmin();
+    }
     match /clientes/{id} {
       allow read, write: if ehAdmin();
     }

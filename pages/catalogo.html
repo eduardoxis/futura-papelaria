@@ -296,8 +296,15 @@ import {
 import { ouvirEstadoAuth, usuarioAtual, ehAdmin, sair } from "../js/services/auth.js";
 import { ICONS } from "../js/utils/icons.js";
 import { iniciarLoadingGlobal } from "../js/utils/loadingUI.js";
+import { observarAtualizacaoPublica } from "../js/services/public-sync.js";
 
 iniciarLoadingGlobal();
+let recargaPublicaAgendada = false;
+observarAtualizacaoPublica(() => {
+  if (recargaPublicaAgendada) return;
+  recargaPublicaAgendada = true;
+  window.setTimeout(() => window.location.reload(), 500);
+});
 
 (function monitorarErrosGlobais() {
   const jaRegistrados = new Set();
