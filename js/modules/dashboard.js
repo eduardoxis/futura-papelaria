@@ -833,7 +833,7 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
               <button type="button" class="btn-secondary" id="btn-limpar-busca-vazia">${icon("close")}Limpar busca</button>
               <button type="button" class="btn-secondary" id="btn-preparar-busca-vazia">${icon("search")}Encontrar produtos antigos</button>
             </div>
-            <small class="empty-state__hint">Use esta opção uma única vez se o produto foi importado antes da busca completa.</small>`
+            <small class="empty-state__hint">Este produto pode ser antigo. Atualize a busca uma vez para encontrá-lo.</small>`
           : `<button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>`}
       </div>
     </td></tr>`;
