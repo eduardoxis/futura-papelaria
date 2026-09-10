@@ -107,6 +107,31 @@ function calcularDisponivel(status, quantidade) {
 }
 
 const STATUS_PUBLICOS = ["disponivel", "sem_estoque", "esgotado"];
+const TAMANHO_PAGINA_ADMIN = 30;
+
+/** Página com cursor para coleções administrativas. Traz um item extra para
+ * saber se existe próxima página, sem fazer uma consulta count(). */
+export async function listarPaginaAdmin(nomeColecao, { tamanho = TAMANHO_PAGINA_ADMIN, cursor = null, ordenarPor = "", direcao = "asc" } = {}) {
+  const clausulas = [];
+  if (ordenarPor) clausulas.push(orderBy(ordenarPor, direcao));
+  clausulas.push(limit(tamanho + 1));
+  if (cursor) clausulas.push(startAfter(cursor));
+  const snap = await getDocs(query(collection(db, nomeColecao), ...clausulas));
+  const docs = snap.docs.slice(0, tamanho);
+  return {
+    itens: docs.map(item => ({ id: item.id, ...item.data() })),
+    cursor: docs.at(-1) || cursor,
+    temMais: snap.docs.length > tamanho
+  };
+}
+
+// Listas do painel usam o mesmo cursor. Não ordenamos por campos opcionais
+// aqui porque cadastros antigos podem não ter esses campos e sumiriam da tela.
+export const listarCategoriasPagina = (opcoes = {}) => withLoading("listarCategoriasPagina", () => listarPaginaAdmin("categorias", opcoes));
+export const listarMarcasPagina = (opcoes = {}) => withLoading("listarMarcasPagina", () => listarPaginaAdmin("marcas", opcoes));
+export const listarEtiquetasPagina = (opcoes = {}) => withLoading("listarEtiquetasPagina", () => listarPaginaAdmin("etiquetas", opcoes));
+export const listarClientesPagina = (opcoes = {}) => withLoading("listarClientesPagina", () => listarPaginaAdmin("clientes", opcoes));
+export const listarUsuariosPagina = (opcoes = {}) => withLoading("listarUsuariosPagina", () => listarPaginaAdmin("usuarios", opcoes));
 
 // Índice leve de busca para o painel. O Firestore não faz pesquisa por texto
 // livre; por isso salvamos os prefixos das palavras relevantes do produto.
@@ -848,6 +873,12 @@ export function listarLeadsPerdidos() {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
+
+export function listarLeadsPerdidosPagina(opcoes = {}) {
+  return withLoading("listarLeadsPerdidosPagina", () =>
+    listarPaginaAdmin("leadsPerdidos", { ...opcoes, ordenarPor: "data", direcao: "desc" })
+  );
+}
 export function marcarLeadRecuperado(id) {
   return withLoading("marcarLeadRecuperado", async () => {
     return updateDoc(doc(db, "leadsPerdidos", id), { status: "recuperado" });
@@ -877,6 +908,12 @@ export function listarPedidosAdmin() {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
 }
+
+export function listarPedidosAdminPagina(opcoes = {}) {
+  return withLoading("listarPedidosAdminPagina", () =>
+    listarPaginaAdmin("pedidos", { ...opcoes, ordenarPor: "criadoEm", direcao: "desc" })
+  );
+}
 export function atualizarStatusPedido(id, status) {
   return withLoading("atualizarStatusPedido", () => updateDoc(doc(db, "pedidos", id), { status }));
 }
@@ -886,6 +923,12 @@ export function listarHistoricoEstoque() {
     const snap = await getDocs(query(collection(db, "historicoEstoque"), orderBy("data", "desc"), limit(100)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
+}
+
+export function listarHistoricoEstoquePagina(opcoes = {}) {
+  return withLoading("listarHistoricoEstoquePagina", () =>
+    listarPaginaAdmin("historicoEstoque", { ...opcoes, ordenarPor: "data", direcao: "desc" })
+  );
 }
 
 // ---------- ENDEREÇOS ----------

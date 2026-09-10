@@ -1,12 +1,12 @@
 // js/modules/dashboard.js
 import {
   listarProdutosPagina, buscarProdutosPorPrefixo, criarProduto, atualizarProduto, excluirProduto, duplicarProduto,
-  listarCategorias, criarCategoria, atualizarCategoria, excluirCategoria,
-  listarEtiquetas, criarEtiqueta, excluirEtiqueta,
-  listarMarcas, criarMarca, atualizarMarca, excluirMarca,
-  listarClientes, criarCliente, atualizarCliente, excluirCliente,
-  ajustarEstoque, listarUsuarios, migrarCamposFiltroCatalogo, migrarIndiceBuscaProdutos, listarUltimoAlertaEstoque,
-  obterResumoDashboard, listarPedidosAdmin, atualizarStatusPedido, listarHistoricoEstoque
+  listarCategorias, listarCategoriasPagina, criarCategoria, atualizarCategoria, excluirCategoria,
+  listarEtiquetas, listarEtiquetasPagina, criarEtiqueta, excluirEtiqueta,
+  listarMarcas, listarMarcasPagina, criarMarca, atualizarMarca, excluirMarca,
+  listarClientes, listarClientesPagina, criarCliente, atualizarCliente, excluirCliente,
+  ajustarEstoque, listarUsuarios, listarUsuariosPagina, migrarCamposFiltroCatalogo, migrarIndiceBuscaProdutos, listarUltimoAlertaEstoque,
+  obterResumoDashboard, listarPedidosAdminPagina, atualizarStatusPedido, listarHistoricoEstoquePagina
 } from "../services/firestore.js";
 import { formatBRL, escHtml, generateCode, converterParaPNG, converterParaProporcaoPadrao, toast, confirmarAcao, imgPos } from "../utils/utils.js";
 import { enviarImagemParaCloudinary, migrarImagensAntigas } from "../services/cloudinary.js";
@@ -76,24 +76,49 @@ function formatarData(data) {
   return data?.seconds ? new Date(data.seconds * 1000).toLocaleString("pt-BR") : "—";
 }
 
-async function carregarAbaPedidos(container) {
-  const pedidos = await listarPedidosAdmin();
+const estadoPedidos = { cursores: [null], pagina: 0, temMais: false };
+const estadoHistorico = { cursores: [null], pagina: 0, temMais: false };
+const estadoCategorias = { cursores: [null], pagina: 0, temMais: false };
+const estadoMarcas = { cursores: [null], pagina: 0, temMais: false };
+const estadoEtiquetas = { cursores: [null], pagina: 0, temMais: false };
+const estadoClientes = { cursores: [null], pagina: 0, temMais: false };
+const estadoUsuarios = { cursores: [null], pagina: 0, temMais: false };
+
+function htmlPaginacaoAdmin(id, estado) {
+  return `<div class="table-pagination"><span> Página ${estado.pagina + 1} · até 30 itens</span><div class="table-pagination__botoes"><button type="button" class="btn-secondary" data-pagina-admin="anterior" data-paginador="${id}" ${estado.pagina === 0 ? "disabled" : ""}>${icon("chevronLeft")} Anterior</button><button type="button" class="btn-secondary" data-pagina-admin="proxima" data-paginador="${id}" ${!estado.temMais ? "disabled" : ""}>Próxima ${icon("chevronRight")}</button></div></div>`;
+}
+
+function ligarPaginacaoAdmin(container, id, estado, recarregar) {
+  container.querySelector(`[data-paginador="${id}"][data-pagina-admin="anterior"]`)?.addEventListener("click", () => recarregar(container, estado.pagina - 1));
+  container.querySelector(`[data-paginador="${id}"][data-pagina-admin="proxima"]`)?.addEventListener("click", () => recarregar(container, estado.pagina + 1));
+}
+
+async function carregarAbaPedidos(container, pagina = 0) {
+  const { itens: pedidos, cursor, temMais } = await listarPedidosAdminPagina({ tamanho: 30, cursor: estadoPedidos.cursores[pagina] });
+  estadoPedidos.pagina = pagina;
+  estadoPedidos.temMais = temMais;
+  if (temMais) estadoPedidos.cursores[pagina + 1] = cursor;
   container.innerHTML = `<div class="admin-panel-head"><h1>Pedidos</h1><p>Acompanhe e atualize os pedidos da loja.</p></div>
     <div class="table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Status</th></tr></thead><tbody>
     ${pedidos.map(p => `<tr><td>${formatarData(p.criadoEm)}</td><td>${escHtml(p.nomeCliente || p.usuarioId || "Cliente")}</td><td>${(p.itens || []).length}</td><td>${formatBRL(p.total)}</td><td><select data-pedido-status="${p.id}"><option ${p.status === "pendente" ? "selected" : ""} value="pendente">Novo</option><option ${p.status === "separacao" ? "selected" : ""} value="separacao">Em separação</option><option ${p.status === "pronto" ? "selected" : ""} value="pronto">Pronto</option><option ${p.status === "entregue" ? "selected" : ""} value="entregue">Entregue</option></select></td></tr>`).join("") || `<tr><td colspan="5">Nenhum pedido encontrado.</td></tr>`}
-    </tbody></table></div>`;
+    </tbody></table></div>${htmlPaginacaoAdmin("pedidos", estadoPedidos)}`;
   container.querySelectorAll("[data-pedido-status]").forEach(select => select.addEventListener("change", async () => {
     await atualizarStatusPedido(select.dataset.pedidoStatus, select.value);
     toast("Status do pedido atualizado.");
   }));
+  ligarPaginacaoAdmin(container, "pedidos", estadoPedidos, carregarAbaPedidos);
 }
 
-async function carregarAbaHistorico(container) {
-  const historico = await listarHistoricoEstoque();
+async function carregarAbaHistorico(container, pagina = 0) {
+  const { itens: historico, cursor, temMais } = await listarHistoricoEstoquePagina({ tamanho: 30, cursor: estadoHistorico.cursores[pagina] });
+  estadoHistorico.pagina = pagina;
+  estadoHistorico.temMais = temMais;
+  if (temMais) estadoHistorico.cursores[pagina + 1] = cursor;
   container.innerHTML = `<div class="admin-panel-head"><h1>Histórico de estoque</h1><p>Últimas alterações de quantidade registradas no painel.</p></div>
     <div class="table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Produto</th><th>Alteração</th><th>Motivo</th></tr></thead><tbody>
     ${historico.map(h => `<tr><td>${formatarData(h.data)}</td><td>${escHtml(h.produtoId)}</td><td>${Number(h.delta) > 0 ? "+" : ""}${Number(h.delta) || 0}</td><td>${escHtml(h.motivo || "Ajuste manual")}</td></tr>`).join("") || `<tr><td colspan="4">Nenhuma alteração registrada.</td></tr>`}
-    </tbody></table></div>`;
+    </tbody></table></div>${htmlPaginacaoAdmin("historico", estadoHistorico)}`;
+  ligarPaginacaoAdmin(container, "historico", estadoHistorico, carregarAbaHistorico);
 }
 
 /** Força a aba a recarregar na próxima vez que for aberta (usar após uma ação que muda dados de OUTRA aba, ex: excluir categoria usada em produtos). */
@@ -1338,9 +1363,13 @@ async function abrirFormularioProduto(container, produto = null) {
 }
 
 // ---------- CATEGORIAS ----------
-async function carregarAbaCategorias(container) {
+async function carregarAbaCategorias(container, pagina = 0) {
   if (!container) return;
-  cacheCategorias = (await listarCategorias());
+  const resultado = await listarCategoriasPagina({ tamanho: 30, cursor: estadoCategorias.cursores[pagina] });
+  cacheCategorias = resultado.itens;
+  estadoCategorias.pagina = pagina;
+  estadoCategorias.temMais = resultado.temMais;
+  if (resultado.temMais) estadoCategorias.cursores[pagina + 1] = resultado.cursor;
 
   container.innerHTML = `
     <div class="admin-panel-head">
@@ -1360,7 +1389,7 @@ async function carregarAbaCategorias(container) {
           <button data-action="editar" title="Editar">${icon("pencil")}</button>
           <button data-action="excluir" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma categoria cadastrada.</li>`}
-    </ul>
+    </ul>${htmlPaginacaoAdmin("categorias", estadoCategorias)}
     <dialog id="dialog-categoria" class="dialog-form"></dialog>
     <dialog id="dialog-importar-json-categorias" class="dialog-form">
       <h2>Resultado da importação</h2>
@@ -1388,12 +1417,12 @@ async function carregarAbaCategorias(container) {
     li.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
       if (confirm(`Remover a categoria "${categoria.nome}"?`)) {
         await excluirCategoria(id);
-        cacheCategorias = await listarCategorias();
         toast("Categoria removida.");
         carregarAbaCategorias(container);
       }
     });
   });
+  ligarPaginacaoAdmin(container, "categorias", estadoCategorias, carregarAbaCategorias);
 }
 
 async function importarCategoriasJson(container, arquivo) {
@@ -1521,7 +1550,6 @@ async function abrirFormularioCategoria(container, categoria = null) {
       await criarCategoria(dados.nome, "", dados.imagem);
       toast("Categoria cadastrada.");
     }
-    cacheCategorias = await listarCategorias();
     dialog.close();
     carregarAbaCategorias(container);
   });
@@ -1530,9 +1558,13 @@ async function abrirFormularioCategoria(container, categoria = null) {
 // ---------- MARCAS ----------
 let cacheMarcas = [];
 
-async function carregarAbaMarcas(container) {
+async function carregarAbaMarcas(container, pagina = 0) {
   if (!container) return;
-  cacheMarcas = (await listarMarcas()).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  const resultado = await listarMarcasPagina({ tamanho: 30, cursor: estadoMarcas.cursores[pagina] });
+  cacheMarcas = resultado.itens.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  estadoMarcas.pagina = pagina;
+  estadoMarcas.temMais = resultado.temMais;
+  if (resultado.temMais) estadoMarcas.cursores[pagina + 1] = resultado.cursor;
 
   container.innerHTML = `
     <div class="admin-panel-head">
@@ -1555,7 +1587,7 @@ async function carregarAbaMarcas(container) {
           <button data-action="editar" title="Editar">${icon("pencil")}</button>
           <button data-action="excluir" title="Remover">${icon("close")}</button>
         </li>`).join("") || `<li class="chip-list__empty">Nenhuma marca cadastrada.</li>`}
-    </ul>
+    </ul>${htmlPaginacaoAdmin("marcas", estadoMarcas)}
     <dialog id="dialog-marca" class="dialog-form"></dialog>
     <dialog id="dialog-importar-json-marcas" class="dialog-form">
       <h2>Resultado da importação</h2>
@@ -1597,6 +1629,7 @@ async function carregarAbaMarcas(container) {
       }
     });
   });
+  ligarPaginacaoAdmin(container, "marcas", estadoMarcas, carregarAbaMarcas);
 }
 
 async function importarMarcasJson(container, arquivo) {
@@ -1721,9 +1754,13 @@ async function abrirFormularioMarca(container, marca = null) {
 // ---------- CLIENTES ----------
 let cacheClientes = [];
 
-async function carregarAbaClientes(container) {
+async function carregarAbaClientes(container, pagina = 0) {
   if (!container) return;
-  cacheClientes = await listarClientes();
+  const resultado = await listarClientesPagina({ tamanho: 30, cursor: estadoClientes.cursores[pagina] });
+  cacheClientes = resultado.itens;
+  estadoClientes.pagina = pagina;
+  estadoClientes.temMais = resultado.temMais;
+  if (resultado.temMais) estadoClientes.cursores[pagina + 1] = resultado.cursor;
 
   container.innerHTML = `
     <div class="admin-panel-head">
@@ -1742,6 +1779,7 @@ async function carregarAbaClientes(container) {
       <tbody></tbody>
     </table></div>
     <p class="table-count" id="contagem-clientes"></p>
+    ${htmlPaginacaoAdmin("clientes", estadoClientes)}
     <dialog id="dialog-cliente" class="dialog-form"></dialog>`;
 
   renderizarTabelaClientes(container, cacheClientes);
@@ -1753,6 +1791,7 @@ async function carregarAbaClientes(container) {
   });
 
   container.querySelector("#btn-novo-cliente").addEventListener("click", () => abrirFormularioCliente(container));
+  ligarPaginacaoAdmin(container, "clientes", estadoClientes, carregarAbaClientes);
 }
 
 function nomeCliente(c) {
@@ -1762,7 +1801,7 @@ function nomeCliente(c) {
 function renderizarTabelaClientes(container, clientes) {
   const tbody = container.querySelector("#tabela-clientes tbody");
   const contagem = container.querySelector("#contagem-clientes");
-  if (contagem) contagem.textContent = `Mostrando ${clientes.length} de ${cacheClientes.length} clientes`;
+  if (contagem) contagem.textContent = `Mostrando ${clientes.length} de ${cacheClientes.length} clientes nesta página`;
 
   tbody.innerHTML = clientes.map(c => `
     <tr data-id="${c.id}">
@@ -1886,9 +1925,13 @@ async function abrirFormularioCliente(container, cliente = null) {
 }
 
 // ---------- ETIQUETAS ----------
-async function carregarAbaEtiquetas(container) {
+async function carregarAbaEtiquetas(container, pagina = 0) {
   if (!container) return;
-  const etiquetas = await listarEtiquetas();
+  const resultado = await listarEtiquetasPagina({ tamanho: 30, cursor: estadoEtiquetas.cursores[pagina] });
+  const etiquetas = resultado.itens;
+  estadoEtiquetas.pagina = pagina;
+  estadoEtiquetas.temMais = resultado.temMais;
+  if (resultado.temMais) estadoEtiquetas.cursores[pagina + 1] = resultado.cursor;
   container.innerHTML = `
     <div class="admin-panel-head">
       <h1>Etiquetas</h1>
@@ -1900,7 +1943,7 @@ async function carregarAbaEtiquetas(container) {
     </form>
     <ul class="chip-list">
       ${etiquetas.map(e => `<li>${escHtml(e.nome)} <button data-id="${e.id}" title="Remover">${icon("close")}</button></li>`).join("") || `<li class="chip-list__empty">Nenhuma etiqueta cadastrada.</li>`}
-    </ul>`;
+    </ul>${htmlPaginacaoAdmin("etiquetas", estadoEtiquetas)}`;
 
   container.querySelector("#form-etiqueta").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1910,10 +1953,11 @@ async function carregarAbaEtiquetas(container) {
   container.querySelectorAll(".chip-list button").forEach(btn =>
     btn.addEventListener("click", async () => { await excluirEtiqueta(btn.dataset.id); carregarAbaEtiquetas(container); })
   );
+  ligarPaginacaoAdmin(container, "etiquetas", estadoEtiquetas, carregarAbaEtiquetas);
 }
 
 // ---------- ESTOQUE ----------
-const ESTOQUE_POR_PAGINA = [12, 24, 48];
+const ESTOQUE_POR_PAGINA = [12, 24, 30];
 let estoqueState = { categoria: "", termo: "", porPagina: 12, cursor: null, cursoresAnteriores: [], produtosPagina: [], temMais: false, totalCarregado: 0 };
 
 // Mostra o resultado do cron diário de estoque baixo (roda sozinho todo
@@ -2160,9 +2204,13 @@ function exportarEstoqueCsv(produtos) {
 }
 
 // ---------- USUÁRIOS ----------
-async function carregarAbaUsuarios(container) {
+async function carregarAbaUsuarios(container, pagina = 0) {
   if (!container) return;
-  const usuarios = await listarUsuarios();
+  const resultado = await listarUsuariosPagina({ tamanho: 30, cursor: estadoUsuarios.cursores[pagina] });
+  const usuarios = resultado.itens;
+  estadoUsuarios.pagina = pagina;
+  estadoUsuarios.temMais = resultado.temMais;
+  if (resultado.temMais) estadoUsuarios.cursores[pagina + 1] = resultado.cursor;
   container.innerHTML = `
     <div class="admin-panel-head">
       <h1>Usuários</h1>
@@ -2173,5 +2221,6 @@ async function carregarAbaUsuarios(container) {
       <tbody>
         ${usuarios.map(u => `<tr><td>${escHtml(u.nome || "-")}</td><td>${escHtml(u.email || "-")}</td><td>${(u.cargos || []).join(", ")}</td></tr>`).join("") || "<tr><td colspan='3'>Nenhum usuário.</td></tr>"}
       </tbody>
-    </table></div>`;
+    </table></div>${htmlPaginacaoAdmin("usuarios", estadoUsuarios)}`;
+  ligarPaginacaoAdmin(container, "usuarios", estadoUsuarios, carregarAbaUsuarios);
 }

@@ -320,7 +320,9 @@ button {
 /* ===== PRODUCT GRID / CARD ===== */
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  /* Colunas estáveis: um card nunca aumenta de largura porque faltou um
+     produto na última linha. Em telas largas são sempre 5 por linha. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: clamp(0.9rem, 2vw, 1.4rem);
   min-height: 220px;
 }

@@ -20,7 +20,7 @@
   .product-detail__image { aspect-ratio: 4 / 3; }
   .product-detail__image img { object-fit: contain; padding: 1.25rem; box-sizing: border-box; background: var(--branco); }
   .header-nav__links { display: none; }
-  .products-grid--5col { grid-template-columns: repeat(3, 1fr); }
+  .products-grid, .products-grid--5col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .search-page__layout { grid-template-columns: 1fr; }
   .search-page__filters { position: static; }
 }

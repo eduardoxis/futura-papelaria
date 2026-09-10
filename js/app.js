@@ -168,11 +168,12 @@ async function iniciar() {
   });
   const gradeDestaques = document.querySelector("#grade-destaques");
   carregarAoAproximar(gradeDestaques, async () => {
-    renderizarGrade(gradeDestaques, await listarProdutosDestaque(8));
+    // Dez itens formam duas linhas completas de cinco no desktop.
+    renderizarGrade(gradeDestaques, await listarProdutosDestaque(10));
   });
   const gradeRecentes = document.querySelector("#grade-recentes");
   carregarAoAproximar(gradeRecentes, async () => {
-    renderizarGrade(gradeRecentes, await listarProdutosRecentes(8));
+    renderizarGrade(gradeRecentes, await listarProdutosRecentes(10));
   });
 
   listarCategorias().then((categorias) => {
