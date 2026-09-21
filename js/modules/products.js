@@ -11,6 +11,24 @@ export function obterFavoritos() {
   catch { return []; }
 }
 
+export function obterIdsFavoritos() {
+  return obterFavoritos()
+    .map(item => typeof item === "string" ? item : item?.id)
+    .filter(Boolean);
+}
+
+function resumoFavorito(produto) {
+  return {
+    id: produto.id,
+    nome: produto.nome || "Produto",
+    marca: produto.marca || "",
+    preco: Number(produto.preco) || 0,
+    imagem: produto.imagem || "",
+    status: produto.status || "disponivel",
+    quantidade: Number(produto.quantidade) || 0
+  };
+}
+
 function salvarFavoritos(lista) {
   localStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(lista));
   salvarFavoritosNuvem(lista).catch(() => {});
@@ -20,13 +38,25 @@ export function aplicarFavoritosSincronizados(lista) {
   localStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(Array.isArray(lista) ? lista : []));
 }
 
-export function alternarFavorito(id) {
+export function alternarFavorito(id, produto = null) {
   const lista = obterFavoritos();
-  const idx = lista.indexOf(id);
+  const idx = lista.findIndex(item => (typeof item === "string" ? item : item?.id) === id);
   if (idx >= 0) lista.splice(idx, 1);
-  else lista.push(id);
+  else lista.push(produto ? resumoFavorito(produto) : id);
   salvarFavoritos(lista);
-  return lista.includes(id);
+  return lista.some(item => (typeof item === "string" ? item : item?.id) === id);
+}
+
+// Migração gradual dos favoritos antigos (que guardavam apenas o ID). Uma
+// única escrita substitui várias leituras futuras da tela "Minha conta".
+export function migrarFavoritosLegados(produtos = []) {
+  const porId = new Map(produtos.filter(Boolean).map(produto => [produto.id, produto]));
+  const atuais = obterFavoritos();
+  if (!atuais.some(item => typeof item === "string")) return;
+  const migrados = atuais
+    .map(item => typeof item === "string" ? (porId.has(item) ? resumoFavorito(porId.get(item)) : null) : item)
+    .filter(Boolean);
+  salvarFavoritos(migrados);
 }
 
 export function cartaoProduto(produto, favoritos = null) {
@@ -34,7 +64,7 @@ export function cartaoProduto(produto, favoritos = null) {
   const etiquetasHtml = (produto.etiquetas || [])
     .map(e => `<span class="tag-badge">${escHtml(e)}</span>`)
     .join("");
-  const favoritado = favoritos instanceof Set ? favoritos.has(produto.id) : obterFavoritos().includes(produto.id);
+  const favoritado = favoritos instanceof Set ? favoritos.has(produto.id) : obterIdsFavoritos().includes(produto.id);
   const imagem = imgPos(produto.imagem, 480).src || "/assets/images/placeholder.svg";
 
   return `
@@ -69,7 +99,7 @@ export function renderizarGrade(container, produtos) {
     container.innerHTML = `<div class="empty-state">Nenhum produto encontrado. Tente ajustar sua busca ou filtros.</div>`;
     return;
   }
-  const favoritos = new Set(obterFavoritos());
+  const favoritos = new Set(obterIdsFavoritos());
   container.__produtosPorId = new Map(produtos.map(produto => [produto.id, produto]));
   container.innerHTML = produtos.map(produto => cartaoProduto(produto, favoritos)).join("");
 
@@ -79,7 +109,7 @@ export function renderizarGrade(container, produtos) {
       const btnFav = e.target.closest("[data-fav-id]");
       if (btnFav) {
         e.preventDefault();
-        const ativo = alternarFavorito(btnFav.dataset.favId);
+        const ativo = alternarFavorito(btnFav.dataset.favId, container.__produtosPorId?.get(btnFav.dataset.favId));
         btnFav.classList.toggle("is-active", ativo);
         btnFav.setAttribute("aria-pressed", String(ativo));
         return;

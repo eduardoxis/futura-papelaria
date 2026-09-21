@@ -12,6 +12,23 @@ import { withLoading, beginListener } from "../utils/loadingManager.js";
 export let usuarioAtual = null;
 export let perfilAtual = null;
 
+const PERFIL_TTL_MS = 5 * 60 * 1000;
+
+function chavePerfil(uid) { return `futura:perfil:${uid}`; }
+
+function lerPerfilCache(uid) {
+  try {
+    const salvo = JSON.parse(sessionStorage.getItem(chavePerfil(uid)) || "null");
+    return salvo && salvo.expiraEm > Date.now() ? salvo.perfil : null;
+  } catch { return null; }
+}
+
+function salvarPerfilCache(uid, perfil) {
+  try {
+    sessionStorage.setItem(chavePerfil(uid), JSON.stringify({ perfil, expiraEm: Date.now() + PERFIL_TTL_MS }));
+  } catch { /* sessionStorage indisponível: segue com leitura normal */ }
+}
+
 export function ouvirEstadoAuth(callback) {
   // O app espera esse primeiro retorno pra saber se tem usuário logado
   // ou não; por isso conta como loading até a primeira resposta.
@@ -20,9 +37,20 @@ export function ouvirEstadoAuth(callback) {
     usuarioAtual = user;
     try {
       if (user) {
-        const ref = doc(db, "usuarios", user.uid);
-        const snap = await getDoc(ref);
-        perfilAtual = snap.exists() ? snap.data() : { cargos: ["cliente"] };
+        // A permissão real continua nas regras do Firestore. Este cache só
+        // evita reler o mesmo perfil para redesenhar a interface durante a
+        // mesma sessão/navegação entre páginas.
+        perfilAtual = lerPerfilCache(user.uid);
+        if (!perfilAtual) {
+          const ref = doc(db, "usuarios", user.uid);
+          const snap = await getDoc(ref);
+          perfilAtual = snap.exists() ? snap.data() : { cargos: ["cliente"] };
+          salvarPerfilCache(user.uid, perfilAtual);
+        }
+        if (perfilAtual?.cargos?.includes("admin")) {
+          // Mantém o comportamento administrativo sem uma segunda leitura.
+          await setPersistence(auth, browserLocalPersistence);
+        }
       } else {
         perfilAtual = null;
       }
@@ -54,20 +82,9 @@ export function entrar(email, senha, manterLogin = true) {
       // (browserSessionPersistence), útil em computador compartilhado.
       await setPersistence(auth, manterLogin ? browserLocalPersistence : browserSessionPersistence);
       const { user } = await signInWithEmailAndPassword(auth, email, senha);
-      // Para administradores, a sessão fica neste navegador mesmo que o
-      // checkbox tenha sido desmarcado por engano. Fazemos isso apenas após o
-      // login — nunca dentro do observador de autenticação, evitando mudar a
-      // sessão enquanto o app está salvando um produto.
-      try {
-        const perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
-        if (perfilSnap.data()?.cargos?.includes("admin")) {
-          await setPersistence(auth, browserLocalPersistence);
-        }
-      } catch (erroPersistencia) {
-        // A sessão recém-autenticada continua válida mesmo se a leitura do
-        // perfil falhar temporariamente. Nunca desconectamos o administrador.
-        console.warn("Não foi possível confirmar a persistência administrativa:", erroPersistencia);
-      }
+      // Não consultamos o perfil aqui: o observador de autenticação já faz
+      // essa única leitura (ou usa cache) ao concluir o login. Isso elimina
+      // a leitura duplicada de usuarios/{uid} em todo acesso.
       // Login concluído: remove o histórico de tentativas daquele e-mail.
       localStorage.removeItem(`ratelimit_${chaveLimite}`);
       return user;

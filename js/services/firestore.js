@@ -18,6 +18,7 @@ import { sinalizarAtualizacaoPublica } from "./public-sync.js";
 const TTL_PADRAO_MS = 5 * 60 * 1000; // 5 min
 const cacheMemoria = new Map();
 const requisicoesPendentes = new Map();
+const metricasLeitura = { rede: 0, cache: 0, deduplicadas: 0 };
 
 function lerCache(chave) {
   const emMemoria = cacheMemoria.get(chave);
@@ -49,6 +50,11 @@ function salvarCache(chave, valor, ttlMs = TTL_PADRAO_MS) {
   }
 }
 
+function atualizarCacheLista(chave, atualizar, ttlMs = TTL_PADRAO_MS) {
+  const atual = lerCache(chave);
+  if (Array.isArray(atual)) salvarCache(chave, atualizar(atual), ttlMs);
+}
+
 /**
  * Chame após criar/editar/excluir para a próxima leitura vir atualizada.
  * Remove tanto a chave exata quanto variantes com argumentos (ex:
@@ -71,13 +77,20 @@ function comCache(chave, ttlMs, fn) {
   return async (...args) => {
     const chaveCompleta = args.length ? `${chave}:${JSON.stringify(args)}` : chave;
     const emCache = lerCache(chaveCompleta);
-    if (emCache !== undefined) return emCache;
+    if (emCache !== undefined) {
+      metricasLeitura.cache += 1;
+      return emCache;
+    }
 
     // Se duas partes da página pedirem o mesmo dado ao mesmo tempo, ambas
     // aguardam a mesma Promise. Sem isso, o cache só era preenchido depois da
     // resposta e as duas consultas idênticas chegavam ao Firestore.
-    if (requisicoesPendentes.has(chaveCompleta)) return requisicoesPendentes.get(chaveCompleta);
+    if (requisicoesPendentes.has(chaveCompleta)) {
+      metricasLeitura.deduplicadas += 1;
+      return requisicoesPendentes.get(chaveCompleta);
+    }
 
+    metricasLeitura.rede += 1;
     const requisicao = Promise.resolve(fn(...args))
       .then((valor) => {
         salvarCache(chaveCompleta, valor, ttlMs);
@@ -86,6 +99,13 @@ function comCache(chave, ttlMs, fn) {
       .finally(() => requisicoesPendentes.delete(chaveCompleta));
     requisicoesPendentes.set(chaveCompleta, requisicao);
     return requisicao;
+  };
+}
+
+if (typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(location.hostname)) {
+  window.__firestoreCacheDebug = {
+    metricas: () => ({ ...metricasLeitura, pendentes: requisicoesPendentes.size, emMemoria: cacheMemoria.size }),
+    limpar: () => { cacheMemoria.clear(); requisicoesPendentes.clear(); }
   };
 }
 
@@ -564,6 +584,7 @@ export function ajustarEstoque(id, delta, motivo = "") {
     invalidarCache("resumoDashboard");
     invalidarCache("catalogoBase");
     invalidarCache("obterProduto");
+    invalidarCache("listarHistoricoEstoque");
     await notificarMudancaPublica();
   });
 }
@@ -747,7 +768,7 @@ export const listarCategorias = comCache("listarCategorias", 10 * 60 * 1000, () 
 export function criarCategoria(nome, emoji = "", imagem = "") {
   return withLoading("criarCategoria", async () => {
     const resultado = await addDoc(collection(db, "categorias"), { nome, emoji, imagem });
-    invalidarCache("listarCategorias");
+    atualizarCacheLista("listarCategorias", lista => [...lista, { id: resultado.id, nome, emoji, imagem }], 10 * 60 * 1000);
     invalidarCache("resumoDashboard");
     await notificarMudancaPublica();
     return resultado;
@@ -756,7 +777,7 @@ export function criarCategoria(nome, emoji = "", imagem = "") {
 export function atualizarCategoria(id, dados) {
   return withLoading("atualizarCategoria", async () => {
     const resultado = await updateDoc(doc(db, "categorias", id), dados);
-    invalidarCache("listarCategorias");
+    atualizarCacheLista("listarCategorias", lista => lista.map(item => item.id === id ? { ...item, ...dados } : item), 10 * 60 * 1000);
     await notificarMudancaPublica();
     return resultado;
   });
@@ -764,7 +785,7 @@ export function atualizarCategoria(id, dados) {
 export function excluirCategoria(id) {
   return withLoading("excluirCategoria", async () => {
     const resultado = await deleteDoc(doc(db, "categorias", id));
-    invalidarCache("listarCategorias");
+    atualizarCacheLista("listarCategorias", lista => lista.filter(item => item.id !== id), 10 * 60 * 1000);
     invalidarCache("resumoDashboard");
     await notificarMudancaPublica();
     return resultado;
@@ -780,8 +801,9 @@ export const listarMarcas = comCache("listarMarcas", 10 * 60 * 1000, () =>
 );
 export function criarMarca(dados) {
   return withLoading("criarMarca", async () => {
-    const resultado = await addDoc(collection(db, "marcas"), { ordem: Date.now(), ...dados });
-    invalidarCache("listarMarcas");
+    const item = { ordem: Date.now(), ...dados };
+    const resultado = await addDoc(collection(db, "marcas"), item);
+    atualizarCacheLista("listarMarcas", lista => [...lista, { id: resultado.id, ...item }], 10 * 60 * 1000);
     await notificarMudancaPublica();
     return resultado;
   });
@@ -789,7 +811,7 @@ export function criarMarca(dados) {
 export function atualizarMarca(id, dados) {
   return withLoading("atualizarMarca", async () => {
     const resultado = await updateDoc(doc(db, "marcas", id), dados);
-    invalidarCache("listarMarcas");
+    atualizarCacheLista("listarMarcas", lista => lista.map(item => item.id === id ? { ...item, ...dados } : item), 10 * 60 * 1000);
     await notificarMudancaPublica();
     return resultado;
   });
@@ -797,7 +819,7 @@ export function atualizarMarca(id, dados) {
 export function excluirMarca(id) {
   return withLoading("excluirMarca", async () => {
     const resultado = await deleteDoc(doc(db, "marcas", id));
-    invalidarCache("listarMarcas");
+    atualizarCacheLista("listarMarcas", lista => lista.filter(item => item.id !== id), 10 * 60 * 1000);
     await notificarMudancaPublica();
     return resultado;
   });
@@ -845,7 +867,7 @@ export const listarEtiquetas = comCache("listarEtiquetas", 10 * 60 * 1000, () =>
 export function criarEtiqueta(nome) {
   return withLoading("criarEtiqueta", async () => {
     const resultado = await addDoc(collection(db, "etiquetas"), { nome });
-    invalidarCache("listarEtiquetas");
+    atualizarCacheLista("listarEtiquetas", lista => [...lista, { id: resultado.id, nome }], 10 * 60 * 1000);
     await notificarMudancaPublica();
     return resultado;
   });
@@ -853,7 +875,7 @@ export function criarEtiqueta(nome) {
 export function excluirEtiqueta(id) {
   return withLoading("excluirEtiqueta", async () => {
     const resultado = await deleteDoc(doc(db, "etiquetas", id));
-    invalidarCache("listarEtiquetas");
+    atualizarCacheLista("listarEtiquetas", lista => lista.filter(item => item.id !== id), 10 * 60 * 1000);
     await notificarMudancaPublica();
     return resultado;
   });
@@ -867,12 +889,12 @@ export function salvarLeadPerdido(lead) {
     return resp.json();
   });
 }
-export function listarLeadsPerdidos() {
-  return withLoading("listarLeadsPerdidos", async () => {
+export const listarLeadsPerdidos = comCache("listarLeadsPerdidos", 60 * 1000, () =>
+  withLoading("listarLeadsPerdidos", async () => {
     const snap = await getDocs(query(collection(db, "leadsPerdidos"), orderBy("data", "desc"), limit(200)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 
 export function listarLeadsPerdidosPagina(opcoes = {}) {
   return withLoading("listarLeadsPerdidosPagina", () =>
@@ -881,18 +903,23 @@ export function listarLeadsPerdidosPagina(opcoes = {}) {
 }
 export function marcarLeadRecuperado(id) {
   return withLoading("marcarLeadRecuperado", async () => {
-    return updateDoc(doc(db, "leadsPerdidos", id), { status: "recuperado" });
+    const resultado = await updateDoc(doc(db, "leadsPerdidos", id), { status: "recuperado" });
+    atualizarCacheLista("listarLeadsPerdidos", lista => lista.map(item => item.id === id ? { ...item, status: "recuperado" } : item), 60 * 1000);
+    return resultado;
   });
 }
 
 // ---------- PEDIDOS ----------
 export function criarPedido(dados) {
   return withLoading("criarPedido", async () => {
-    return addDoc(collection(db, "pedidos"), { ...dados, status: "pendente", criadoEm: serverTimestamp() });
+    const resultado = await addDoc(collection(db, "pedidos"), { ...dados, status: "pendente", criadoEm: serverTimestamp() });
+    invalidarCache("listarPedidosUsuario");
+    invalidarCache("listarPedidosAdmin");
+    return resultado;
   });
 }
-export function listarPedidosUsuario(usuarioId) {
-  return withLoading("listarPedidosUsuario", async () => {
+export const listarPedidosUsuario = comCache("listarPedidosUsuario", 60 * 1000, (usuarioId) =>
+  withLoading("listarPedidosUsuario", async () => {
     const snap = await getDocs(query(
       collection(db, "pedidos"),
       where("usuarioId", "==", usuarioId),
@@ -900,14 +927,14 @@ export function listarPedidosUsuario(usuarioId) {
       limit(50)
     ));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
-export function listarPedidosAdmin() {
-  return withLoading("listarPedidosAdmin", async () => {
+  })
+);
+export const listarPedidosAdmin = comCache("listarPedidosAdmin", 45 * 1000, () =>
+  withLoading("listarPedidosAdmin", async () => {
     const snap = await getDocs(query(collection(db, "pedidos"), orderBy("criadoEm", "desc"), limit(100)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 
 export function listarPedidosAdminPagina(opcoes = {}) {
   return withLoading("listarPedidosAdminPagina", () =>
@@ -915,15 +942,20 @@ export function listarPedidosAdminPagina(opcoes = {}) {
   );
 }
 export function atualizarStatusPedido(id, status) {
-  return withLoading("atualizarStatusPedido", () => updateDoc(doc(db, "pedidos", id), { status }));
-}
-
-export function listarHistoricoEstoque() {
-  return withLoading("listarHistoricoEstoque", async () => {
-    const snap = await getDocs(query(collection(db, "historicoEstoque"), orderBy("data", "desc"), limit(100)));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return withLoading("atualizarStatusPedido", async () => {
+    const resultado = await updateDoc(doc(db, "pedidos", id), { status });
+    atualizarCacheLista("listarPedidosAdmin", lista => lista.map(item => item.id === id ? { ...item, status } : item), 45 * 1000);
+    invalidarCache("listarPedidosUsuario");
+    return resultado;
   });
 }
+
+export const listarHistoricoEstoque = comCache("listarHistoricoEstoque", 60 * 1000, () =>
+  withLoading("listarHistoricoEstoque", async () => {
+    const snap = await getDocs(query(collection(db, "historicoEstoque"), orderBy("data", "desc"), limit(100)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  })
+);
 
 export function listarHistoricoEstoquePagina(opcoes = {}) {
   return withLoading("listarHistoricoEstoquePagina", () =>
@@ -932,20 +964,24 @@ export function listarHistoricoEstoquePagina(opcoes = {}) {
 }
 
 // ---------- ENDEREÇOS ----------
-export function listarEnderecos(usuarioId) {
-  return withLoading("listarEnderecos", async () => {
+export const listarEnderecos = comCache("listarEnderecos", 5 * 60 * 1000, (usuarioId) =>
+  withLoading("listarEnderecos", async () => {
     const snap = await getDocs(query(collection(db, "enderecos"), where("usuarioId", "==", usuarioId)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  });
-}
+  })
+);
 export function criarEndereco(usuarioId, dados) {
   return withLoading("criarEndereco", async () => {
-    return addDoc(collection(db, "enderecos"), { ...dados, usuarioId, criadoEm: serverTimestamp() });
+    const resultado = await addDoc(collection(db, "enderecos"), { ...dados, usuarioId, criadoEm: serverTimestamp() });
+    invalidarCache("listarEnderecos");
+    return resultado;
   });
 }
 export function excluirEndereco(id) {
   return withLoading("excluirEndereco", async () => {
-    return deleteDoc(doc(db, "enderecos", id));
+    const resultado = await deleteDoc(doc(db, "enderecos", id));
+    invalidarCache("listarEnderecos");
+    return resultado;
   });
 }
 

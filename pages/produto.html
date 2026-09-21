@@ -174,7 +174,7 @@
 <script type="module">
 import { obterProduto, listarProdutosPorCategoria, incrementarVisualizacao } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos, registrarErroCliente } from "../js/utils/utils.js";
-import { renderizarGrade, cartaoProduto, compartilharProduto, obterFavoritos, alternarFavorito } from "../js/modules/products.js";
+import { renderizarGrade, cartaoProduto, compartilharProduto, obterIdsFavoritos, alternarFavorito } from "../js/modules/products.js";
 import { ouvirEstadoAuth, ehAdmin, sair } from "../js/services/auth.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
@@ -305,7 +305,7 @@ async function iniciarProduto() {
   const imagensCorInicial = corInicial && Array.isArray(corInicial.imagens) ? corInicial.imagens.filter(Boolean) : [];
   let imagens = imagensCorInicial.length ? imagensCorInicial : imagensGerais;
   const semEstoque = produto.status === "sem_estoque" || Number(produto.quantidade) <= 0;
-  const favoritado = obterFavoritos().includes(produto.id);
+  const favoritado = obterIdsFavoritos().includes(produto.id);
   const destaques = Array.isArray(produto.destaques) ? produto.destaques.filter(Boolean) : [];
 
   container.innerHTML = `
@@ -452,7 +452,7 @@ async function iniciarProduto() {
   document.querySelector("#falar-produto")?.addEventListener("click", () => falarSobreProduto(corSelecionada ? { ...produto, nome: `${produto.nome} (Cor: ${corSelecionada})` } : produto));
 
   document.querySelector("#fav-produto")?.addEventListener("click", (e) => {
-    const ativo = alternarFavorito(produto.id);
+    const ativo = alternarFavorito(produto.id, produto);
     e.currentTarget.classList.toggle("is-active", ativo);
     e.currentTarget.innerHTML = `${icon("heart")}${ativo ? "Favoritado" : "Favoritar"}`;
   });

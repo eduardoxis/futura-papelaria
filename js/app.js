@@ -5,7 +5,7 @@ import {
   criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
   atualizarPerfilUsuario
 } from "./services/firestore.js";
-import { renderizarGrade, obterFavoritos, alternarFavorito, aplicarFavoritosSincronizados } from "./modules/products.js";
+import { renderizarGrade, obterFavoritos, alternarFavorito, migrarFavoritosLegados, aplicarFavoritosSincronizados } from "./modules/products.js";
 import { buscarProdutos } from "./modules/search.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais, atualizarBadgeCarrinho,
@@ -771,8 +771,16 @@ async function renderizarEnderecos() {
 async function renderizarFavoritos() {
   const container = document.querySelector("#lista-favoritos");
   if (!container) return;
-  const ids = obterFavoritos();
-  const produtos = (await Promise.all(ids.map(id => obterProduto(id)))).filter(Boolean);
+  const favoritos = obterFavoritos();
+  const produtosSalvos = favoritos.filter(item => item && typeof item === "object" && item.id);
+  const idsLegados = favoritos.filter(item => typeof item === "string");
+  // Favoritos novos carregam seu pequeno resumo junto do próprio documento
+  // favoritos/{uid}; não geram leituras extras de produtos. IDs antigos
+  // continuam compatíveis e usam getDoc cacheado até serem substituídos ao
+  // usuário favoritar novamente.
+  const produtosLegados = (await Promise.all(idsLegados.map(id => obterProduto(id)))).filter(Boolean);
+  if (produtosLegados.length) migrarFavoritosLegados(produtosLegados);
+  const produtos = [...produtosSalvos, ...produtosLegados];
   container.innerHTML = produtos.length ? produtos.map(p => `
     <div class="favorito-card" data-id="${p.id}">
       <img src="${imgPos(p.imagem, 240).src || "/assets/images/placeholder.svg"}" style="object-position:center center" alt="${escHtml(p.nome)}" loading="lazy" decoding="async">
