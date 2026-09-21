@@ -3,7 +3,7 @@ import { db } from "../../firebase/firebase-config.js";
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, increment,
-  runTransaction, getCountFromServer, getAggregateFromServer, sum
+  runTransaction, getCountFromServer, getAggregateFromServer, sum, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { withLoading } from "../utils/loadingManager.js";
 import { sinalizarAtualizacaoPublica } from "./public-sync.js";
@@ -675,11 +675,17 @@ function nomeNormalizado(produto) {
   return cacheNomesNormalizados.get(produto);
 }
 
-async function buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, ordenar }) {
+async function buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, faixasPreco, disponibilidade, ordenar }) {
   const col = collection(db, "produtos");
   const filtros = [where("status", "in", STATUS_PUBLICOS)];
   if (categoria) filtros.push(where("categoria", "==", categoria));
   if (marcas.length === 1) filtros.push(where("marca", "==", marcas[0]));
+  // Valores únicos podem ser filtrados no servidor. Seleções múltiplas
+  // continuam no caminho compatível abaixo, pois o Firestore não permite
+  // duas cláusulas "in" na mesma consulta.
+  if (faixasPreco.length === 1) filtros.push(where("faixaPreco", "==", faixasPreco[0]));
+  if (disponibilidade === "em_estoque") filtros.push(where("disponivel", "==", true));
+  if (disponibilidade === "sem_estoque") filtros.push(where("disponivel", "==", false));
 
   const campoOrdem = ordenar === "preco_asc" || ordenar === "preco_desc"
     ? "preco"
@@ -690,7 +696,7 @@ async function buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas
 
   const [snap, total] = await Promise.all([
     getDocs(query(col, ...clausulas)),
-    contarCatalogoServidor(categoria, marcas[0] || "")
+    contarCatalogoServidor(categoria, marcas[0] || "", faixasPreco[0] || "", disponibilidade)
   ]);
   const docs = snap.docs.slice(0, tamanho);
   return {
@@ -701,10 +707,13 @@ async function buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas
   };
 }
 
-const contarCatalogoServidor = comCache("contarCatalogoServidor", 5 * 60 * 1000, async (categoria, marca) => {
+const contarCatalogoServidor = comCache("contarCatalogoServidor", 5 * 60 * 1000, async (categoria, marca, faixaPreco = "", disponibilidade = "") => {
   const filtros = [where("status", "in", STATUS_PUBLICOS)];
   if (categoria) filtros.push(where("categoria", "==", categoria));
   if (marca) filtros.push(where("marca", "==", marca));
+  if (faixaPreco) filtros.push(where("faixaPreco", "==", faixaPreco));
+  if (disponibilidade === "em_estoque") filtros.push(where("disponivel", "==", true));
+  if (disponibilidade === "sem_estoque") filtros.push(where("disponivel", "==", false));
   const snap = await getCountFromServer(query(collection(db, "produtos"), ...filtros));
   return snap.data().count;
 });
@@ -723,10 +732,10 @@ export function buscarProdutosCatalogo({
     // O caminho comum (sem busca textual nem filtros que exigem pós-processamento)
     // traz somente uma página do Firestore. Filtros complexos reutilizam um
     // conjunto-base cacheado por dois minutos, em vez de reler tudo a cada clique.
-    const podePaginarNoServidor = !faixasPreco.length && !disponibilidade && !termoBusca.trim() && marcas.length <= 1;
+    const podePaginarNoServidor = !termoBusca.trim() && marcas.length <= 1 && faixasPreco.length <= 1;
     if (podePaginarNoServidor) {
       try {
-        return await buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, ordenar });
+        return await buscarPaginaCatalogoServidor({ tamanho, cursor, categoria, marcas, faixasPreco, disponibilidade, ordenar });
       } catch (erro) {
         // Um índice composto pode ainda estar em criação ou não ter sido
         // publicado no Firebase. Nesse caso o catálogo continua acessível
@@ -940,6 +949,29 @@ export function listarPedidosAdminPagina(opcoes = {}) {
   return withLoading("listarPedidosAdminPagina", () =>
     listarPaginaAdmin("pedidos", { ...opcoes, ordenarPor: "criadoEm", direcao: "desc" })
   );
+}
+export function excluirPedido(id) {
+  return withLoading("excluirPedido", async () => {
+    const resultado = await deleteDoc(doc(db, "pedidos", id));
+    invalidarCache("listarPedidosUsuario");
+    invalidarCache("listarPedidosAdmin");
+    return resultado;
+  });
+}
+
+/** Exclui pedidos da própria conta em lotes seguros para o Firestore. */
+export function excluirPedidos(ids = []) {
+  return withLoading("excluirPedidos", async () => {
+    const unicos = [...new Set(ids.filter(Boolean))];
+    for (let inicio = 0; inicio < unicos.length; inicio += 400) {
+      const lote = writeBatch(db);
+      unicos.slice(inicio, inicio + 400).forEach((id) => lote.delete(doc(db, "pedidos", id)));
+      await lote.commit();
+    }
+    invalidarCache("listarPedidosUsuario");
+    invalidarCache("listarPedidosAdmin");
+    return { total: unicos.length };
+  });
 }
 export function atualizarStatusPedido(id, status) {
   return withLoading("atualizarStatusPedido", async () => {

@@ -126,6 +126,81 @@
 .favorito-card__info strong, .endereco-card__info strong { display: block; }
 .favorito-card__acoes { display: flex; gap: 0.4rem; flex-shrink: 0; }
 
+/* ---- pedidos: seleção e remoção segura ---- */
+.modal__panel--orders { width: min(760px, 100%); max-height: min(820px, 90vh); }
+.modal__head--orders { gap: 0.75rem; }
+.pedidos__acoes { display: flex; align-items: center; justify-content: flex-end; gap: 0.45rem; flex-wrap: wrap; }
+.pedidos__acao {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 34px; padding: 0.45rem 0.65rem;
+  border-radius: 10px; background: #fff1f2; color: #dc2626; font: inherit; font-size: 0.78rem; font-weight: 700;
+}
+.pedidos__acao:hover:not(:disabled) { background: #fee2e2; }
+.pedidos__acao:disabled { opacity: 0.48; cursor: not-allowed; }
+.pedidos__acao .icon { width: 16px; height: 16px; }
+#modal-pedidos .sheet__body { gap: 0.75rem; align-content: start; }
+.pedido-card { display: flex; align-items: center; gap: 0.9rem; margin: 0; padding: 1rem; transition: border-color var(--transicao), background var(--transicao); }
+.pedido-card.is-selected { border-color: var(--azul-500); background: var(--azul-050); }
+.pedido-card__content { min-width: 0; flex: 1; }
+.pedido-card__select { position: relative; width: 26px; height: 26px; flex: 0 0 26px; cursor: pointer; }
+.pedido-card__select input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.pedido-card__select span { display: block; width: 100%; height: 100%; box-sizing: border-box; border: 2px solid var(--cinza-400); border-radius: 7px; background: var(--branco); }
+.pedido-card__select input:checked + span { border-color: var(--azul-700); background: var(--azul-700); }
+.pedido-card__select input:checked + span::after { content: ""; display: block; width: 6px; height: 11px; margin: 3px auto 0; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.pedido-card__select input:focus-visible + span { outline: 3px solid rgba(37, 99, 235, 0.25); outline-offset: 2px; }
+.pedido-card__delete { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; color: var(--cinza-600); background: transparent; flex-shrink: 0; }
+.pedido-card__delete:hover { color: #dc2626; background: #fff1f2; }
+.pedido-card__delete .icon { width: 20px; height: 20px; }
+
+/* ---- perfil: versão ampla, organizada e próxima à referência ---- */
+.modal__panel--profile { width: min(920px, 100%); max-height: min(1180px, 92vh); }
+.modal--profile .sheet__body { padding: 1.75rem; }
+.modal--profile .modal__head { padding: 1.35rem 1.75rem; }
+.modal--profile .modal__head h2 { font-size: clamp(1.4rem, 2.6vw, 2rem); }
+.modal--profile .modal__head-sub { font-size: 1rem; }
+.modal--profile .modal__back, .modal--profile .modal__close { width: 48px; height: 48px; }
+.modal--profile .modal__back .icon, .modal--profile .modal__close .icon { width: 22px; height: 22px; }
+.perfil-hero { padding: 1.5rem; gap: 1.25rem; border-radius: 20px; margin-bottom: 1.7rem; }
+.perfil-hero__avatar { width: 76px; height: 76px; background: linear-gradient(145deg, #2563eb, #6b9cff); color: #fff; }
+.perfil-hero__avatar .icon { width: 36px; height: 36px; }
+.perfil-hero__info strong { font-size: clamp(1.08rem, 2.1vw, 1.45rem); }
+.perfil-hero__info span { font-size: 1rem; color: var(--cinza-500); }
+.perfil-hero__info small { font-size: 0.85rem; }
+.perfil-hero__editar, .perfil-item__action { border: 1px solid var(--azul-500); color: var(--azul-700); background: var(--branco); border-radius: 999px; padding: 0.7rem 1.1rem; }
+.perfil-secao__titulo { font-size: 1.25rem; margin: 0 0 0.9rem; }
+.perfil-lista { gap: 0.8rem; margin-bottom: 1.8rem; }
+.perfil-item { padding: 1rem 1.1rem; border-radius: 18px; gap: 1rem; }
+.perfil-item__icon { width: 50px; height: 50px; }
+.perfil-item__icon .icon { width: 23px; height: 23px; }
+.perfil-item__texto strong { font-size: 1rem; }
+.perfil-item__texto span { font-size: 0.94rem; }
+.perfil-sair { width: 100%; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.1rem; border-radius: 18px; color: #c81e1e; background: #fff1f2; text-align: left; }
+.perfil-sair .icon { width: 27px; height: 27px; flex-shrink: 0; }
+.perfil-sair strong, .perfil-sair small { display: block; }
+.perfil-sair strong { font-size: 1rem; }
+.perfil-sair small { margin-top: 0.15rem; color: #9f5a5a; font-size: 0.86rem; }
+.perfil-sair:hover { background: #fee2e2; }
+
+@media (max-width: 640px) {
+  .modal__panel--orders, .modal__panel--profile { width: 100%; max-height: 88vh; }
+  .modal--profile .modal__head { padding: 1rem 1.25rem; }
+  .modal--profile .sheet__body { padding: 1.15rem 1.1rem 1.6rem; }
+  .modal--profile .modal__head h2 { font-size: 1.25rem; }
+  .modal--profile .modal__head-sub { font-size: 0.85rem; }
+  .modal--profile .modal__back, .modal--profile .modal__close { width: 38px; height: 38px; }
+  .perfil-hero { padding: 1rem; gap: 0.85rem; }
+  .perfil-hero__avatar { width: 56px; height: 56px; }
+  .perfil-hero__avatar .icon { width: 28px; height: 28px; }
+  .perfil-hero__editar { width: 100%; justify-content: center; }
+  .perfil-secao__titulo { font-size: 1.05rem; }
+  .perfil-item { padding: 0.85rem; gap: 0.75rem; }
+  .perfil-item__icon { width: 42px; height: 42px; }
+  .perfil-item__action { padding: 0.55rem 0.75rem; font-size: 0.8rem; }
+  .modal__head--orders { align-items: flex-start; }
+  .pedidos__acoes { justify-content: flex-end; max-width: 220px; }
+  .pedidos__acao { padding: 0.42rem; }
+  .pedidos__acao > span:last-child { display: none; }
+  .pedido-card { gap: 0.7rem; padding: 0.85rem; }
+}
 /* ---- icon helper ---- */
 .icon { display: inline-flex; width: 1em; height: 1em; }
 .icon svg { width: 100%; height: 100%; display: block; }

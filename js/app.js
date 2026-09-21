@@ -2,7 +2,7 @@
 import {
   listarEtiquetas, listarProdutosPagina, listarProdutosDestaque,
   listarProdutosRecentes, listarProdutosPorCategoria, obterProduto, listarCategorias, listarMarcas,
-  criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco,
+  criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco, excluirPedido, excluirPedidos,
   atualizarPerfilUsuario
 } from "./services/firestore.js";
 import { renderizarGrade, obterFavoritos, alternarFavorito, migrarFavoritosLegados, aplicarFavoritosSincronizados } from "./modules/products.js";
@@ -12,7 +12,7 @@ import {
   finalizarPedidoWhatsApp, falarSobreProduto, registrarLeadPerdidoSeNecessario, aplicarCarrinhoSincronizado
 } from "./modules/cart.js";
 import { iniciarSincronizacaoConta } from "./services/contaSync.js";
-import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos, registrarErroCliente } from "./utils/utils.js";
+import { formatBRL, escHtml, getQueryParam, toast, podeExecutar, podeExecutarPersistente, mascararCPF, mascararCNPJ, mascararTelefone, pareceEmail, imgPos, registrarErroCliente, confirmarAcao } from "./utils/utils.js";
 import { ouvirEstadoAuth, ehAdmin, entrar, cadastrar, sair, usuarioAtual, perfilAtual, redefinirSenha, atualizarNomeAuth } from "./services/auth.js";
 import { iniciarModais, abrirModal, fecharModal, trocarAba } from "./utils/modal.js";
 import { iniciarOrcamento } from "./modules/orcamento.js";
@@ -732,21 +732,76 @@ function abrirSubModalConta(idModal) {
   return modal;
 }
 
+const pedidosSelecionados = new Set();
+
+function atualizarAcoesPedidos(total) {
+  const selecionados = pedidosSelecionados.size;
+  const btnSelecionados = document.querySelector("#btn-apagar-pedidos-selecionados");
+  const btnTodos = document.querySelector("#btn-apagar-todos-pedidos");
+  if (btnSelecionados) {
+    btnSelecionados.disabled = selecionados === 0;
+    btnSelecionados.innerHTML = `${icon("trash")}<span>Apagar selecionados${selecionados ? ` (${selecionados})` : ""}</span>`;
+  }
+  if (btnTodos) btnTodos.disabled = total === 0;
+}
+
+async function confirmarEExcluirPedidos(ids, mensagem) {
+  const lista = [...new Set(ids)].filter(Boolean);
+  if (!lista.length) return;
+  const ok = await confirmarAcao(mensagem, {
+    titulo: lista.length === 1 ? "Apagar pedido?" : "Apagar pedidos?",
+    textoConfirmar: lista.length === 1 ? "Apagar pedido" : "Apagar pedidos",
+    textoCancelar: "Cancelar"
+  });
+  if (!ok) return;
+  try {
+    if (lista.length === 1) await excluirPedido(lista[0]);
+    else await excluirPedidos(lista);
+    lista.forEach(id => pedidosSelecionados.delete(id));
+    toast(lista.length === 1 ? "Pedido apagado." : `${lista.length} pedidos apagados.`);
+    await renderizarPedidos();
+  } catch (erro) {
+    console.error("Não foi possível apagar pedido(s):", erro);
+    toast("Não foi possível apagar o pedido. Tente novamente.", "error");
+  }
+}
+
 async function renderizarPedidos() {
   const container = document.querySelector("#lista-pedidos");
   if (!container || !usuarioAtual) return;
   container.innerHTML = `<div class="empty-state">Carregando...</div>`;
   const pedidos = await listarPedidosUsuario(usuarioAtual.uid);
-  container.innerHTML = pedidos.length ? pedidos.map(p => `
-    <div class="pedido-card">
-      <div class="pedido-card__head">
-        <strong>${formatBRL(p.total || 0)}</strong>
-        <span class="pedido-card__status">${escHtml(p.status || "pendente")}</span>
-      </div>
-      <p class="pedido-card__itens">${(p.itens || []).map(i => `${i.quantidade}x ${escHtml(i.nome)}`).join(", ")}</p>
-    </div>`).join("") : `<div class="empty-state">Você ainda não fez nenhum pedido.</div>`;
-}
+  const idsAtuais = new Set(pedidos.map(p => p.id));
+  [...pedidosSelecionados].forEach(id => { if (!idsAtuais.has(id)) pedidosSelecionados.delete(id); });
 
+  container.innerHTML = pedidos.length ? pedidos.map(p => `
+    <article class="pedido-card ${pedidosSelecionados.has(p.id) ? "is-selected" : ""}" data-pedido-id="${p.id}">
+      <label class="pedido-card__select" aria-label="Selecionar pedido de ${formatBRL(p.total || 0)}">
+        <input type="checkbox" data-selecionar-pedido="${p.id}" ${pedidosSelecionados.has(p.id) ? "checked" : ""}>
+        <span aria-hidden="true"></span>
+      </label>
+      <div class="pedido-card__content">
+        <div class="pedido-card__head">
+          <strong>${formatBRL(p.total || 0)}</strong>
+          <span class="pedido-card__status">${escHtml(p.status || "pendente")}</span>
+        </div>
+        <p class="pedido-card__itens">${(p.itens || []).map(i => `${i.quantidade}x ${escHtml(i.nome)}`).join(", ")}</p>
+      </div>
+      <button type="button" class="pedido-card__delete" data-apagar-pedido="${p.id}" aria-label="Apagar pedido">${icon("trash")}</button>
+    </article>`).join("") : `<div class="empty-state">Você ainda não fez nenhum pedido.</div>`;
+
+  container.querySelectorAll("[data-selecionar-pedido]").forEach(input => {
+    input.addEventListener("change", () => {
+      input.checked ? pedidosSelecionados.add(input.dataset.selecionarPedido) : pedidosSelecionados.delete(input.dataset.selecionarPedido);
+      input.closest(".pedido-card")?.classList.toggle("is-selected", input.checked);
+      atualizarAcoesPedidos(pedidos.length);
+    });
+  });
+  container.querySelectorAll("[data-apagar-pedido]").forEach(btn => {
+    btn.addEventListener("click", () => confirmarEExcluirPedidos([btn.dataset.apagarPedido], "Tem certeza que deseja apagar este pedido? Esta ação não pode ser desfeita."));
+  });
+  atualizarAcoesPedidos(pedidos.length);
+}
 async function renderizarEnderecos() {
   const lista = document.querySelector("#lista-enderecos");
   if (!lista || !usuarioAtual) return;
@@ -867,6 +922,20 @@ function configurarMenuConta() {
     renderizarPedidos();
   });
 
+  document.querySelector("#btn-apagar-pedidos-selecionados")?.addEventListener("click", () => {
+    confirmarEExcluirPedidos([...pedidosSelecionados], "Tem certeza que deseja apagar os pedidos selecionados? Esta ação não pode ser desfeita.");
+  });
+  document.querySelector("#btn-apagar-todos-pedidos")?.addEventListener("click", async () => {
+    if (!usuarioAtual) return;
+    const pedidos = await listarPedidosUsuario(usuarioAtual.uid);
+    confirmarEExcluirPedidos(pedidos.map(p => p.id), "Tem certeza que deseja apagar todos os seus pedidos? Esta ação não pode ser desfeita.");
+  });
+  document.querySelector("#btn-sair-perfil")?.addEventListener("click", async () => {
+    const ok = await confirmarAcao("Deseja sair da sua conta agora?", { titulo: "Sair da conta", textoConfirmar: "Sair", textoCancelar: "Cancelar" });
+    if (!ok) return;
+    fecharModal(document.querySelector("#modal-perfil"));
+    await sair();
+  });
   document.querySelector("#btn-abrir-enderecos")?.addEventListener("click", () => {
     abrirSubModalConta("#modal-enderecos");
     renderizarEnderecos();

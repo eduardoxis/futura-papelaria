@@ -64,7 +64,10 @@ service cloud.firestore {
         request.resource.data.total is number && request.resource.data.total >= 0 &&
         (!('status' in request.resource.data) || request.resource.data.status == 'pendente');
       allow read: if autenticado() && (resource.data.usuarioId == request.auth.uid || ehAdmin());
-      allow update, delete: if ehAdmin();
+      // O cliente pode remover apenas documentos que pertencem à própria conta.
+      // Alterações continuam exclusivas do painel administrativo.
+      allow update: if ehAdmin();
+      allow delete: if autenticado() && (resource.data.usuarioId == request.auth.uid || ehAdmin());
     }
 
     // Carrinho e favoritos pertencem à conta: qualquer dispositivo com a

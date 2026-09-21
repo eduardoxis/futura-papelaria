@@ -303,8 +303,8 @@
 </div>
 
 <!-- MODAL MEU PERFIL -->
-<div class="modal modal--sheet" id="modal-perfil">
-  <div class="modal__panel modal__panel--sheet">
+<div class="modal modal--sheet modal--profile" id="modal-perfil">
+  <div class="modal__panel modal__panel--sheet modal__panel--profile">
     <div class="sheet__handle"></div>
     <div class="modal__head">
       <div class="modal__head-title">
@@ -314,7 +314,7 @@
           <p class="modal__head-sub">Gerencie sua conta e preferências</p>
         </div>
       </div>
-      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+      <button class="modal__close" data-modal-close aria-label="Fechar"><span data-icon="close"></span></button>
     </div>
     <div class="modal__body sheet__body">
 
@@ -369,17 +369,18 @@
         <div class="perfil-item">
           <span class="perfil-item__icon" data-icon="shieldCheck"></span>
           <div class="perfil-item__texto"><strong>Verificação em duas etapas</strong><span>Proteja ainda mais sua conta</span></div>
-          <span class="perfil-item__status">Em breve</span>
+          <button type="button" class="btn-secondary perfil-item__action" disabled aria-disabled="true">Configurar</button>
         </div>
       </div>
 
+      <button type="button" class="perfil-sair" id="btn-sair-perfil"><span data-icon="logOut"></span><span><strong>Sair da conta</strong><small>Você será desconectado de todos os dispositivos</small></span></button>
     </div>
   </div>
 </div>
-<div class="modal modal--sheet" id="modal-pedidos">
-  <div class="modal__panel modal__panel--sheet">
+<div class="modal modal--sheet modal--orders" id="modal-pedidos">
+  <div class="modal__panel modal__panel--sheet modal__panel--orders">
     <div class="sheet__handle"></div>
-    <div class="modal__head">
+    <div class="modal__head modal__head--orders">
       <div class="modal__head-title">
         <button type="button" class="modal__back" data-modal-back="#modal-conta" aria-label="Voltar"><span data-icon="chevronLeft"></span></button>
         <div>
@@ -387,7 +388,11 @@
           <p class="modal__head-sub">Acompanhe seus pedidos</p>
         </div>
       </div>
-      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
+      <div class="pedidos__acoes">
+        <button type="button" class="pedidos__acao" id="btn-apagar-pedidos-selecionados" disabled><span data-icon="trash"></span><span>Apagar selecionados</span></button>
+        <button type="button" class="pedidos__acao" id="btn-apagar-todos-pedidos" disabled><span data-icon="trash"></span><span>Apagar todos</span></button>
+        <button class="modal__close" data-modal-close aria-label="Fechar"><span data-icon="close"></span></button>
+      </div>
     </div>
     <div class="modal__body sheet__body" id="lista-pedidos">
       <div class="empty-state">Carregando...</div>
