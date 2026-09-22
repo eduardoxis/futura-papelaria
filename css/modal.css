@@ -794,7 +794,8 @@ dialog.dialog-form.dialog-produto { width: min(1210px, 92vw); max-height: 88vh; 
 .dialog-produto .form-grid > label:nth-child(4),
 .dialog-produto .form-grid > label:nth-child(5),
 .dialog-produto .form-grid > label:nth-child(6) { grid-column: span 5; }
-.dialog-produto .form-grid > label:nth-child(7) { grid-column: span 10; }
+.dialog-produto .form-grid > label:nth-child(7),
+.dialog-produto .form-grid > label:nth-child(8) { grid-column: span 10; }
 @media (max-width: 840px) {
   .dialog-produto .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dialog-produto .form-grid > label:first-child { grid-column: span 2; }

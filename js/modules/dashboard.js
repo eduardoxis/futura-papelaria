@@ -1048,11 +1048,10 @@ async function abrirFormularioProduto(container, produto = null) {
           </select>
         </label>
         <label>Código<input name="codigo" autocomplete="off" value="${escHtml(produto?.codigo || generateCode())}"></label>
+        <label class="chip-list__visivel" id="label-visivel-sem-foto" title="Por padrão, produto sem nenhuma foto cadastrada fica oculto no site. Marque aqui se quiser exibi-lo mesmo assim.">
+          <input type="checkbox" name="visivelSemFoto" ${produto?.visivelSemFoto ? "checked" : ""}> Exibir no site mesmo sem foto
+        </label>
       </div>
-
-      <label class="chip-list__visivel" id="label-visivel-sem-foto" title="Por padrão, produto sem nenhuma foto cadastrada fica oculto no site. Marque aqui se quiser exibi-lo mesmo assim.">
-        <input type="checkbox" name="visivelSemFoto" ${produto?.visivelSemFoto ? "checked" : ""}> Exibir no site mesmo sem foto
-      </label>
 
       <div class="cores-produto">
         <h4>Variações de cor (opcional)</h4>
