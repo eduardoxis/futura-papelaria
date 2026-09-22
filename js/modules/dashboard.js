@@ -1069,7 +1069,7 @@ async function abrirFormularioProduto(container, produto = null) {
 
       <div class="galeria-produto" id="galeria-produto-wrap">
         <h4>Galeria de imagens do produto</h4>
-        <p class="galeria-produto__ajuda">A primeira imagem da lista é usada como capa no catálogo. Arraste as miniaturas para reordenar. Só é usada quando o produto não tem variações de cor cadastradas.</p>
+        <p class="galeria-produto__ajuda">A primeira imagem da lista é usada como capa no catálogo. Arraste as miniaturas para reordenar. Você também pode cadastrar imagens específicas para cada variação de cor.</p>
         <div class="galeria-produto__grid" id="galeria-grid"></div>
         <label class="galeria-produto__upload">
           ${icon("plus")}Escolher arquivos
@@ -1147,7 +1147,10 @@ async function abrirFormularioProduto(container, produto = null) {
 
   const galeriaWrap = dialog.querySelector("#galeria-produto-wrap");
   function atualizarVisibilidadeGaleriaGeral() {
-    galeriaWrap.hidden = cores.length > 0;
+    // Fotos gerais e fotos por cor podem coexistir. Esconder a galeria quando
+    // havia cores fazia as fotos escolhidas pelo administrador serem perdidas
+    // no salvamento do produto.
+    galeriaWrap.hidden = false;
   }
 
   const coresLista = dialog.querySelector("#cores-lista");
@@ -1327,7 +1330,7 @@ async function abrirFormularioProduto(container, produto = null) {
     btnSalvar.disabled = true;
     try {
 
-    const pendentes = cores.length === 0 ? galeria.filter(g => g.file) : [];
+    const pendentes = galeria.filter(g => g.file);
     if (pendentes.length) {
       btnSalvar.disabled = true;
       for (let i = 0; i < pendentes.length; i++) {
@@ -1365,7 +1368,7 @@ async function abrirFormularioProduto(container, produto = null) {
       descricao: form.descricao.value.trim(),
       destaques: form.destaques.value.split("\n").map(l => l.trim()).filter(Boolean),
       etiquetas: [...form.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value),
-      imagens: cores.length === 0 ? galeria.map(g => g.url).filter(Boolean) : [],
+      imagens: galeria.map(g => g.url).filter(Boolean),
       cores: cores.map(c => {
         const urls = c.imagens.map(img => img.url).filter(Boolean);
         return { nome: c.nome.trim(), hex: c.hex, padrao: !!c.padrao, imagens: urls, imagem: urls[0] || "" };
