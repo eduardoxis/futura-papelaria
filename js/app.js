@@ -189,15 +189,27 @@ async function iniciar() {
   configurarEventosCategorias();
   iniciarOrcamento();
 
-  // "F5" automático para visitantes após um CRUD público no painel.
-  // O painel aberto é preservado para não interromper o administrador.
+  // "F5" automático para visitantes após um CRUD público no painel. Se o
+  // próprio painel estiver aberto, aguardamos ele fechar para não interromper
+  // um formulário; em qualquer outra aba a recarga é imediata.
   let recargaPublicaAgendada = false;
-  observarAtualizacaoPublica(() => {
-    if (document.querySelector("#modal-admin.is-open") || recargaPublicaAgendada) return;
+  let atualizacaoPendenteNoPainel = false;
+  const agendarRecargaPublica = () => {
+    if (recargaPublicaAgendada) return;
     recargaPublicaAgendada = true;
     invalidarCachePublico();
     toast("A loja foi atualizada.");
     window.setTimeout(() => window.location.reload(), 700);
+  };
+  observarAtualizacaoPublica(() => {
+    if (document.querySelector("#modal-admin.is-open")) {
+      atualizacaoPendenteNoPainel = true;
+      return;
+    }
+    agendarRecargaPublica();
+  });
+  document.querySelector("#modal-admin")?.addEventListener("modal:fechado", () => {
+    if (atualizacaoPendenteNoPainel) agendarRecargaPublica();
   });
 
   document.querySelector("#btn-sair-conta")?.addEventListener("click", () => {
@@ -330,7 +342,7 @@ function configurarEventosCategorias() {
   document.querySelector("#filtro-categoria")?.addEventListener("change", async (e) => {
     filtrosAtivos.categoria = e.target.value || undefined;
     await aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
-    document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
+    rolarAteResultados();
   });
   document.querySelector("#header-nav-links")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-categoria-nome]");
@@ -355,7 +367,19 @@ async function selecionarCategoria(nome) {
   if (seletor) seletor.value = nome;
   filtrosAtivos.categoria = nome || undefined;
   await aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
-  document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
+  rolarAteResultados();
+}
+
+function rolarAteResultados() {
+  const secao = document.querySelector("#resultados-busca");
+  if (!secao) return;
+
+  const rolar = () => secao.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Marcas e imagens carregadas acima da seção podem alterar a altura da
+  // página logo após o clique. A segunda passagem mantém os resultados no
+  // topo em vez de deixá-los abaixo da seção de marcas.
+  requestAnimationFrame(() => requestAnimationFrame(rolar));
+  window.setTimeout(rolar, 500);
 }
 
 function configurarLinksEstaticos() {

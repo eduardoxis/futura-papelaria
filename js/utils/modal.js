@@ -8,9 +8,11 @@ export function abrirModal(modalEl) {
 }
 
 export function fecharModal(modalEl) {
+  if (!modalEl?.classList.contains("is-open")) return;
   modalEl.classList.remove("is-open");
   document.body.classList.remove("no-scroll");
   document.body.style.overflow = "";
+  modalEl.dispatchEvent(new CustomEvent("modal:fechado"));
 }
 
 export function iniciarModais() {
