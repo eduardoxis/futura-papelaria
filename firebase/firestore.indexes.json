@@ -139,6 +139,29 @@
       ]
     },
     {
+      "collectionGroup": "produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "imagem", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "imagem", "order": "ASCENDING" },
+        { "fieldPath": "preco", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "imagem", "order": "ASCENDING" },
+        { "fieldPath": "preco", "order": "DESCENDING" }
+      ]
+    },    {
       "collectionGroup": "pedidos",
       "queryScope": "COLLECTION",
       "fields": [

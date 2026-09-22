@@ -478,7 +478,8 @@ let estadoPaginacaoProdutos = {
   termoBusca: "",
   buscaCursores: [null],
   buscaPaginaIndex: 0,
-  buscaTemMais: false
+  buscaTemMais: false,
+    semFoto: false
 };
 // Cada leitura recebe um token. Quando uma busca antiga termina depois de o
 // usuário limpar o campo, ela é descartada e não pode redesenhar a tabela.
@@ -499,7 +500,8 @@ async function carregarAbaProdutos(container) {
     termoBusca: "",
     buscaCursores: [null],
     buscaPaginaIndex: 0,
-    buscaTemMais: false
+    buscaTemMais: false,
+    semFoto: false
   };
 
   container.innerHTML = `
@@ -524,6 +526,7 @@ async function carregarAbaProdutos(container) {
           <option value="preco_desc">Maior preço</option>
         </select>
       </div>
+      <label class="admin-filter-check" title="Mostrar somente produtos sem imagem cadastrada"><input type="checkbox" id="filtro-produtos-sem-foto"><span>Sem fotos</span></label>
       <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
       <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
@@ -584,6 +587,14 @@ async function carregarAbaProdutos(container) {
     inputBusca.focus();
   });
 
+  container.querySelector("#filtro-produtos-sem-foto").addEventListener("change", async (e) => {
+    estadoPaginacaoProdutos.semFoto = e.target.checked;
+    estadoPaginacaoProdutos.cursores = [null];
+    estadoPaginacaoProdutos.buscaCursores = [null];
+    const termo = inputBusca.value.trim();
+    if (termo) await buscarProdutosAdmin(container, termo);
+    else await carregarPaginaProdutos(container, 0);
+  });
   container.querySelector("#ordenar-admin-produtos").addEventListener("change", (e) => {
     const [campo, direcao] = e.target.value.split("_");
     estadoPaginacaoProdutos.ordenarPor = campo === "preco" ? "preco" : "nome";
@@ -661,6 +672,7 @@ async function carregarPaginaProdutos(container, indice) {
     tamanho: TAMANHO_PAGINA_PRODUTOS,
     cursor,
     apenasAtivos: false,
+    semFoto: estado.semFoto,
     ordenarPor: estado.ordenarPor,
     direcao: estado.direcao
   });
@@ -704,8 +716,9 @@ async function buscarProdutosAdmin(container, termo, indiceBusca = 0) {
     estadoPaginacaoProdutos.buscaPaginaIndex = indiceBusca;
     estadoPaginacaoProdutos.buscaTemMais = temMais;
     if (temMais) estadoPaginacaoProdutos.buscaCursores[indiceBusca + 1] = cursor;
-    cacheProdutos = produtos;
-    renderizarTabelaProdutos(container, produtos, { busca: true });
+    const filtrados = estadoPaginacaoProdutos.semFoto ? produtos.filter(produto => !produto.imagem) : produtos;
+    cacheProdutos = filtrados;
+    renderizarTabelaProdutos(container, filtrados, { busca: true });
     atualizarControlesPaginacao(container);
   } catch (erro) {
     if (meuToken !== tokenRequisicaoProdutos) return;
@@ -964,6 +977,7 @@ function abrirAjusteEnquadramento(url, onSalvar) {
 
 async function abrirFormularioProduto(container, produto = null) {
   const dialog = container.querySelector("#dialog-produto");
+  dialog.className = "dialog-form dialog-produto";
   cacheCategorias = await listarCategorias();
   cacheMarcas = (await listarMarcas()).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
   const opcoesCategoria = cacheCategorias.map(c => `<option value="${escHtml(c.nome)}" ${produto?.categoria === c.nome ? "selected" : ""}>${escHtml(c.nome)}</option>`).join("");
@@ -994,8 +1008,11 @@ async function abrirFormularioProduto(container, produto = null) {
   if (cores.length && !cores.some(c => c.padrao)) cores[0].padrao = true;
 
   dialog.innerHTML = `
-    <form id="form-produto" class="product-form">
-      <h3>${produto ? "Editar produto" : "Novo produto"}</h3>
+    <form id="form-produto" class="product-form">      <header class="product-form__head">
+        <div class="product-form__title"><span>${icon("box")}</span><div><h2>${produto ? "Editar produto" : "Novo produto"}</h2><p>Preencha as informações do produto para a loja.</p></div></div>
+        <button type="button" class="product-form__close" data-modal-close-dialog aria-label="Fechar formulário">${icon("close")}</button>
+      </header>
+      <div class="product-form__scroll">
       <div class="form-grid">
         <label>Nome<input name="nome" required autocomplete="off" value="${escHtml(produto?.nome || "")}"></label>
         <label>Marca<select name="marca"><option value="">Selecione</option>${opcoesMarca}</select></label>
@@ -1042,15 +1059,15 @@ async function abrirFormularioProduto(container, produto = null) {
         <textarea name="destaques" rows="3" placeholder="Um por linha, ex:&#10;Material resistente e durável&#10;Zíperes de alta qualidade">${escHtml((produto?.destaques || []).join("\n"))}</textarea>
       </label>
       <p style="font-size:0.78rem;color:var(--cinza-500);margin:-0.5rem 0 0.5rem">Aparece como uma caixinha "Destaques do produto" na página do produto. Um item por linha. Deixe em branco se não quiser essa seção.</p>
-      <fieldset class="chip-group"><legend>Etiquetas</legend>${opcoesEtiquetas || "<em>Nenhuma etiqueta cadastrada</em>"}</fieldset>
-      <div class="form-actions">
+      <fieldset class="chip-group"><legend>Etiquetas</legend>${opcoesEtiquetas || "<em>Nenhuma etiqueta cadastrada</em>"}</fieldset>      </div>
+      <footer class="form-actions product-form__actions">
         <button type="button" data-modal-close-dialog>Cancelar</button>
         <button type="submit" class="btn-primary">Salvar</button>
-      </div>
+      </footer>
     </form>`;
 
   dialog.showModal();
-  dialog.querySelector("[data-modal-close-dialog]").addEventListener("click", () => dialog.close());
+  dialog.querySelectorAll("[data-modal-close-dialog]").forEach((botao) => botao.addEventListener("click", () => dialog.close()));
 
   const grid = dialog.querySelector("#galeria-grid");
 

@@ -217,11 +217,12 @@ export function listarProdutos({ apenasAtivos = true } = {}) {
  * @param {boolean} opts.apenasAtivos - exclui produtos com status "oculto"
  * @returns {Promise<{produtos: object[], cursor: any, temMais: boolean}>}
  */
-export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = "", apenasAtivos = true, ordenarPor = "nome", direcao = "asc" } = {}) {
+export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = "", apenasAtivos = true, semFoto = false, ordenarPor = "nome", direcao = "asc" } = {}) {
   return withLoading("listarProdutosPagina", async () => {
     const col = collection(db, "produtos");
     const clausulas = [orderBy(ordenarPor, direcao)];
     if (categoria) clausulas.unshift(where("categoria", "==", categoria));
+    if (semFoto) clausulas.unshift(where("imagem", "==", ""));
     if (apenasAtivos) clausulas.unshift(where("status", "in", STATUS_PUBLICOS));
     // Buscamos 1 a mais do que o pedido só pra saber se existe próxima página,
     // sem precisar de uma segunda consulta count().
