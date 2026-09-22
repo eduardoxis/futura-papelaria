@@ -734,6 +734,8 @@ dialog.dialog-form::backdrop { background: rgba(11, 33, 73, 0.45); backdrop-filt
 .import-result__errors li { margin-bottom: 0.3rem; }
 .form-actions button[type="submit"] { padding: 0.55rem 1.2rem; }
 .form-actions button[type="button"] { padding: 0.55rem 1rem; border-radius: var(--raio-sm); background: var(--cinza-100); }
+.form-actions button.btn-primary[type="button"] { background: var(--azul-700); color: #fff; }
+.form-actions button.btn-primary[type="button"]:hover { background: var(--azul-800); }
 
 /* ---- formulário de produto em modal ---- */
 dialog.dialog-form.dialog-produto { width: min(940px, 96vw); padding: 0; overflow: hidden; background: var(--branco); }
