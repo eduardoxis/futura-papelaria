@@ -327,9 +327,9 @@ function renderizarFiltros(categorias) {
 }
 
 function configurarEventosCategorias() {
-  document.querySelector("#filtro-categoria")?.addEventListener("change", (e) => {
+  document.querySelector("#filtro-categoria")?.addEventListener("change", async (e) => {
     filtrosAtivos.categoria = e.target.value || undefined;
-    aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
+    await aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
     document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
   });
   document.querySelector("#header-nav-links")?.addEventListener("click", (e) => {
@@ -350,11 +350,11 @@ function configurarEventosCategorias() {
   });
 }
 
-function selecionarCategoria(nome) {
+async function selecionarCategoria(nome) {
   const seletor = document.querySelector("#filtro-categoria");
   if (seletor) seletor.value = nome;
   filtrosAtivos.categoria = nome || undefined;
-  aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
+  await aplicarBuscaEFiltros(document.querySelector("#busca-header")?.value || "");
   document.querySelector("#resultados-busca")?.scrollIntoView({ behavior: "smooth" });
 }
 
