@@ -3,7 +3,7 @@ import {
   listarEtiquetas, listarProdutosPagina, listarProdutosDestaque,
   listarProdutosRecentes, listarProdutosPorCategoria, obterProduto, listarCategorias, listarMarcas,
   criarPedido, listarPedidosUsuario, listarEnderecos, criarEndereco, excluirEndereco, excluirPedido, excluirPedidos,
-  atualizarPerfilUsuario
+  atualizarPerfilUsuario, invalidarCachePublico
 } from "./services/firestore.js";
 import { renderizarGrade, obterFavoritos, alternarFavorito, migrarFavoritosLegados, aplicarFavoritosSincronizados } from "./modules/products.js";
 import { buscarProdutos } from "./modules/search.js";
@@ -195,6 +195,7 @@ async function iniciar() {
   observarAtualizacaoPublica(() => {
     if (document.querySelector("#modal-admin.is-open") || recargaPublicaAgendada) return;
     recargaPublicaAgendada = true;
+    invalidarCachePublico();
     toast("A loja foi atualizada.");
     window.setTimeout(() => window.location.reload(), 700);
   });

@@ -172,7 +172,7 @@
 </aside>
 
 <script type="module">
-import { obterProduto, listarProdutosPorCategoria, incrementarVisualizacao } from "../js/services/firestore.js";
+import { obterProduto, invalidarCachePublico, listarProdutosPorCategoria, incrementarVisualizacao } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos, registrarErroCliente } from "../js/utils/utils.js";
 import { renderizarGrade, cartaoProduto, compartilharProduto, obterIdsFavoritos, alternarFavorito } from "../js/modules/products.js";
 import { ouvirEstadoAuth, ehAdmin, sair } from "../js/services/auth.js";
@@ -189,6 +189,7 @@ let recargaPublicaAgendada = false;
 observarAtualizacaoPublica(() => {
   if (recargaPublicaAgendada) return;
   recargaPublicaAgendada = true;
+  invalidarCachePublico();
   window.setTimeout(() => window.location.reload(), 500);
 });
 

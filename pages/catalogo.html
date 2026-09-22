@@ -286,7 +286,7 @@
 </aside>
 
 <script type="module">
-import { listarCategorias, listarMarcas, buscarProdutosCatalogo } from "../js/services/firestore.js";
+import { listarCategorias, listarMarcas, buscarProdutosCatalogo, invalidarCachePublico } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, debounce, registrarErroCliente, imgPos } from "../js/utils/utils.js";
 import { renderizarGrade } from "../js/modules/products.js";
 import {
@@ -303,6 +303,7 @@ let recargaPublicaAgendada = false;
 observarAtualizacaoPublica(() => {
   if (recargaPublicaAgendada) return;
   recargaPublicaAgendada = true;
+  invalidarCachePublico();
   window.setTimeout(() => window.location.reload(), 500);
 });
 

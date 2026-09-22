@@ -462,6 +462,18 @@ function invalidarCacheVitrinesHome() {
   invalidarCache("resumoDashboard");
 }
 
+/**
+ * Chamado em visitantes quando o painel altera o catálogo. Limpa apenas
+ * dados públicos derivados para a próxima renderização vir do servidor,
+ * sem afetar carrinho, sessão ou dados privados da conta.
+ */
+export function invalidarCachePublico() {
+  [
+    "listarProdutosDestaque", "listarProdutosRecentes", "listarProdutosPorCategoria",
+    "listarProdutosPagina", "catalogoBase", "contarCatalogoServidor", "obterProduto",
+    "listarCategorias", "listarMarcas", "listarEtiquetas"
+  ].forEach(invalidarCache);
+}
 async function notificarMudancaPublica() {
   // A alteração principal já foi salva; se a regra nova ainda não tiver sido
   // publicada, não desfazemos um CRUD bem-sucedido por causa da notificação.
