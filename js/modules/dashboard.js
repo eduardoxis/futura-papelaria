@@ -668,14 +668,27 @@ async function carregarPaginaProdutos(container, indice) {
   estado.buscaAtiva = false;
   const cursor = estado.cursores[indice] ?? null;
 
-  const { produtos, cursor: novoCursor, temMais } = await listarProdutosPagina({
-    tamanho: TAMANHO_PAGINA_PRODUTOS,
-    cursor,
-    apenasAtivos: false,
-    semFoto: estado.semFoto,
-    ordenarPor: estado.ordenarPor,
-    direcao: estado.direcao
-  });
+  let resultado;
+  try {
+    resultado = await listarProdutosPagina({
+      tamanho: TAMANHO_PAGINA_PRODUTOS,
+      cursor,
+      apenasAtivos: false,
+      semFoto: estado.semFoto,
+      ordenarPor: estado.ordenarPor,
+      direcao: estado.direcao
+    });
+  } catch (erro) {
+    if (estado.semFoto && erro?.code === "failed-precondition") {
+      cacheProdutos = [];
+      renderizarTabelaProdutos(container, []);
+      atualizarControlesPaginacao(container);
+      toast("O índice do filtro Sem fotos ainda está sendo criado no Firebase. Aguarde alguns minutos e tente novamente.", "error");
+      return;
+    }
+    throw erro;
+  }
+  const { produtos, cursor: novoCursor, temMais } = resultado;
   if (meuToken !== tokenRequisicaoProdutos) return;
 
   estado.paginaIndex = indice;
