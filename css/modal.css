@@ -786,6 +786,15 @@ dialog.dialog-form.dialog-produto { width: min(1210px, 92vw); max-height: 88vh; 
 .product-form__actions { padding: 1rem 1.75rem; }
 .product-form__actions .btn-primary { min-height: 46px; border-radius: 12px; }
 .product-form__actions button[type="button"] { min-height: 46px; border-radius: 12px; }
+/* Primeira linha do cadastro: Nome ocupa 70% e Marca 30% do modal. */
+.dialog-produto .form-grid { grid-template-columns: repeat(20, minmax(0, 1fr)); }
+.dialog-produto .form-grid > label:first-child { grid-column: span 14; }
+.dialog-produto .form-grid > label:nth-child(2) { grid-column: span 6; }
+.dialog-produto .form-grid > label:nth-child(3),
+.dialog-produto .form-grid > label:nth-child(4),
+.dialog-produto .form-grid > label:nth-child(5),
+.dialog-produto .form-grid > label:nth-child(6) { grid-column: span 5; }
+.dialog-produto .form-grid > label:nth-child(7) { grid-column: span 10; }
 @media (max-width: 840px) {
   .dialog-produto .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dialog-produto .form-grid > label:first-child { grid-column: span 2; }
