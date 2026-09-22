@@ -489,6 +489,9 @@ async function carregarAbaProdutos(container) {
   if (!container) return;
   cacheCategorias = await listarCategorias();
   cacheEtiquetas = await listarEtiquetas();
+  // Recarregar a tabela (após salvar, importar ou trocar de aba) não deve
+  // desfazer uma escolha explícita do administrador no filtro Sem fotos.
+  const manterFiltroSemFoto = estadoPaginacaoProdutos.semFoto;
 
   estadoPaginacaoProdutos = {
     cursores: [null],
@@ -501,7 +504,7 @@ async function carregarAbaProdutos(container) {
     buscaCursores: [null],
     buscaPaginaIndex: 0,
     buscaTemMais: false,
-    semFoto: false
+    semFoto: manterFiltroSemFoto
   };
 
   container.innerHTML = `
@@ -526,7 +529,7 @@ async function carregarAbaProdutos(container) {
           <option value="preco_desc">Maior preço</option>
         </select>
       </div>
-      <label class="admin-filter-check" title="Mostrar somente produtos sem imagem cadastrada"><input type="checkbox" id="filtro-produtos-sem-foto"><span>Sem fotos</span></label>
+      <label class="admin-filter-check" title="Mostrar somente produtos sem imagem cadastrada"><input type="checkbox" id="filtro-produtos-sem-foto" ${estadoPaginacaoProdutos.semFoto ? "checked" : ""}><span>Sem fotos</span></label>
       <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
       <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
