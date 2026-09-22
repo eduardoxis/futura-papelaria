@@ -328,15 +328,16 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null, s
   });
 }
 
-/** Preenche o índice de busca nos produtos importados/cadastrados antes dele. */
+/**
+ * Reconstrói o índice de busca de todo o catálogo. É uma ação manual do
+ * administrador, usada quando a lógica de pesquisa é aprimorada para que
+ * produtos antigos e novos usem exatamente os mesmos termos.
+ */
 export function migrarIndiceBuscaProdutos(onProgresso) {
   return withLoading("migrarIndiceBuscaProdutos", async () => {
     const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
     const snap = await getDocs(collection(db, "produtos"));
-    const pendentes = snap.docs.filter(docProduto => {
-      const atual = docProduto.data().buscaTokens;
-      return !Array.isArray(atual) || atual.length === 0;
-    });
+    const pendentes = snap.docs;
     const TAMANHO_LOTE = 400;
     let feitos = 0;
     for (let inicio = 0; inicio < pendentes.length; inicio += TAMANHO_LOTE) {

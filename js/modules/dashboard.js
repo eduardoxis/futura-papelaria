@@ -893,9 +893,9 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
         ${busca
           ? `<div class="empty-state__actions">
               <button type="button" class="btn-secondary" id="btn-limpar-busca-vazia">${icon("close")}Limpar busca</button>
-              <button type="button" class="btn-secondary" id="btn-preparar-busca-vazia">${icon("search")}Encontrar produtos antigos</button>
+              <button type="button" class="btn-secondary" id="btn-preparar-busca-vazia">${icon("search")}Preparar busca de todos</button>
             </div>
-            <small class="empty-state__hint">Este produto pode ser antigo. Atualize a busca uma vez para encontrá-lo.</small>`
+            <small class="empty-state__hint">Atualize uma vez para aplicar a busca por palavras em todo o catálogo.</small>`
           : `<button type="button" class="btn-secondary" id="btn-primeiro-produto">${icon("plus")}Adicionar primeiro produto</button>`}
       </div>
     </td></tr>`;
@@ -907,9 +907,8 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
     container.querySelector("#btn-limpar-busca-produtos").hidden = true;
     await buscarProdutosAdmin(container, "");
   });
-  // Produtos importados antes do campo buscaTokens não permitem procurar
-  // palavras no meio do nome (ex.: "MINI" em "Grampeador MINI"). A ação
-  // aparece apenas quando necessária e prepara o índice uma única vez.
+  // A ação reconstrói o índice de todos os produtos, permitindo procurar
+  // palavras em qualquer posição do nome (ex.: "MINI" em "Grampeador MINI").
   tbody.querySelector("#btn-preparar-busca-vazia")?.addEventListener("click", () => {
     prepararBuscaAntiga(container);
   });
