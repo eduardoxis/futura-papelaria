@@ -1372,7 +1372,9 @@ async function abrirFormularioProduto(container, produto = null) {
     dados.imagem = dados.imagens[0] || corPadrao?.imagem || "";
 
     dados.visivelSemFoto = form.visivelSemFoto.checked;
-    if (!dados.imagem && !dados.visivelSemFoto) {
+    // No cadastro, um item sem foto começa oculto por segurança. Na edição,
+    // porém, o status escolhido pelo administrador precisa ser respeitado.
+    if (!produto && !dados.imagem && !dados.visivelSemFoto) {
       dados.status = "oculto";
     }
 
