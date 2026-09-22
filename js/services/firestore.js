@@ -163,6 +163,10 @@ function normalizarTermoBusca(valor) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR")
+    // Pontuação não faz parte de uma palavra de busca. Sem isso,
+    // "VICTORIA'S SECRET" era tratado como "victoria's" (com apóstrofo),
+    // diferente do token salvo "victoria".
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
