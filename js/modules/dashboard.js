@@ -687,6 +687,13 @@ async function carregarPaginaProdutos(container, indice) {
   atualizarControlesPaginacao(container);
 }
 
+function produtoTemFoto(produto = {}) {
+  if (String(produto.imagem || "").trim()) return true;
+  if (Array.isArray(produto.imagens) && produto.imagens.some(Boolean)) return true;
+  return Array.isArray(produto.cores) && produto.cores.some((cor) =>
+    String(cor?.imagem || "").trim() || (Array.isArray(cor?.imagens) && cor.imagens.some(Boolean))
+  );
+}
 async function buscarProdutosAdmin(container, termo, indiceBusca = 0) {
   const meuToken = ++tokenRequisicaoProdutos;
   if (!termo) {
@@ -710,13 +717,14 @@ async function buscarProdutosAdmin(container, termo, indiceBusca = 0) {
   try {
     const { produtos, cursor, temMais } = await buscarProdutosPorPrefixo(termo, {
       tamanho: 30,
-      cursor: estadoPaginacaoProdutos.buscaCursores[indiceBusca] ?? null
+      cursor: estadoPaginacaoProdutos.buscaCursores[indiceBusca] ?? null,
+      semFoto: estadoPaginacaoProdutos.semFoto
     });
     if (meuToken !== tokenRequisicaoProdutos) return;
     estadoPaginacaoProdutos.buscaPaginaIndex = indiceBusca;
     estadoPaginacaoProdutos.buscaTemMais = temMais;
     if (temMais) estadoPaginacaoProdutos.buscaCursores[indiceBusca + 1] = cursor;
-    const filtrados = estadoPaginacaoProdutos.semFoto ? produtos.filter(produto => !produto.imagem) : produtos;
+    const filtrados = estadoPaginacaoProdutos.semFoto ? produtos.filter(produto => !produtoTemFoto(produto)) : produtos;
     cacheProdutos = filtrados;
     renderizarTabelaProdutos(container, filtrados, { busca: true });
     atualizarControlesPaginacao(container);

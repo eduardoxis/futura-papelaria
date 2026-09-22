@@ -161,6 +161,14 @@
         { "fieldPath": "imagem", "order": "ASCENDING" },
         { "fieldPath": "preco", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "imagem", "order": "ASCENDING" },
+        { "fieldPath": "buscaTokens", "arrayConfig": "CONTAINS" }
+      ]
     },    {
       "collectionGroup": "pedidos",
       "queryScope": "COLLECTION",

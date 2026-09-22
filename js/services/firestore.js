@@ -246,7 +246,7 @@ export function listarProdutosPagina({ tamanho = 20, cursor = null, categoria = 
  * usam buscaTokens; o fallback mantém compatibilidade com os cadastros antigos.
  * Não limita por status: o painel também precisa encontrar ocultos e esgotados.
  */
-export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null } = {}) {
+export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null, semFoto = false } = {}) {
   return withLoading("buscarProdutosPorPrefixo", async () => {
     const termoOriginal = String(termo || "").trim();
     const termoLimpo = normalizarTermoBusca(termoOriginal);
@@ -262,7 +262,7 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null } 
     ));
     const encontradosPorCodigo = (porCodigo?.docs || [])
       .map(docProduto => ({ id: docProduto.id, ...docProduto.data() }))
-      .filter(produto => normalizarTermoBusca(produto.codigo) === termoLimpo);
+      .filter(produto => normalizarTermoBusca(produto.codigo) === termoLimpo).filter(produto => !semFoto || !String(produto.imagem || "").trim());
     if (encontradosPorCodigo.length) {
       return { produtos: encontradosPorCodigo.slice(0, tamanho), cursor: null, temMais: false };
     }
@@ -271,6 +271,7 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null } 
     // O filtro final permite digitar mais de uma palavra sem novas leituras.
     const clausulasIndexados = [
       where("buscaTokens", "array-contains", primeiraPalavra),
+      ...(semFoto ? [where("imagem", "==", "")] : []),
       limit(tamanho + 1)
     ];
     if (cursor) clausulasIndexados.splice(1, 0, startAfter(cursor));
@@ -303,6 +304,7 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null } 
     const resultados = await Promise.all(variantes.map(inicio => getDocs(query(
       col,
       orderBy("nome"),
+      ...(semFoto ? [where("imagem", "==", "")] : []),
       where("nome", ">=", inicio),
       where("nome", "<=", inicio + "\uf8ff"),
       limit(tamanho)
