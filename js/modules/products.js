@@ -94,14 +94,25 @@ export function cartaoProduto(produto, favoritos = null) {
     </div>`;
 }
 
+// Placeholder é útil no painel, mas não deve transformar um produto sem foto
+// em item público do catálogo. Também considera fotos das variações de cor.
+export function produtoTemImagem(produto = {}) {
+  const temUrl = (url) => typeof url === "string" && url.trim().length > 0;
+  if (temUrl(produto.imagem) || (Array.isArray(produto.imagens) && produto.imagens.some(temUrl))) return true;
+  return Array.isArray(produto.cores) && produto.cores.some((cor) =>
+    temUrl(cor?.imagem) || (Array.isArray(cor?.imagens) && cor.imagens.some(temUrl))
+  );
+}
+
 export function renderizarGrade(container, produtos) {
-  if (!produtos.length) {
+  const produtosComFoto = (Array.isArray(produtos) ? produtos : []).filter(produtoTemImagem);
+  if (!produtosComFoto.length) {
     container.innerHTML = `<div class="empty-state">Nenhum produto encontrado. Tente ajustar sua busca ou filtros.</div>`;
     return;
   }
   const favoritos = new Set(obterIdsFavoritos());
-  container.__produtosPorId = new Map(produtos.map(produto => [produto.id, produto]));
-  container.innerHTML = produtos.map(produto => cartaoProduto(produto, favoritos)).join("");
+  container.__produtosPorId = new Map(produtosComFoto.map(produto => [produto.id, produto]));
+  container.innerHTML = produtosComFoto.map(produto => cartaoProduto(produto, favoritos)).join("");
 
   if (!container.dataset.acoesLigadas) {
     container.dataset.acoesLigadas = "1";

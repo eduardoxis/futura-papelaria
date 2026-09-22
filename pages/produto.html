@@ -174,7 +174,7 @@
 <script type="module">
 import { obterProduto, invalidarCachePublico, listarProdutosPorCategoria, incrementarVisualizacao } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos, registrarErroCliente } from "../js/utils/utils.js";
-import { renderizarGrade, cartaoProduto, compartilharProduto, obterIdsFavoritos, alternarFavorito } from "../js/modules/products.js";
+import { renderizarGrade, cartaoProduto, compartilharProduto, obterIdsFavoritos, alternarFavorito, produtoTemImagem } from "../js/modules/products.js";
 import { ouvirEstadoAuth, ehAdmin, sair } from "../js/services/auth.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
@@ -286,7 +286,7 @@ async function iniciarProduto() {
   }
 
   const produto = await obterProduto(id);
-  if (!produto) {
+  if (!produto || !produtoTemImagem(produto)) {
     container.innerHTML = `<div class="empty-state">
       <strong>Produto não encontrado.</strong>
       <p>Ele pode ter sido removido ou o link está incorreto.</p>
