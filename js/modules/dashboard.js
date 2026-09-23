@@ -530,6 +530,7 @@ async function carregarAbaProdutos(container) {
         </select>
       </div>
       <label class="admin-filter-check" title="Mostrar somente produtos sem imagem cadastrada"><input type="checkbox" id="filtro-produtos-sem-foto" ${estadoPaginacaoProdutos.semFoto ? "checked" : ""}><span>Sem fotos</span></label>
+      <button class="btn-secondary" id="btn-prompt-importacao">${icon("clipboardList")}Prompt para IA</button>
       <button class="btn-secondary" id="btn-importar-json">${icon("upload")}Importar JSON</button>
       <input type="file" id="input-importar-json" accept="application/json,.json" hidden>
       <button class="btn-primary" id="btn-novo-produto">${icon("plus")}Novo produto</button>
@@ -552,6 +553,16 @@ async function carregarAbaProdutos(container) {
       <div id="resultado-importacao-json" class="import-result"></div>
       <div class="form-actions">
         <button type="button" class="btn-primary" id="btn-fechar-importacao">Fechar</button>
+      </div>
+    </dialog>
+    <dialog id="dialog-prompt-importacao" class="dialog-form dialog-prompt-importacao">
+      <div class="prompt-importacao__head">
+        <div><h2>Prompt para criar JSON com IA</h2><p>Copie, cole na IA e depois importe o arquivo gerado.</p></div>
+        <button type="button" class="prompt-importacao__close" id="btn-fechar-prompt-importacao" aria-label="Fechar">${icon("close")}</button>
+      </div>
+      <textarea id="texto-prompt-importacao" class="prompt-importacao__texto" readonly spellcheck="false"></textarea>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" id="btn-copiar-prompt-importacao">${icon("copy")}Copiar prompt</button>
       </div>
     </dialog>`;
 
@@ -638,6 +649,24 @@ async function carregarAbaProdutos(container) {
     inputJson.value = "";
     if (!arquivo) return;
     await importarProdutosJson(container, arquivo);
+  });
+
+  const dialogPrompt = container.querySelector("#dialog-prompt-importacao");
+  const textoPrompt = container.querySelector("#texto-prompt-importacao");
+  container.querySelector("#btn-prompt-importacao").addEventListener("click", () => {
+    textoPrompt.value = criarPromptImportacaoProdutos(cacheCategorias);
+    dialogPrompt.showModal();
+  });
+  container.querySelector("#btn-fechar-prompt-importacao").addEventListener("click", () => dialogPrompt.close());
+  container.querySelector("#btn-copiar-prompt-importacao").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(textoPrompt.value);
+    } catch {
+      textoPrompt.focus();
+      textoPrompt.select();
+      document.execCommand("copy");
+    }
+    toast("Prompt copiado. Cole na IA para gerar o arquivo JSON.");
   });
 
 }
@@ -770,6 +799,51 @@ function atualizarControlesPaginacao(container) {
   label.textContent = `Página ${estado.paginaIndex + 1}`;
   btnAnterior.disabled = estado.paginaIndex === 0;
   btnProxima.disabled = !estado.temMais;
+}
+
+function criarPromptImportacaoProdutos(categorias = []) {
+  const nomesCategorias = categorias.map(c => c.nome).filter(Boolean);
+  const categoriasTexto = nomesCategorias.length
+    ? nomesCategorias.map(nome => `- ${nome}`).join("\n")
+    : "- Nenhuma categoria cadastrada no momento. Deixe o campo categoria vazio.";
+
+  return `Crie um arquivo JSON para importar produtos no painel da Papelaria Futura.
+
+Responda SOMENTE com o JSON válido, sem explicações, sem Markdown e sem usar blocos de código.
+
+O arquivo deve ter exatamente esta estrutura:
+{
+  "produtos": [
+    {
+      "nome": "Nome completo do produto",
+      "marca": "Marca opcional",
+      "preco": 29.9,
+      "quantidade": 5,
+      "categoria": "Categoria existente",
+      "status": "disponivel",
+      "codigo": "PROD-EXEMPLO-001",
+      "descricao": "Descrição opcional",
+      "destaques": ["Destaque opcional 1", "Destaque opcional 2"],
+      "etiquetas": ["Etiqueta opcional"],
+      "imagem": "https://url-publica-da-imagem-principal.webp",
+      "imagens": ["https://url-publica-da-imagem-principal.webp"]
+    }
+  ]
+}
+
+Regras obrigatórias:
+- "nome" e "preco" são obrigatórios. "preco" deve ser número, sem R$, vírgula ou texto.
+- "quantidade" deve ser número inteiro maior ou igual a zero.
+- "categoria" precisa ser exatamente uma das categorias já cadastradas abaixo. Não invente, não altere maiúsculas/minúsculas e não crie categoria nova.
+- "status" pode ser apenas: "disponivel", "esgotado" ou "oculto".
+- "imagem" e "imagens" são opcionais, mas devem conter somente URLs públicas HTTPS. Produtos sem foto não aparecem no site público.
+- "imagens" deve ser uma lista de URLs; a primeira será usada como capa. Se usar "imagem", repita a mesma URL como primeiro item de "imagens".
+- "destaques" e "etiquetas" devem ser listas de textos. Se não houver conteúdo, use [] .
+- Não use comentários, reticências, texto fora do JSON, vírgula depois do último campo, base64, arquivo local ou URL privada.
+- Gere todos os produtos solicitados dentro da mesma lista "produtos".
+
+Categorias permitidas agora:
+${categoriasTexto}`;
 }
 
 function normalizarProdutoImportado(item, categoriasValidas) {

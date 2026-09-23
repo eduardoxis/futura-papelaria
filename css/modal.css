@@ -491,6 +491,7 @@
 .btn-link:hover { text-decoration: underline; }
 .admin-toolbar .select-icon { flex: 0 0 auto; min-width: 190px; }
 .admin-toolbar #btn-importar-json { min-width: 245px; justify-content: center; }
+.admin-toolbar #btn-prompt-importacao { min-width: 190px; justify-content: center; }
 .admin-toolbar #btn-novo-produto { min-width: 160px; justify-content: center; }
 .admin-toolbar select { appearance: none; cursor: pointer; }
 .admin-toolbar .btn-primary { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
@@ -498,7 +499,7 @@
 
 @media (max-width: 760px) {
   .admin-search { flex-basis: 100%; }
-  .admin-toolbar .select-icon, .admin-toolbar #btn-importar-json, .admin-toolbar #btn-novo-produto { flex: 1 1 auto; min-width: 0; }
+  .admin-toolbar .select-icon, .admin-toolbar #btn-importar-json, .admin-toolbar #btn-prompt-importacao, .admin-toolbar #btn-novo-produto { flex: 1 1 auto; min-width: 0; }
 }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--cinza-100); border-radius: var(--raio-md); }
@@ -736,6 +737,17 @@ dialog.dialog-form::backdrop { background: rgba(11, 33, 73, 0.45); backdrop-filt
 .form-actions button[type="button"] { padding: 0.55rem 1rem; border-radius: var(--raio-sm); background: var(--cinza-100); }
 .form-actions button.btn-primary[type="button"] { background: var(--azul-700); color: #fff; }
 .form-actions button.btn-primary[type="button"]:hover { background: var(--azul-800); }
+
+dialog.dialog-form.dialog-prompt-importacao { width: min(820px, 94vw); }
+.prompt-importacao__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.prompt-importacao__head h2 { margin: 0; color: var(--azul-900); }
+.prompt-importacao__head p { margin: 0.35rem 0 1rem; color: var(--cinza-600); font-size: 0.9rem; }
+.prompt-importacao__close { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; color: var(--azul-800); background: var(--azul-050); }
+.prompt-importacao__close:hover { background: var(--azul-100); }
+.prompt-importacao__close .icon, .prompt-importacao__close svg { width: 18px; height: 18px; }
+.prompt-importacao__texto { width: 100%; min-height: 410px; box-sizing: border-box; resize: vertical; padding: 1rem; border: 1px solid var(--cinza-300); border-radius: 12px; background: var(--cinza-050); color: var(--cinza-900); font: 0.8rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.dialog-prompt-importacao .form-actions { margin-top: 1rem; }
+.dialog-prompt-importacao .form-actions .btn-primary { display: inline-flex; align-items: center; gap: 0.45rem; }
 
 /* ---- formulário de produto em modal ---- */
 dialog.dialog-form.dialog-produto { width: min(940px, 96vw); padding: 0; overflow: hidden; background: var(--branco); }
