@@ -435,6 +435,12 @@ export const listarProdutosDestaque = comCache("listarProdutosDestaque", 3 * 60 
       limit(tamanho + 4)
     ));
     return snapTodos.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "oculto").slice(0, tamanho);
+  }, {
+    // Destaques são carregados ao aproximar a seção da tela. Em rede lenta,
+    // damos mais tempo à leitura sem travar a navegação ou exibir um alerta
+    // técnico ao visitante.
+    timeoutMs: 45000,
+    silenciosoNoTimeout: true
   })
 );
 

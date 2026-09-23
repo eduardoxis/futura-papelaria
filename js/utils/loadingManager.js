@@ -102,12 +102,18 @@ function atualizarVisibilidade() {
  * @param {string} key - chave lógica da operação (ex: "produtos", "auth", "salvar-produto")
  * @returns {string} id único da operação, usar em end(id)
  */
-export function begin(key = "geral") {
+export function begin(key = "geral", opcoes = {}) {
   const id = `op_${++seq}`;
+  const timeoutMs = Number.isFinite(opcoes.timeoutMs) ? opcoes.timeoutMs : SAFETY_TIMEOUT_MS;
   const timeoutId = setTimeout(() => {
-    console.warn(`[loadingManager] operação "${key}" (${id}) excedeu ${SAFETY_TIMEOUT_MS}ms e foi finalizada automaticamente pra não travar o loading.`);
+    const mensagem = `[loadingManager] operação "${key}" (${id}) excedeu ${timeoutMs}ms e foi finalizada automaticamente pra não travar o loading.`;
+    // Consultas carregadas em segundo plano não devem poluir o console do
+    // cliente caso a rede esteja lenta. Escritas e operações críticas seguem
+    // emitindo aviso normalmente.
+    if (opcoes.silenciosoNoTimeout) console.debug(mensagem);
+    else console.warn(mensagem);
     end(id);
-  }, SAFETY_TIMEOUT_MS);
+  }, timeoutMs);
 
   pendentes.set(id, { key, startedAt: Date.now(), timeoutId });
   contadorPorChave.set(key, (contadorPorChave.get(key) || 0) + 1);
@@ -140,8 +146,8 @@ export function end(id) {
  * @param {string} key
  * @param {() => Promise<any>} fn
  */
-export async function withLoading(key, fn) {
-  const id = begin(key);
+export async function withLoading(key, fn, opcoes) {
+  const id = begin(key, opcoes);
   try {
     return await fn();
   } finally {
