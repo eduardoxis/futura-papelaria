@@ -1,6 +1,6 @@
 // Sincroniza dados pessoais da conta entre dispositivos em tempo real.
 import { db } from "../../firebase/firebase-config.js";
-import { doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 let usuarioId = null;
 let pararCarrinho = null;

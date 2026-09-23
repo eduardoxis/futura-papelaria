@@ -4,7 +4,7 @@ import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, increment,
   runTransaction, getCountFromServer, getAggregateFromServer, sum, writeBatch
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { withLoading } from "../utils/loadingManager.js";
 import { sinalizarAtualizacaoPublica } from "./public-sync.js";
 
@@ -335,7 +335,7 @@ export function buscarProdutosPorPrefixo(termo, { tamanho = 20, cursor = null, s
  */
 export function migrarIndiceBuscaProdutos(onProgresso) {
   return withLoading("migrarIndiceBuscaProdutos", async () => {
-    const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const { writeBatch } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
     const snap = await getDocs(collection(db, "produtos"));
     const pendentes = snap.docs;
     const TAMANHO_LOTE = 400;
@@ -364,7 +364,7 @@ export function migrarIndiceBuscaProdutos(onProgresso) {
  */
 export function migrarCamposFiltroCatalogo(onProgresso) {
   return withLoading("migrarCamposFiltroCatalogo", async () => {
-    const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const { writeBatch } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
     const snap = await getDocs(collection(db, "produtos"));
     const pendentes = snap.docs.filter(d => {
       const dados = d.data();

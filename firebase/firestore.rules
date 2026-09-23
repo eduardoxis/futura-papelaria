@@ -12,6 +12,7 @@ service cloud.firestore {
 
     function ehAdmin() {
       return autenticado() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.cargos.hasAny(['admin']);
     }
 

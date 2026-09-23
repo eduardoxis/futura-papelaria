@@ -439,7 +439,7 @@ async function carregarDashboard(container) {
     btn.disabled = true;
     lista.innerHTML = `<p style="color:var(--cinza-500);font-size:0.85rem;">Carregando...</p>`;
     try {
-      const { collection, query, orderBy, limit, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { collection, query, orderBy, limit, getDocs } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
       const { db } = await import("../../firebase/firebase-config.js");
       const snap = await getDocs(query(collection(db, "logsErros"), orderBy("criadoEm", "desc"), limit(20)));
       if (snap.empty) {

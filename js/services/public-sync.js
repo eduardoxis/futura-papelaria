@@ -1,5 +1,5 @@
 import { db } from "../../firebase/firebase-config.js";
-import { doc, onSnapshot, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, onSnapshot, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 // Um único documento é observado pelos visitantes. Isso evita listeners em
 // todas as coleções (produtos, categorias, marcas...) e mantém o consumo do

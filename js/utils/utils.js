@@ -17,7 +17,7 @@ export async function registrarErroCliente(origem, erro, extra = {}) {
     logsEnviadosNestaPagina += 1;
 
     const { db } = await import("../../firebase/firebase-config.js");
-    const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
     await addDoc(collection(db, "logsErros"), {
       origem,
       mensagem,
