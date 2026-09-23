@@ -807,9 +807,9 @@ function criarPromptImportacaoProdutos(categorias = []) {
     ? nomesCategorias.map(nome => `- ${nome}`).join("\n")
     : "- Nenhuma categoria cadastrada no momento. Deixe o campo categoria vazio.";
 
-  return `Crie um arquivo JSON para importar produtos no painel da Papelaria Futura.
+  return `Crie e entregue um ARQUIVO para download chamado "produtos-importacao.json" para importar produtos no painel da Papelaria Futura.
 
-Responda SOMENTE com o JSON válido, sem explicações, sem Markdown e sem usar blocos de código.
+Não responda com explicações, texto comum, Markdown ou blocos de código. Gere o arquivo .json anexável/baixável; o conteúdo do arquivo deve ser somente JSON válido.
 
 O arquivo deve ter exatamente esta estrutura:
 {
