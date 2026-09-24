@@ -119,6 +119,7 @@ button {
   padding: 0.2rem 0.2rem 0.2rem 1.1rem;
   min-width: 0;
 }
+.search-bar__leading { display: none; }
 .search-bar input {
   border: none;
   outline: none;

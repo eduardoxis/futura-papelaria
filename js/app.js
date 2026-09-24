@@ -728,8 +728,8 @@ function formatarDataBR(isoDate) {
 
 function renderizarPerfil() {
   if (!usuarioAtual) return;
-  const primeiroNome = (perfilAtual?.nome || usuarioAtual.displayName || "").split(" ")[0];
-  document.querySelector("#perfil-saudacao").textContent = primeiroNome ? `Olá, ${primeiroNome}! 👋` : "Olá! 👋";
+  const nomePerfil = perfilAtual?.nome || usuarioAtual.displayName || "";
+  document.querySelector("#perfil-saudacao").textContent = nomePerfil ? `Olá,\n${nomePerfil} 👋` : "Olá! 👋";
   document.querySelector("#perfil-email-hero").textContent = usuarioAtual.email || "";
   document.querySelector("#perfil-membro-desde").textContent = perfilAtual?.criadoEm ? `Membro desde ${formatarMesAno(perfilAtual.criadoEm)}` : "";
 
