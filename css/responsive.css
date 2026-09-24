@@ -50,12 +50,12 @@
 
   /* ---- hero: texto à esquerda e composição visual à direita ---- */
   .hero {
-    min-height: 585px; padding: 0;
+    min-height: 465px; padding: 0;
     background: radial-gradient(circle at 88% 20%, #72c2ff 0 10%, transparent 38%),
       linear-gradient(135deg, #f5fbff 0%, #d9f0ff 46%, #2588ed 100%);
   }
-  .hero::after { content: ""; position: absolute; inset: auto 0 0; height: 215px; background: linear-gradient(0deg, rgba(255,255,255,.96), transparent); pointer-events: none; z-index: 1; }
-  .hero__inner { position: relative; display: block; min-height: 585px; }
+  .hero::after { content: ""; position: absolute; inset: auto 0 0; height: 135px; background: linear-gradient(0deg, rgba(255,255,255,.92), transparent); pointer-events: none; z-index: 1; }
+  .hero__inner { position: relative; display: block; min-height: 465px; }
   .hero__content { position: relative; z-index: 3; width: min(58%, 255px); min-width: 0; padding-top: 2.65rem; gap: 0.95rem; }
   .hero__eyebrow { font-size: 0.62rem; padding: 0.35rem 0.55rem; }
   .hero__title { font-size: clamp(1.72rem, 8vw, 2.2rem); line-height: 1.02; letter-spacing: -0.04em; }
@@ -63,7 +63,7 @@
   .hero__actions { display: grid; gap: 0.65rem; margin-top: 0.4rem; width: min(230px, 100%); }
   .hero__actions a { min-height: 42px; padding: 0.6rem 0.75rem; justify-content: center; font-size: 0.75rem; }
   .hero__actions .btn-whatsapp-lg { background: rgba(255,255,255,.96); color: #16a34a; box-shadow: var(--sombra-sm); }
-  .hero__art { position: absolute; z-index: 2; left: -0.5rem; bottom: 103px; width: 760px; max-width: none; min-width: 0; min-height: 0; display: block; }
+  .hero__art { position: absolute; z-index: 2; left: -0.5rem; bottom: -0.25rem; width: 760px; max-width: none; min-width: 0; min-height: 0; display: block; }
   .hero__art picture { width: 100%; display: block; mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.18) 23%, #000 42%); }
   .hero__art-img { width: 100%; max-width: none; border-radius: 0; }
   .hero__features { display: none; }
