@@ -842,7 +842,13 @@ async function renderizarEnderecos() {
 
   lista.querySelectorAll("[data-excluir-endereco]").forEach(btn => {
     btn.addEventListener("click", async () => {
+      const ok = await confirmarAcao("Remover este endereço? Esta ação não pode ser desfeita.", {
+        titulo: "Remover endereço",
+        textoConfirmar: "Remover"
+      });
+      if (!ok) return;
       await excluirEndereco(btn.dataset.excluirEndereco);
+      toast("Endereço removido.", "success");
       renderizarEnderecos();
     });
   });

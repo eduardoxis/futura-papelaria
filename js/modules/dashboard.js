@@ -997,11 +997,14 @@ function renderizarTabelaProdutos(container, produtos, { busca = false } = {}) {
       carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex);
     });
     tr.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
-      if (confirm(`Excluir "${produto.nome}"?`)) {
-        await excluirProduto(id);
-        toast("Produto excluído.");
-        carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex);
-      }
+      const ok = await confirmarAcao(`Excluir "${produto.nome}"? Esta ação não pode ser desfeita.`, {
+        titulo: "Excluir produto",
+        textoConfirmar: "Excluir"
+      });
+      if (!ok) return;
+      await excluirProduto(id);
+      toast("Produto excluído.");
+      carregarPaginaProdutos(container, estadoPaginacaoProdutos.paginaIndex);
     });
   });
 }
@@ -1533,11 +1536,14 @@ async function carregarAbaCategorias(container, pagina = 0) {
     const categoria = cacheCategorias.find(c => c.id === id);
     li.querySelector('[data-action="editar"]')?.addEventListener("click", () => abrirFormularioCategoria(container, categoria));
     li.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
-      if (confirm(`Remover a categoria "${categoria.nome}"?`)) {
-        await excluirCategoria(id);
-        toast("Categoria removida.");
-        carregarAbaCategorias(container);
-      }
+      const ok = await confirmarAcao(`Remover a categoria "${categoria.nome}"? Esta ação não pode ser desfeita.`, {
+        titulo: "Remover categoria",
+        textoConfirmar: "Remover"
+      });
+      if (!ok) return;
+      await excluirCategoria(id);
+      toast("Categoria removida.");
+      carregarAbaCategorias(container);
     });
   });
   ligarPaginacaoAdmin(container, "categorias", estadoCategorias, carregarAbaCategorias);
@@ -1740,11 +1746,14 @@ async function carregarAbaMarcas(container, pagina = 0) {
     const marca = cacheMarcas.find(m => m.id === id);
     li.querySelector('[data-action="editar"]')?.addEventListener("click", () => abrirFormularioMarca(container, marca));
     li.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
-      if (confirm(`Remover a marca "${marca.nome}"?`)) {
-        await excluirMarca(id);
-        toast("Marca removida.");
-        carregarAbaMarcas(container);
-      }
+      const ok = await confirmarAcao(`Remover a marca "${marca.nome}"? Esta ação não pode ser desfeita.`, {
+        titulo: "Remover marca",
+        textoConfirmar: "Remover"
+      });
+      if (!ok) return;
+      await excluirMarca(id);
+      toast("Marca removida.");
+      carregarAbaMarcas(container);
     });
   });
   ligarPaginacaoAdmin(container, "marcas", estadoMarcas, carregarAbaMarcas);
@@ -1948,11 +1957,14 @@ function renderizarTabelaClientes(container, clientes) {
     const cliente = clientes.find(c => c.id === id);
     tr.querySelector('[data-action="editar"]')?.addEventListener("click", () => abrirFormularioCliente(container, cliente));
     tr.querySelector('[data-action="excluir"]')?.addEventListener("click", async () => {
-      if (confirm(`Excluir "${nomeCliente(cliente)}"?`)) {
-        await excluirCliente(id);
-        toast("Cliente excluído.");
-        carregarAbaClientes(container);
-      }
+      const ok = await confirmarAcao(`Excluir "${nomeCliente(cliente)}"? Esta ação não pode ser desfeita.`, {
+        titulo: "Excluir cliente",
+        textoConfirmar: "Excluir"
+      });
+      if (!ok) return;
+      await excluirCliente(id);
+      toast("Cliente excluído.");
+      carregarAbaClientes(container);
     });
   });
 }
@@ -2069,7 +2081,17 @@ async function carregarAbaEtiquetas(container, pagina = 0) {
     carregarAbaEtiquetas(container);
   });
   container.querySelectorAll(".chip-list button").forEach(btn =>
-    btn.addEventListener("click", async () => { await excluirEtiqueta(btn.dataset.id); carregarAbaEtiquetas(container); })
+    btn.addEventListener("click", async () => {
+      const etiqueta = etiquetas.find(item => item.id === btn.dataset.id);
+      const ok = await confirmarAcao(`Remover a etiqueta "${etiqueta?.nome || "selecionada"}"? Esta ação não pode ser desfeita.`, {
+        titulo: "Remover etiqueta",
+        textoConfirmar: "Remover"
+      });
+      if (!ok) return;
+      await excluirEtiqueta(btn.dataset.id);
+      toast("Etiqueta removida.");
+      carregarAbaEtiquetas(container);
+    })
   );
   ligarPaginacaoAdmin(container, "etiquetas", estadoEtiquetas, carregarAbaEtiquetas);
 }
