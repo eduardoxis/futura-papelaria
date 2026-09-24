@@ -26,6 +26,16 @@
 }
 
 @media (max-width: 760px) {
+  /* Mantém a página firme no eixo horizontal. A rolagem vertical e o zoom
+     continuam funcionando normalmente. */
+  html, body {
+    width: 100%; max-width: 100%;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
+  }
+  .site-header, main, .hero, .site-footer { width: 100%; max-width: 100%; overflow-x: clip; }
+
   /* ---- cabeçalho compacto da vitrine mobile ---- */
   .site-header { border-bottom: 0; border-radius: 0 0 22px 22px; box-shadow: 0 3px 14px rgba(15, 41, 92, 0.06); }
   .header-top { flex-wrap: wrap; row-gap: 0.65rem; padding: 0.7rem 0 0.8rem; }
@@ -63,7 +73,7 @@
   .hero__actions { display: grid; gap: 0.65rem; margin-top: 0.4rem; width: min(230px, 100%); }
   .hero__actions a { min-height: 42px; padding: 0.6rem 0.75rem; justify-content: center; font-size: 0.75rem; }
   .hero__actions .btn-whatsapp-lg { background: rgba(255,255,255,.96); color: #16a34a; box-shadow: var(--sombra-sm); }
-  .hero__art { position: absolute; z-index: 2; left: -0.5rem; bottom: -0.25rem; width: 760px; max-width: none; min-width: 0; min-height: 0; display: block; }
+  .hero__art { position: absolute; z-index: 2; left: -0.5rem; bottom: -0.25rem; width: 760px; max-width: none; min-width: 0; min-height: 0; display: block; pointer-events: none; }
   .hero__art picture { width: 100%; display: block; mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.18) 23%, #000 42%); }
   .hero__art-img { width: 100%; max-width: none; border-radius: 0; }
   .hero__features { display: none; }
