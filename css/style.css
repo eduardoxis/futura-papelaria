@@ -523,7 +523,7 @@ button {
 /* ===== PROMO BANNER ===== */
 .promo-banner {
   margin-block: 0.5rem 1.5rem;
-  background: linear-gradient(120deg, var(--azul-900), var(--azul-700));
+  background: var(--azul-900);
   border-radius: var(--raio-lg);
   padding: clamp(1.5rem, 4vw, 2.5rem);
   color: var(--branco);
@@ -531,8 +531,7 @@ button {
   overflow: hidden;
 }
 .promo-banner::after {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle at 90% 10%, rgba(255,255,255,0.14), transparent 55%);
+  content: none;
 }
 .promo-banner > div { position: relative; max-width: 480px; display: grid; gap: 0.5rem; }
 .promo-banner__eyebrow { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #cfe0ff; }
@@ -575,17 +574,13 @@ button {
 /* ===== EMPRESA CTA ===== */
 .empresa-cta {
   position: relative; overflow: hidden;
-  background: linear-gradient(135deg, var(--azul-900) 0%, #123068 55%, var(--azul-700) 100%);
+  background: var(--azul-900);
   border-radius: var(--raio-lg);
   padding: 3rem clamp(1.5rem, 5vw, 4rem);
   color: var(--branco);
 }
 .empresa-cta::before {
-  content: ""; position: absolute; inset: 0;
-  background:
-    radial-gradient(420px 420px at 88% 20%, rgba(255,255,255,0.08), transparent 60%),
-    radial-gradient(320px 320px at 100% 100%, rgba(47,111,237,0.35), transparent 60%);
-  pointer-events: none;
+  content: none;
 }
 .empresa-cta__content { position: relative; max-width: 720px; }
 .empresa-cta__eyebrow {
