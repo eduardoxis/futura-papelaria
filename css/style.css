@@ -267,6 +267,7 @@ button {
 .hero__features .icon { width: 26px; height: 26px; flex-shrink: 0; color: var(--azul-700); background: var(--branco); border-radius: 50%; padding: 6px; box-shadow: var(--sombra-sm); }
 .hero__features strong { display: block; font-size: 0.82rem; color: var(--cinza-900); }
 .hero__features span { display: block; font-size: 0.74rem; color: var(--cinza-500); }
+.mobile-benefits { display: none; }
 
 .hero__art {
   position: relative; flex: 1 1 380px; min-width: 260px; max-width: 560px; min-height: 220px;
