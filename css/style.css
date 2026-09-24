@@ -767,6 +767,9 @@ button {
 .social-row a { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); display: grid; place-items: center; }
 .social-row a .icon { width: 16px; height: 16px; }
 .footer-bottom { text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.12); color: #7d9bd6; font-size: 0.8rem; }
+.footer-credit { display: block; margin-top: 0.4rem; }
+.footer-credit a { color: var(--branco); font-weight: 600; text-decoration: none; }
+.footer-credit a:hover { text-decoration: underline; }
 .footer-bottom:only-child { margin-top: 0; padding-top: 0; border-top: none; }
 .site-footer--compact { padding-block: 1.5rem; }
 .site-footer--compact .footer-brand {
