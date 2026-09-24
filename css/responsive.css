@@ -150,7 +150,10 @@
   .container { width: 94vw; }
   .products-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
   .products-grid--5col { grid-template-columns: repeat(2, 1fr); }
-  .categories-grid { grid-template-columns: repeat(3, 1fr); }
+  /* minmax(0, 1fr) permite que as três colunas encolham dentro da tela,
+     inclusive quando uma categoria tem nome longo. */
+  .categories-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .category-card { min-width: 0; }
   .stat-card span { font-size: 1.3rem; }
 
   /* Cards de produto em tamanho padrão: nome não estica o card, trunca com "..." */
