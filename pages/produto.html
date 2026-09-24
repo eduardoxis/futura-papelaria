@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title id="titulo-pagina">Produto — Papelaria Futura</title>
 <meta name="description" id="meta-descricao" content="Confira este produto na Papelaria Futura.">
 <link rel="icon" href="/assets/icons/favicon.ico">
@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="/css/modal.css">
 <link rel="stylesheet" href="/css/responsive.css">
 <style>
+  /* Impede que navegadores móveis alterem a escala ao carregar esta página. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .product-detail__color { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; color: var(--cinza-700); }
   .product-detail__color strong { color: var(--cinza-900); }
   .color-dot {
