@@ -653,8 +653,11 @@ async function carregarAbaProdutos(container) {
 
   const dialogPrompt = container.querySelector("#dialog-prompt-importacao");
   const textoPrompt = container.querySelector("#texto-prompt-importacao");
-  container.querySelector("#btn-prompt-importacao").addEventListener("click", () => {
-    textoPrompt.value = criarPromptImportacaoProdutos(cacheCategorias);
+  container.querySelector("#btn-prompt-importacao").addEventListener("click", async () => {
+    // Lê as listas atualizadas no instante em que o prompt é aberto. Assim,
+    // marcas recém-criadas, editadas ou removidas já aparecem corretamente.
+    [cacheCategorias, cacheMarcas] = await Promise.all([listarCategorias(), listarMarcas()]);
+    textoPrompt.value = criarPromptImportacaoProdutos(cacheCategorias, cacheMarcas);
     dialogPrompt.showModal();
   });
   container.querySelector("#btn-fechar-prompt-importacao").addEventListener("click", () => dialogPrompt.close());
@@ -801,11 +804,15 @@ function atualizarControlesPaginacao(container) {
   btnProxima.disabled = !estado.temMais;
 }
 
-function criarPromptImportacaoProdutos(categorias = []) {
+function criarPromptImportacaoProdutos(categorias = [], marcas = []) {
   const nomesCategorias = categorias.map(c => c.nome).filter(Boolean);
   const categoriasTexto = nomesCategorias.length
     ? nomesCategorias.map(nome => `- ${nome}`).join("\n")
     : "- Nenhuma categoria cadastrada no momento. Deixe o campo categoria vazio.";
+  const nomesMarcas = marcas.map(m => m.nome).filter(Boolean);
+  const marcasTexto = nomesMarcas.length
+    ? nomesMarcas.map(nome => `- ${nome}`).join("\n")
+    : "- Nenhuma marca cadastrada no momento. Deixe o campo marca vazio.";
 
   return `Crie e entregue um ARQUIVO para download chamado "produtos-importacao.json" para importar produtos no painel da Papelaria Futura.
 
@@ -832,9 +839,10 @@ O arquivo deve ter exatamente esta estrutura:
 }
 
 Regras obrigatórias:
-- "nome" e "preco" são obrigatórios. "preco" deve ser número, sem R$, vírgula ou texto.
+- "nome" e "preco" são obrigatórios. O valor de "nome" deve ser escrito INTEIRAMENTE EM LETRAS MAIÚSCULAS, incluindo palavras com acento. "preco" deve ser número, sem R$, vírgula ou texto.
 - "quantidade" deve ser número inteiro maior ou igual a zero.
 - "categoria" precisa ser exatamente uma das categorias já cadastradas abaixo. Não invente, não altere maiúsculas/minúsculas e não crie categoria nova.
+- "marca" é opcional, mas, quando preenchida, precisa ser exatamente uma das marcas já cadastradas abaixo. Não invente, não altere maiúsculas/minúsculas e não crie marca nova.
 - "status" pode ser apenas: "disponivel", "esgotado" ou "oculto".
 - "imagem" e "imagens" são opcionais, mas devem conter somente URLs públicas HTTPS. Produtos sem foto não aparecem no site público.
 - "imagens" deve ser uma lista de URLs; a primeira será usada como capa. Se usar "imagem", repita a mesma URL como primeiro item de "imagens".
@@ -843,12 +851,15 @@ Regras obrigatórias:
 - Gere todos os produtos solicitados dentro da mesma lista "produtos".
 
 Categorias permitidas agora:
-${categoriasTexto}`;
+${categoriasTexto}
+
+Marcas permitidas agora:
+${marcasTexto}`;
 }
 
 function normalizarProdutoImportado(item, categoriasValidas) {
   const erros = [];
-  const nome = String(item.nome || "").trim();
+  const nome = String(item.nome || "").trim().toUpperCase();
   if (!nome) erros.push("nome ausente");
 
   const preco = Number(item.preco);
@@ -1399,7 +1410,7 @@ async function abrirFormularioProduto(container, produto = null) {
     e.preventDefault();
     const form = e.target;
     const btnSalvar = form.querySelector('button[type="submit"]');
-    const nomeProduto = form.nome.value.trim() || "produto";
+    const nomeProduto = (form.nome.value.trim() || "PRODUTO").toUpperCase();
 
     // Uma falha de rede, de imagem ou do banco não pode fechar o formulário
     // nem deixar o administrador sem ação para tentar novamente.
