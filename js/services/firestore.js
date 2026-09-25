@@ -391,16 +391,50 @@ export function migrarCamposFiltroCatalogo(onProgresso) {
   });
 }
 
+function produtoTemImagemPublica(produto = {}) {
+  const temUrl = (url) => typeof url === "string" && url.trim().length > 0;
+  return temUrl(produto.imagem)
+    || (Array.isArray(produto.imagens) && produto.imagens.some(temUrl))
+    || (Array.isArray(produto.cores) && produto.cores.some(cor =>
+      temUrl(cor?.imagem) || (Array.isArray(cor?.imagens) && cor.imagens.some(temUrl))
+    ));
+}
+
+function dataCriacaoProduto(produto) {
+  return produto?.criadoEm?.seconds || 0;
+}
+
 /** Últimos N produtos cadastrados — usado na home ("Recentes"), sem baixar a coleção inteira. */
-export const listarProdutosRecentes = comCache("listarProdutosRecentes", 3 * 60 * 1000, (tamanho = 8) =>
+export const listarProdutosRecentes = comCache("listarProdutosRecentes:v2", 3 * 60 * 1000, (tamanho = 8) =>
   withLoading("listarProdutosRecentes", async () => {
+    // Alguns produtos mais novos podem ainda não ter foto. Buscamos alguns
+    // candidatos extras porque a vitrine nunca deve ficar vazia por eles.
+    const limiteBusca = Math.max(tamanho * 5, 40);
     const snap = await getDocs(query(
       collection(db, "produtos"),
       where("status", "in", STATUS_PUBLICOS),
       orderBy("criadoEm", "desc"),
-      limit(tamanho)
+      limit(limiteBusca)
     ));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const recentes = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(produtoTemImagemPublica)
+      .slice(0, tamanho);
+    if (recentes.length >= tamanho) return recentes;
+
+    // Cadastros antigos podem não ter criadoEm e, por isso, não entram em
+    // uma consulta ordenada por data. Como alternativa, completa a seção
+    // com produtos públicos que tenham foto, mantendo a ordenação disponível.
+    const fallback = await getDocs(query(
+      collection(db, "produtos"),
+      where("status", "in", STATUS_PUBLICOS),
+      limit(limiteBusca)
+    ));
+    const porId = new Map([...recentes, ...fallback.docs.map(d => ({ id: d.id, ...d.data() }))]
+      .filter(produtoTemImagemPublica)
+      .map(produto => [produto.id, produto]));
+    return [...porId.values()]
+      .sort((a, b) => dataCriacaoProduto(b) - dataCriacaoProduto(a))
+      .slice(0, tamanho);
   })
 );
 
@@ -468,7 +502,7 @@ export const obterProduto = comCache("obterProduto", 2 * 60 * 1000, (id) =>
 
 function invalidarCacheVitrinesHome() {
   invalidarCache("listarProdutosDestaque");
-  invalidarCache("listarProdutosRecentes");
+  invalidarCache("listarProdutosRecentes:v2");
   invalidarCache("listarProdutosPorCategoria");
   invalidarCache("obterProduto");
   invalidarCache("catalogoBase");
@@ -483,7 +517,7 @@ function invalidarCacheVitrinesHome() {
  */
 export function invalidarCachePublico() {
   [
-    "listarProdutosDestaque", "listarProdutosRecentes", "listarProdutosPorCategoria",
+    "listarProdutosDestaque", "listarProdutosRecentes:v2", "listarProdutosPorCategoria",
     "listarProdutosPagina", "catalogoBase", "contarCatalogoServidor", "obterProduto",
     "listarCategorias", "listarMarcas", "listarEtiquetas"
   ].forEach(invalidarCache);
