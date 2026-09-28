@@ -23,8 +23,9 @@
   --sombra-md: 0 4px 14px rgba(16, 24, 40, 0.08);
   --sombra-lg: 0 16px 40px rgba(16, 24, 40, 0.14);
 
-  --fonte-display: "Poppins", "Inter", sans-serif;
-  --fonte-corpo: "Inter", sans-serif;
+  /* Fontes do sistema evitam que a interface dependa de arquivos externos. */
+  --fonte-display: "Segoe UI", Roboto, Arial, sans-serif;
+  --fonte-corpo: "Segoe UI", Roboto, Arial, sans-serif;
 
   --vidro-fundo: rgba(255, 255, 255, 0.7);
   --vidro-borda: rgba(255, 255, 255, 0.5);
