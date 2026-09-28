@@ -822,16 +822,16 @@ O arquivo deve ter exatamente esta estrutura:
 {
   "produtos": [
     {
-      "nome": "Nome completo do produto",
-      "marca": "Marca opcional",
+      "nome": "NOME COMPLETO DO PRODUTO 1 UN",
+      "marca": "MARCA OPCIONAL",
       "preco": 29.9,
       "quantidade": 5,
-      "categoria": "Categoria existente",
+      "categoria": "CATEGORIA EXISTENTE",
       "status": "disponivel",
       "codigo": "PROD-EXEMPLO-001",
-      "descricao": "Descrição opcional",
-      "destaques": ["Destaque opcional 1", "Destaque opcional 2"],
-      "etiquetas": ["Etiqueta opcional"],
+      "descricao": "DESCRIÇÃO OPCIONAL",
+      "destaques": ["DESTAQUE OPCIONAL 1", "DESTAQUE OPCIONAL 2"],
+      "etiquetas": ["ETIQUETA OPCIONAL"],
       "imagem": "https://url-publica-da-imagem-principal.webp",
       "imagens": ["https://url-publica-da-imagem-principal.webp"]
     }
@@ -839,10 +839,11 @@ O arquivo deve ter exatamente esta estrutura:
 }
 
 Regras obrigatórias:
-- "nome" e "preco" são obrigatórios. O valor de "nome" deve ser escrito INTEIRAMENTE EM LETRAS MAIÚSCULAS, incluindo palavras com acento. "preco" deve ser número, sem R$, vírgula ou texto.
+- "nome" e "preco" são obrigatórios. Escreva o "nome" INTEIRAMENTE EM LETRAS MAIÚSCULAS, incluindo palavras com acento. Quando o produto for vendido por unidade, informe a quantidade e "UN" no final do nome (exemplo: "CANETA ESFEROGRÁFICA AZUL 1 UN"). Para kits, pacotes, caixas ou conjuntos, informe a quantidade e a unidade correspondente (exemplo: "LÁPIS DE COR 12 UN" ou "PAPEL SULFITE A4 500 FOLHAS"). "preco" deve ser número, sem R$, vírgula ou texto.
 - "quantidade" deve ser número inteiro maior ou igual a zero.
 - "categoria" precisa ser exatamente uma das categorias já cadastradas abaixo. Não invente, não altere maiúsculas/minúsculas e não crie categoria nova.
 - "marca" é opcional, mas, quando preenchida, precisa ser exatamente uma das marcas já cadastradas abaixo. Não invente, não altere maiúsculas/minúsculas e não crie marca nova.
+- Todo texto descritivo criado para o produto deve estar EM LETRAS MAIÚSCULAS: "nome", "codigo", "descricao", itens de "destaques" e itens de "etiquetas". As exceções são URLs, os valores técnicos de "status" e as categorias/marcas cadastradas, que devem manter exatamente a grafia registrada no painel.
 - "status" pode ser apenas: "disponivel", "esgotado" ou "oculto".
 - "imagem" e "imagens" são opcionais, mas devem conter somente URLs públicas HTTPS. Produtos sem foto não aparecem no site público.
 - "imagens" deve ser uma lista de URLs; a primeira será usada como capa. Se usar "imagem", repita a mesma URL como primeiro item de "imagens".
