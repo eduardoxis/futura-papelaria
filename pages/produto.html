@@ -98,9 +98,6 @@
       <button id="btn-minha-conta" class="header-action" hidden data-modal-target="#modal-conta" aria-label="Minha conta">
         <span data-icon="user"></span><span>Minha conta</span>
       </button>
-      <button id="abrir-admin" class="header-action" hidden aria-label="Painel Admin">
-        <span data-icon="home"></span><span>Painel Admin</span>
-      </button>
       <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
         <span data-icon="cart"></span><span class="cart-badge" data-cart-badge>0</span>
       </button>
@@ -174,7 +171,7 @@
 import { obterProduto, invalidarCachePublico, listarProdutosPorCategoria, incrementarVisualizacao } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos, registrarErroCliente } from "../js/utils/utils.js";
 import { renderizarGrade, cartaoProduto, compartilharProduto, obterIdsFavoritos, alternarFavorito, produtoTemImagem } from "../js/modules/products.js";
-import { ouvirEstadoAuth, ehAdmin, sair } from "../js/services/auth.js";
+import { ouvirEstadoAuth, sair } from "../js/services/auth.js";
 import {
   obterCarrinho, adicionarAoCarrinho, atualizarQuantidade, calcularTotais,
   atualizarBadgeCarrinho, falarSobreProduto, finalizarPedidoWhatsApp
@@ -565,7 +562,6 @@ function configurarCarrinhoUI() {
 
 function configurarLogin() {
   ouvirEstadoAuth((usuario) => {
-    const btnAdmin = document.querySelector("#abrir-admin");
     const btnEntrar = document.querySelector("#btn-entrar");
     const btnSair = document.querySelector("#btn-sair");
     const btnMinhaConta = document.querySelector("#btn-minha-conta");
@@ -574,26 +570,19 @@ function configurarLogin() {
       btnEntrar?.setAttribute("hidden", "");
       btnSair?.removeAttribute("hidden");
       btnMinhaConta?.removeAttribute("hidden");
-      if (ehAdmin()) btnAdmin?.removeAttribute("hidden");
-      else btnAdmin?.setAttribute("hidden", "");
     } else {
       btnEntrar?.removeAttribute("hidden");
       btnSair?.setAttribute("hidden", "");
       btnMinhaConta?.setAttribute("hidden", "");
-      btnAdmin?.setAttribute("hidden", "");
     }
   });
 
-  // "Entrar", "Minha conta" e "Painel Admin" abrem os modais correspondentes
-  // — que só existem na página inicial. Aqui redireciona pra lá.
+  // "Entrar" e "Minha conta" abrem os modais correspondentes da página inicial.
   document.querySelector("#btn-entrar")?.addEventListener("click", () => {
     window.location.href = "/?abrir=login";
   });
   document.querySelector("#btn-minha-conta")?.addEventListener("click", () => {
     window.location.href = "/?abrir=conta";
-  });
-  document.querySelector("#abrir-admin")?.addEventListener("click", () => {
-    window.location.href = "/?abrir=admin";
   });
   document.querySelector("#btn-sair")?.addEventListener("click", sair);
 }

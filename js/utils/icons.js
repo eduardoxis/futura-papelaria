@@ -1,5 +1,5 @@
 // js/utils/icons.js
-// Ícones SVG (stroke, estilo Feather) usados no Painel Administrativo.
+// Ícones SVG (stroke, estilo Feather) usados na interface da loja.
 // Todos herdam a cor via currentColor — nada de emojis.
 
 export const ICONS = {

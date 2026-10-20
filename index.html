@@ -51,9 +51,6 @@
       <button id="btn-minha-conta" class="header-action" hidden data-modal-target="#modal-conta" aria-label="Minha conta">
         <span data-icon="user"></span><span>Minha conta</span>
       </button>
-      <button id="abrir-admin" class="header-action" hidden aria-label="Painel Admin">
-        <span data-icon="home"></span><span>Painel Admin</span>
-      </button>
       <button id="abrir-carrinho" class="icon-btn" aria-label="Abrir carrinho">
         <span data-icon="cart"></span><span class="cart-badge" data-cart-badge>0</span>
       </button>
@@ -709,58 +706,6 @@
         </label>
         <button type="submit" class="btn-primary" style="width:100%">Criar conta</button>
       </form>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL ADMIN -->
-<div class="modal" id="modal-admin">
-  <div class="modal__panel modal__panel--admin">
-    <div class="modal__head">
-      <div class="modal__head-info">
-        <span class="modal__head-logo" id="admin-logo-icon"></span>
-        <div>
-          <h2>Painel Administrativo</h2>
-          <p class="modal__head-sub">Gerencie os produtos da sua loja</p>
-        </div>
-      </div>
-      <button class="modal__close" data-modal-close aria-label="Fechar"></button>
-    </div>
-    <div class="modal__body">
-      <nav class="tabs-nav">
-        <div class="tabs-nav__list">
-          <button data-tab-trigger="dashboard" class="is-active"><span class="nav-icon" data-icon="home"></span><span class="nav-label">Dashboard</span></button>
-          <button data-tab-trigger="produtos"><span class="nav-icon" data-icon="box"></span><span class="nav-label">Produtos</span></button>
-          <button data-tab-trigger="categorias"><span class="nav-icon" data-icon="tag"></span><span class="nav-label">Categorias</span></button>
-          <button data-tab-trigger="marcas"><span class="nav-icon" data-icon="tag"></span><span class="nav-label">Marcas</span></button>
-          <button data-tab-trigger="etiquetas"><span class="nav-icon" data-icon="bookmark"></span><span class="nav-label">Etiquetas</span></button>
-          <button data-tab-trigger="estoque"><span class="nav-icon" data-icon="archive"></span><span class="nav-label">Estoque</span></button>
-          <button data-tab-trigger="pedidos"><span class="nav-icon" data-icon="shoppingBag"></span><span class="nav-label">Pedidos</span></button>
-          <button data-tab-trigger="historico"><span class="nav-icon" data-icon="clipboardList"></span><span class="nav-label">Histórico</span></button>
-          <button data-tab-trigger="usuarios"><span class="nav-icon" data-icon="users"></span><span class="nav-label">Usuários</span></button>
-          <button data-tab-trigger="clientes"><span class="nav-icon" data-icon="userPlus"></span><span class="nav-label">Clientes</span></button>
-          <button data-tab-trigger="leads"><span class="nav-icon" data-icon="userPlus"></span><span class="nav-label">Leads</span></button>
-        </div>
-        <div class="tabs-nav__summary" id="tabs-nav-summary" data-tab-trigger="dashboard">
-          <span class="tabs-nav__summary-icon" data-icon="trendingUp"></span>
-          <strong>Resumo rápido</strong>
-          <p>Acompanhe o desempenho da sua loja em tempo real.</p>
-          <span class="tabs-nav__summary-link">Ver dashboard <span data-icon="chevronRight"></span></span>
-        </div>
-      </nav>
-      <div class="tabs-content">
-        <div data-tab-panel="dashboard" id="painel-dashboard"></div>
-        <div data-tab-panel="produtos" id="painel-produtos" hidden></div>
-        <div data-tab-panel="categorias" id="painel-categorias" hidden></div>
-        <div data-tab-panel="marcas" id="painel-marcas" hidden></div>
-        <div data-tab-panel="etiquetas" id="painel-etiquetas" hidden></div>
-        <div data-tab-panel="estoque" id="painel-estoque" hidden></div>
-        <div data-tab-panel="pedidos" id="painel-pedidos" hidden></div>
-        <div data-tab-panel="historico" id="painel-historico" hidden></div>
-        <div data-tab-panel="usuarios" id="painel-usuarios" hidden></div>
-        <div data-tab-panel="clientes" id="painel-clientes" hidden></div>
-        <div data-tab-panel="leads" id="painel-leads" hidden></div>
-      </div>
     </div>
   </div>
 </div>
