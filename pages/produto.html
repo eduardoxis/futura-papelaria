@@ -168,7 +168,7 @@
 </aside>
 
 <script type="module">
-import { obterProduto, invalidarCachePublico, listarProdutosPorCategoria, incrementarVisualizacao } from "../js/services/firestore.js";
+import { obterProduto, invalidarCachePublico, listarProdutosPagina, incrementarVisualizacao } from "../js/services/firestore.js";
 import { escHtml, getQueryParam, formatBRL, toast, podeExecutar, imgPos, registrarErroCliente } from "../js/utils/utils.js";
 import { renderizarGrade, cartaoProduto, compartilharProduto, obterIdsFavoritos, alternarFavorito, produtoTemImagem } from "../js/modules/products.js";
 import { ouvirEstadoAuth, sair } from "../js/services/auth.js";
@@ -257,14 +257,32 @@ function renderizarSeletorCores(produto) {
 
 async function renderizarRelacionados(produto) {
   try {
-    // Antes baixava TODO o catálogo só pra filtrar por categoria no
-    // navegador. Trocado por uma consulta já filtrada e limitada no
-    // Firestore (mesma função usada em outras vitrines) — resultado
-    // idêntico, mas sem baixar produtos que nunca seriam usados aqui.
-    const daCategoria = await listarProdutosPorCategoria(produto.categoria, 7);
-    const relacionados = daCategoria
-      .filter(p => p.id !== produto.id)
-      .slice(0, 6);
+    const quantidade = 10;
+    const relacionados = [];
+    const ids = new Set([produto.id]);
+
+    async function completar(categoria = "") {
+      let cursor = null;
+      let temMais = true;
+      while (relacionados.length < quantidade && temMais) {
+        const pagina = await listarProdutosPagina({
+          categoria, tamanho: 20, cursor, ordenarPor: "__name__"
+        });
+        for (const candidato of pagina.produtos) {
+          if (ids.has(candidato.id) || !produtoTemImagem(candidato)) continue;
+          ids.add(candidato.id);
+          relacionados.push(candidato);
+          if (relacionados.length === quantidade) break;
+        }
+        cursor = pagina.cursor;
+        temMais = pagina.temMais;
+      }
+    }
+
+    // Prioriza a categoria e completa com outros produtos públicos com foto.
+    // A paginação evita baixar todo o catálogo quando já há dez opções.
+    if (produto.categoria) await completar(produto.categoria);
+    if (relacionados.length < quantidade) await completar();
     if (!relacionados.length) return;
     document.querySelector("#secao-relacionados").hidden = false;
     renderizarGrade(document.querySelector("#grade-relacionados"), relacionados);
