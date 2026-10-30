@@ -1,0 +1,147 @@
+/* css/animations.css
+ *
+ * Animações da home (index.html):
+ *  1. Abertura com a logo "Futura 30 anos"
+ *  2. Entrada em cascata do site (.rv)
+ *  3. Balanço + confete recorrente na logo do header
+ *
+ * O loading com o personagem e a barra de progresso ficam em
+ * js/utils/loadingUI.js (valem para todas as páginas).
+ *
+ * Segurança: a classe .intro-on só é adicionada via JS (ver <head> do
+ * index.html). Sem JS, nada fica escondido.
+ */
+
+/* ---------- 1. ABERTURA ---------- */
+#intro {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: #fff;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .8s ease, visibility .8s;
+}
+.intro-on #intro { display: flex; }
+#intro.out { opacity: 0; visibility: hidden; pointer-events: none; }
+/* trava a rolagem enquanto a abertura está na tela */
+.intro-on:not(.site-in) { overflow: hidden; }
+
+.intro__stage {
+  position: relative;
+  width: min(80vw, 760px);
+  aspect-ratio: 2 / 1;
+  transition: transform .9s cubic-bezier(.65, 0, .35, 1);
+}
+#intro.out .intro__stage { transform: scale(.55) translateY(-30vh); }
+
+.intro__lg {
+  position: absolute;
+  inset: 0;
+  background: url(/assets/images/logo-intro.webp) center / 100% 100% no-repeat;
+  mix-blend-mode: multiply;
+}
+.intro__lg--f {
+  clip-path: inset(0 61.07% 0 0);
+  opacity: 0;
+  transform: scale(.4) rotate(-12deg);
+  transform-origin: 24.7% 50%;
+}
+.intro__lg--n { clip-path: inset(0 100% 0 38.93%); }
+
+#intro.go .intro__lg--f { animation: intro-pop .9s .15s cubic-bezier(.2, 1.3, .4, 1) forwards; }
+#intro.go .intro__lg--n { animation: intro-wipe 1.3s .75s cubic-bezier(.65, 0, .25, 1) forwards; }
+@keyframes intro-pop  { to { opacity: 1; transform: none; } }
+@keyframes intro-wipe { to { clip-path: inset(0 0 0 38.93%); } }
+
+.intro__shine { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; }
+.intro__shine::after {
+  content: "";
+  position: absolute;
+  top: -10%; bottom: -10%; left: -30%;
+  width: 22%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .95), transparent);
+  transform: skewX(-18deg);
+}
+#intro.go .intro__shine { opacity: 1; }
+#intro.go .intro__shine::after { animation: intro-sweep 1s 2.2s ease-in-out forwards; }
+@keyframes intro-sweep { to { left: 120%; } }
+
+.intro__skip {
+  position: absolute;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: none;
+  border: 1px solid var(--cinza-100, #e6eaf2);
+  border-radius: 99px;
+  padding: 8px 16px;
+  color: var(--cinza-500, #5b6478);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.intro__skip:hover { color: var(--azul-900, #0f1b3d); border-color: #c9d1e0; }
+
+/* ---------- 2. ENTRADA EM CASCATA ---------- */
+.intro-on .rv { opacity: 0; transform: translateY(18px); }
+.intro-on.site-in .rv {
+  animation: rv-up .7s cubic-bezier(.2, .7, .2, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+@keyframes rv-up { to { opacity: 1; transform: none; } }
+
+/* ---------- 3. BALANÇO + CONFETE NA LOGO ---------- */
+.logo { position: relative; }
+.logo__mark.wiggle { transform-origin: 50% 90%; animation: logo-wiggle 1.1s ease-in-out 1; }
+.logo__text.wiggle { transform-origin: 0 50%; animation: logo-wiggle-t 1.1s ease-in-out 1; }
+@keyframes logo-wiggle {
+  0%   { transform: none; }
+  12%  { transform: translateY(-8px) rotate(-14deg) scale(1.12); }
+  28%  { transform: rotate(12deg) scale(1.08); }
+  44%  { transform: rotate(-9deg); }
+  60%  { transform: rotate(6deg); }
+  76%  { transform: rotate(-3deg); }
+  100% { transform: none; }
+}
+@keyframes logo-wiggle-t {
+  0%   { transform: none; }
+  20%  { transform: translateX(3px) rotate(-2.5deg); }
+  40%  { transform: rotate(2deg); }
+  60%  { transform: rotate(-1.2deg); }
+  80%  { transform: rotate(.6deg); }
+  100% { transform: none; }
+}
+
+.logo__confetti {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.logo__confetti span {
+  position: absolute;
+  left: -3px;
+  top: -4px;
+  width: 7px;
+  height: 9px;
+  border-radius: 2px;
+  opacity: 0;
+}
+@keyframes logo-burst {
+  0%   { opacity: 0; transform: translate(0, 0) scale(.3); }
+  8%   { opacity: 1; }
+  45%  { opacity: 1; transform: translate(calc(var(--x) * .8), var(--y)) rotate(calc(var(--r) * .5)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + var(--g))) rotate(var(--r)) scale(.9); }
+}
+@media (max-width: 900px) { .logo__confetti { left: 21px; } }
+
+/* ---------- Acessibilidade: movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .logo__mark.wiggle, .logo__text.wiggle { animation: none; }
+  .logo__confetti { display: none; }
+}
