@@ -22,12 +22,40 @@
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/modal.css">
 <link rel="stylesheet" href="/css/responsive.css">
+<link rel="stylesheet" href="/css/animations.css">
+
+<!-- Abertura animada: 1x por sessão, desligada com "reduzir movimento".
+     Só esconde o conteúdo (.rv) se este script rodar; o timeout garante que o site apareça mesmo se algo falhar. -->
+<script>
+(function () {
+  try {
+    var d = document.documentElement;
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (sessionStorage.getItem("futura-intro")) return;
+    d.classList.add("intro-on");
+    setTimeout(function () {
+      d.classList.add("site-in");
+      var i = document.getElementById("intro");
+      if (i) i.classList.add("out");
+    }, 7000);
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 
+<div id="intro" role="img" aria-label="Papelaria Futura — 30 anos">
+  <div class="intro__stage">
+    <div class="intro__lg intro__lg--f"></div>
+    <div class="intro__lg intro__lg--n"></div>
+    <div class="intro__shine"></div>
+  </div>
+  <button class="intro__skip" id="intro-pular" type="button">Pular</button>
+</div>
+
 <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
 
-<header class="site-header">
+<header class="site-header rv" style="--i:0">
   <div class="container header-top">
     <a href="/" class="logo">
       <img src="/assets/images/logo.webp" alt="Papelaria Futura" class="logo__mark" width="235" height="248" decoding="async">
@@ -63,22 +91,22 @@
   <section class="hero">
     <div class="container hero__inner">
       <div class="hero__content">
-        <span class="hero__eyebrow"><span data-icon="plus"></span>Volta às aulas 2026</span>
-        <h1 class="hero__title">Tudo para seu estudo, escritório e <span class="hero__title-accent">criatividade.</span></h1>
-        <p class="hero__subtitle">Mais de 8.000 produtos com entrega rápida e o melhor atendimento!</p>
-        <div class="hero__actions">
+        <span class="hero__eyebrow rv" style="--i:2"><span data-icon="plus"></span>Volta às aulas 2026</span>
+        <h1 class="hero__title rv" style="--i:3">Tudo para seu estudo, escritório e <span class="hero__title-accent">criatividade.</span></h1>
+        <p class="hero__subtitle rv" style="--i:4">Mais de 8.000 produtos com entrega rápida e o melhor atendimento!</p>
+        <div class="hero__actions rv" style="--i:5">
           <a href="#produtos" class="btn-primary"><span data-icon="grid"></span>Ver catálogo</a>
           <a href="#" id="hero-whatsapp" class="btn-whatsapp-lg" target="_blank" rel="noopener"><span data-icon="whatsapp"></span>Comprar pelo WhatsApp</a>
         </div>
       </div>
-      <div class="hero__art">
+      <div class="hero__art rv" style="--i:4">
         <picture>
           <source srcset="/assets/images/hero-produtos.avif" type="image/avif">
           <source srcset="/assets/images/hero-produtos.webp" type="image/webp">
           <img src="/assets/images/hero-produtos.jpg" alt="Mochila, cadernos e materiais escolares Papelaria Futura" class="hero__art-img" width="1280" height="705" fetchpriority="high" decoding="async">
         </picture>
       </div>
-      <ul class="hero__features">
+      <ul class="hero__features rv" style="--i:7">
         <li><span data-icon="truck"></span><div><strong>Entrega rápida</strong><span>para todo o Brasil</span></div></li>
         <li><span data-icon="creditCard"></span><div><strong>Até 12x sem juros</strong><span>parcele suas compras</span></div></li>
         <li><span data-icon="shieldCheck"></span><div><strong>Compra 100% segura</strong><span>seus dados protegidos</span></div></li>
@@ -710,6 +738,7 @@
   </div>
 </div>
 
+<script type="module" src="/js/utils/intro.js"></script>
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>
